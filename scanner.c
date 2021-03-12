@@ -17,48 +17,26 @@ int lex(const char *YYCURSOR) {
         re2c:yyfill:enable = 0;
         re2c:flags:case-ranges = 1;
        
-        "if" {
-            report("TOKEN_IF", YYSTART, YYCURSOR);
-            continue;
-        }
-        "return" {
-            report("TOKEN_RETURN", YYSTART, YYCURSOR);
+        "if" | "return" | "while" {
+            report("TOKEN_KEYWORD", YYSTART, YYCURSOR);
             continue;
         }
         [ \t\v\n\r] {
             //report("TOKEN_WHITESPACE", YYSTART, YYCURSOR);
             continue;
         }
-        "(" {
-            report("TOKEN_LEFT_PAREN", YYSTART, YYCURSOR);
+        "{" | "}" | "(" | ")" | "[" | "]" {
+            report("TOKEN_BRACKET", YYSTART, YYCURSOR);
             continue;
         }
-        ")" {
-            report("TOKEN_RIGHT_PAREN", YYSTART, YYCURSOR);
-            continue;
-        }
-        "{" {
-            report("TOKEN_LEFT_CURLY", YYSTART, YYCURSOR);
-            continue;
-        }
-        "}" {
-            report("TOKEN_RIGHT_CURLY", YYSTART, YYCURSOR);
-            continue;
-        }
-        "<" {
-            report("TOKEN_LESS_THAN", YYSTART, YYCURSOR);
-            continue;
-        }
-        "==" {
-            report("TOKEN_EQUALS", YYSTART, YYCURSOR);
+        "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
+        ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
+        "*"  | "/"  | "%" {
+            report("TOKEN_INFIX_OPERATOR", YYSTART, YYCURSOR);
             continue;
         }
         "=" {
             report("TOKEN_ASSIGN", YYSTART, YYCURSOR);
-            continue;
-        }
-        "-" {
-            report("TOKEN_MINUS", YYSTART, YYCURSOR);
             continue;
         }
         [1-9][0-9]* {
