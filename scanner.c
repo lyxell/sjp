@@ -12,15 +12,13 @@ int lex(const char *YYCURSOR) {
         re2c:define:YYCTYPE = char;
         re2c:yyfill:enable = 0;
         re2c:flags:case-ranges = 1;
-
-        identifier = [a-zA-Z_][a-zA-Z_0-9]*;
        
-        "if"  {
+        "if" {
             report("TOKEN_IF", YYSTART, YYCURSOR);
             continue;
         }
-        identifier {
-            report("TOKEN_IDENTIFIER", YYSTART, YYCURSOR);
+        "return" {
+            report("TOKEN_RETURN", YYSTART, YYCURSOR);
             continue;
         }
         [ \t\v\n\r] {
@@ -43,12 +41,20 @@ int lex(const char *YYCURSOR) {
             report("TOKEN_RIGHT_CURLY", YYSTART, YYCURSOR);
             continue;
         }
+        "<" {
+            report("TOKEN_LESS_THAN", YYSTART, YYCURSOR);
+            continue;
+        }
         "==" {
             report("TOKEN_EQUALS", YYSTART, YYCURSOR);
             continue;
         }
         "=" {
             report("TOKEN_ASSIGN", YYSTART, YYCURSOR);
+            continue;
+        }
+        "-" {
+            report("TOKEN_MINUS", YYSTART, YYCURSOR);
             continue;
         }
         [1-9][0-9]* {
@@ -59,6 +65,10 @@ int lex(const char *YYCURSOR) {
             report("TOKEN_SEMICOLON", YYSTART, YYCURSOR);
             continue;
         }
+        [a-zA-Z_][a-zA-Z_0-9]* {
+            report("TOKEN_IDENTIFIER", YYSTART, YYCURSOR);
+            continue;
+        }
         * {
             return 1;
         }
@@ -66,7 +76,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("if (x == 20) { if (x == 20) {} }");
+    lex("if (2 - 2 - 2) {}");
     return 0;
 }
 

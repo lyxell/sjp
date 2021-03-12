@@ -2,11 +2,15 @@
                  | Identifier {}
                  | Eq {e_1 : Expression, e_2 :Expression}
                  | Add {e_1 : Expression, e_2 : Expression}
+                 | Sub {e_1 : Expression, e_2 : Expression}
+                 | Assign {e_1 : Expression, e_2 : Expression}
+                 | LessThan {e_1 : Expression, e_2 : Expression}
 
 .type Statement = If { cond : Expression, then: Statement }
                 | While { cond : Expression, then: Statement }
-                | Empty {}
                 | Block { s: StatementList }
+                | Return { e: Expression }
+                | Empty {}
 
 .type StatementList = [
     head : Statement,
@@ -17,43 +21,14 @@
 .decl statement(s: Statement, n: number, l: number)
 .decl one_or_more_statements(s: StatementList, n: number, l: number)
 .decl expr(e: Expression, n: number, l: number)
+.decl expr1(e: Expression, n: number, l: number)
+.decl bin_op(e1: Expression, e2: Expression, a: number, b: number, t: symbol)
 .decl par_expr(e: Expression, n: number, l: number)
 
 .input token
 
 /**
- * Expressions
- */
-
-
-// parenthesized expression
-par_expr(e, A, B + 1) :-
-    token("TOKEN_LEFT_PAREN",  A),
-    expr(e, A + 1, B), B >= A + 1,
-    token("TOKEN_RIGHT_PAREN", B + 1).
-
-// identifier
-expr($Identifier(), A, A) :-
-    token("TOKEN_IDENTIFIER", A).
-
-// number
-expr($Number(), A, A) :-
-    token("TOKEN_NUMBER", A).
-
-// e1 == e2
-expr($Eq(e1, e2), A, C) :-
-    expr(e1, A, B), B >= A,
-    token("TOKEN_EQUALS", B + 1),
-    expr(e2, B + 2, C), C >= B + 2.
-
-// e1 + e2
-expr($Add(e1, e2), A, C) :-
-    expr(e1, A, B), B >= A,
-    token("TOKEN_PLUS", B + 1),
-    expr(e2, B + 2, C), C >= B + 2.
-
-/**
- * Statements
+ * Blocks/statements
  */
 
 one_or_more_statements([e, nil], A, B) :-
@@ -85,6 +60,40 @@ statement($While(cond, do), A, C) :-
     token("TOKEN_WHILE", A),
     par_expr(cond, A + 1, B), B >= A + 1,
     statement(do, B + 1, C),  C >= B + 1.
+
+// return statement
+statement($Return(e), A, B) :-
+    token("TOKEN_RETURN", A),
+    expr(e, A + 1, B), B >= A + 1.
+
+/**
+ * Expressions
+ */
+
+// parenthesized expression
+par_expr(e, A, B + 1) :-
+    token("TOKEN_LEFT_PAREN",  A),
+    expr(e, A + 1, B), B >= A + 1,
+    token("TOKEN_RIGHT_PAREN", B + 1).
+
+bin_op(e1, e2, A, C, T) :-
+    expr(e1, A, B), B >= A,
+    token(T, B + 1),
+    expr1(e2, B + 2, C), C >= B + 2.
+expr($Eq(e1, e2), A, B) :- bin_op(e1, e2, A, B, "TOKEN_EQUALS").
+expr($Add(e1, e2), A, B) :- bin_op(e1, e2, A, B, "TOKEN_PLUS").
+expr($Sub(e1, e2), A, B) :- bin_op(e1, e2, A, B, "TOKEN_MINUS").
+expr($LessThan(e1, e2), A, B) :- bin_op(e1, e2, A, B, "TOKEN_LESS_THAN").
+
+expr(e, A, B) :- expr1(e, A, B).
+
+// identifier
+expr1($Identifier(), A, A) :-
+    token("TOKEN_IDENTIFIER", A).
+
+// number
+expr1($Number(), A, A) :-
+    token("TOKEN_NUMBER", A).
 
 .output par_expr
 .output statement
