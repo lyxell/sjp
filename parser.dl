@@ -1,8 +1,16 @@
+.type Expression = Number { x : number }
+                 | Eq {e_1 : Expression, e_2 :Expression}
+                 | Add {e_1 : Expression, e_2 : Expression}
+
+.type Statement = If { cond : Expression, then: Statement }
+                | While { cond : Expression, then: Statement }
+                | Empty {}
+
 .decl token(s: symbol, n: number)
-.decl statement(n: number, l: number)
-.decl one_or_more_statements(n: number, l: number)
-.decl expr(n: number, l: number)
-.decl par_expr(n: number, l: number)
+.decl statement(s: Statement, n: number, l: number)
+.decl one_or_more_statements(s: Statement, n: number, l: number)
+.decl expr(e: Expression, n: number, l: number)
+.decl par_expr(e: Expression, n: number, l: number)
 
 #define TOKEN_IF "if"
 #define TOKEN_LEFT_PAREN "("
@@ -12,71 +20,99 @@
 #define TOKEN_NUMBER "20"
 #define TOKEN_LEFT_CURLY "{"
 #define TOKEN_RIGHT_CURLY "}"
+#define TOKEN_WHILE "while"
 
-token("if", 2).
-token("(",  3).
-token("20", 4).
-token("==", 5).
-token("20", 6).
-token(")",  7).
-token("{",  8).
+token("if", 1).
+token("(",  2).
+token("20", 3).
+token("==", 4).
+token("20", 5).
+token(")",  6).
+token("{",  7).
+token("}",  8).
 
-    token("if", 9).
-    token("(",  10).
-    token("20", 11).
-    token("+", 12).
-    token("20", 13).
-    token(")",  14).
-    token("{",  15).
-    token("}",  16).
+/*
+    token("if", 8).
+    token("(",  9).
+    token("20", 10).
+    token("+", 11).
+    token("20", 12).
+    token(")",  13).
+    token("{",  14).
+    token("}",  15).
 
-    token("if", 17).
-    token("(",  18).
-    token("20", 19).
-    token("+", 20).
-    token("20", 21).
-    token(")",  22).
-    token("{",  23).
-    token("}",  24).
+    token("if", 16).
+    token("(",  17).
+    token("20", 18).
+    token("+", 19).
+    token("20", 20).
+    token(")",  21).
+    token("{",  22).
+    token("}",  23).
 
-token("}",  25).
+token("}",  24).
+*/
 
-// constant number expression
-expr(A, A) :- token(TOKEN_NUMBER, A).
+/**
+ * Expressions
+ */
 
-// comparison expression
-expr(A, C) :- expr(A, B), B >= A,
-              token(TOKEN_EQUALS, B + 1),
-              expr(B + 2, C), C >= B + 2.
-
-// addition expression
-expr(A, C) :- expr(A, B), B >= A,
-              token(TOKEN_PLUS, B + 1),
-              expr(B + 2, C), C >= B + 2.
-
-// empty block statement
-statement(A, A + 1) :-  token(TOKEN_LEFT_CURLY, A),
-                        token(TOKEN_RIGHT_CURLY, A + 1).
-// block statement
-statement(A, B + 1) :-  token(TOKEN_LEFT_CURLY, A),
-                        one_or_more_statements(A+1, B), B >= A+1,
-                        token(TOKEN_RIGHT_CURLY, B + 1).
-
-one_or_more_statements(A, B) :- statement(A,B).
-one_or_more_statements(A, C) :- statement(A,B), B >= A,
-                                one_or_more_statements(B+1,C), C >= B+1.
-
-// if statement
-statement(A, C) :-
-    token(TOKEN_IF, A),
-    par_expr(A+1, B),   B >= A+1,
-    statement(B+1, C),  C >= B+1.
 
 // parenthesized expression
-par_expr(A, B + 1) :-
+par_expr(e, A, B + 1) :-
     token(TOKEN_LEFT_PAREN,  A),
-    expr(A + 1, B), B >= A + 1,
+    expr(e, A + 1, B), B >= A + 1,
     token(TOKEN_RIGHT_PAREN, B + 1).
+
+// number
+expr($Number(0), A, A) :-
+    token(TOKEN_NUMBER, A).
+
+// e1 == e2
+expr($Eq(e1, e2), A, C) :-
+    expr(e1, A, B), B >= A,
+    token(TOKEN_EQUALS, B + 1),
+    expr(e2, B + 2, C), C >= B + 2.
+
+// e1 + e2
+expr($Add(e1, e2), A, C) :-
+    expr(e1, A, B), B >= A,
+    token(TOKEN_PLUS, B + 1),
+    expr(e2, B + 2, C), C >= B + 2.
+
+/**
+ * Statements
+ */
+
+one_or_more_statements(e, A, B) :-
+    statement(e, A, B).
+one_or_more_statements(e, A, C) :-
+    statement(e, A, B), B >= A,
+    one_or_more_statements(_, B + 1, C), C >= B + 1.
+
+// empty block statement
+statement($Empty, A, A + 1) :-
+    token(TOKEN_LEFT_CURLY, A),
+    token(TOKEN_RIGHT_CURLY, A + 1).
+
+// block statement
+statement($Empty, A, B + 1) :-
+    token(TOKEN_LEFT_CURLY, A),
+    one_or_more_statements(_, A + 1, B), B >= A + 1,
+    token(TOKEN_RIGHT_CURLY, B + 1).
+
+// if statement
+statement($If(cond, then), A, C) :-
+    token(TOKEN_IF, A),
+    par_expr(cond, A + 1, B),   B >= A + 1,
+    statement(then, B + 1, C),  C >= B + 1.
+
+// while statement
+statement($While(cond, do), A, C) :-
+    token(TOKEN_WHILE, A),
+    par_expr(cond, A + 1, B), B >= A + 1,
+    statement(do, B + 1, C),  C >= B + 1.
 
 .output par_expr
 .output statement
+.output expr
