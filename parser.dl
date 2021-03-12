@@ -1,29 +1,30 @@
-.type Expression = Number {}
-                 | Identifier {}
-                 | Eq {e_1 : Expression, e_2 :Expression}
-                 | Add {e_1 : Expression, e_2 : Expression}
-                 | Sub {e_1 : Expression, e_2 : Expression}
-                 | Assign {e_1 : Expression, e_2 : Expression}
-                 | LessThan {e_1 : Expression, e_2 : Expression}
+.type Expression = Number {n: number}
+                 | Identifier {id: symbol}
+                 | Eq {e1: Expression, e2: Expression}
+                 | Add {e1: Expression, e2: Expression}
+                 | Sub {e1: Expression, e2: Expression}
+                 | Assign {e1: Expression, e2: Expression}
+                 | LessThan {e1: Expression, e2: Expression}
 
-.type Statement = If { cond : Expression, then: Statement }
-                | While { cond : Expression, then: Statement }
-                | Block { s: StatementList }
-                | Return { e: Expression }
+.type Statement = If {cond: Expression, then: Statement}
+                | While {cond: Expression, then: Statement}
+                | Block {s: StatementList }
+                | Return {e: Expression }
                 | Empty {}
 
 .type StatementList = [
-    head : Statement,
-    tail : StatementList
+    head: Statement,
+    tail: StatementList
 ]
 
-.decl token(s: symbol, n: number)
+.decl token(s: symbol, c: symbol, n: number)
 .decl statement(s: Statement, n: number, l: number)
 .decl one_or_more_statements(s: StatementList, n: number, l: number)
 .decl expr(e: Expression, n: number, l: number)
 .decl expr1(e: Expression, n: number, l: number)
 .decl bin_op(e1: Expression, e2: Expression, a: number, b: number, t: symbol)
 .decl par_expr(e: Expression, n: number, l: number)
+.decl root(s: Statement)
 
 .input token
 
@@ -40,30 +41,30 @@ one_or_more_statements([e, tail], A, C) :-
 
 // empty block statement
 statement($Block(nil), A, A + 1) :-
-    token("TOKEN_LEFT_CURLY", A),
-    token("TOKEN_RIGHT_CURLY", A + 1).
+    token("TOKEN_LEFT_CURLY", _, A),
+    token("TOKEN_RIGHT_CURLY", _, A + 1).
 
 // block statement
 statement($Block(s), A, B + 1) :-
-    token("TOKEN_LEFT_CURLY", A),
+    token("TOKEN_LEFT_CURLY", _, A),
     one_or_more_statements(s, A + 1, B), B >= A + 1,
-    token("TOKEN_RIGHT_CURLY", B + 1).
+    token("TOKEN_RIGHT_CURLY", _, B + 1).
 
 // if statement
 statement($If(cond, then), A, C) :-
-    token("TOKEN_IF", A),
+    token("TOKEN_IF", _, A),
     par_expr(cond, A + 1, B),   B >= A + 1,
     statement(then, B + 1, C),  C >= B + 1.
 
 // while statement
 statement($While(cond, do), A, C) :-
-    token("TOKEN_WHILE", A),
+    token("TOKEN_WHILE", _, A),
     par_expr(cond, A + 1, B), B >= A + 1,
     statement(do, B + 1, C),  C >= B + 1.
 
 // return statement
 statement($Return(e), A, B) :-
-    token("TOKEN_RETURN", A),
+    token("TOKEN_RETURN", _, A),
     expr(e, A + 1, B), B >= A + 1.
 
 /**
@@ -72,13 +73,13 @@ statement($Return(e), A, B) :-
 
 // parenthesized expression
 par_expr(e, A, B + 1) :-
-    token("TOKEN_LEFT_PAREN",  A),
+    token("TOKEN_LEFT_PAREN", _,  A),
     expr(e, A + 1, B), B >= A + 1,
-    token("TOKEN_RIGHT_PAREN", B + 1).
+    token("TOKEN_RIGHT_PAREN", _, B + 1).
 
 bin_op(e1, e2, A, C, T) :-
     expr(e1, A, B), B >= A,
-    token(T, B + 1),
+    token(T, _, B + 1),
     expr1(e2, B + 2, C), C >= B + 2.
 expr($Eq(e1, e2), A, B) :- bin_op(e1, e2, A, B, "TOKEN_EQUALS").
 expr($Add(e1, e2), A, B) :- bin_op(e1, e2, A, B, "TOKEN_PLUS").
@@ -88,13 +89,20 @@ expr($LessThan(e1, e2), A, B) :- bin_op(e1, e2, A, B, "TOKEN_LESS_THAN").
 expr(e, A, B) :- expr1(e, A, B).
 
 // identifier
-expr1($Identifier(), A, A) :-
-    token("TOKEN_IDENTIFIER", A).
+expr1($Identifier(id), A, A) :-
+    token("TOKEN_IDENTIFIER", id, A).
 
 // number
-expr1($Number(), A, A) :-
-    token("TOKEN_NUMBER", A).
+expr1($Number(to_number(s)), A, A) :-
+    token("TOKEN_NUMBER", s, A).
+
+/**
+ * Root
+ */
+
+root(s) :- statement(s, 1, N), token("TOKEN_EOF", _, N+1).
 
 .output par_expr
 .output statement
 .output expr
+.output root

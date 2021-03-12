@@ -1,3 +1,4 @@
 build
 *.csv
 token.facts
+.gdb_history

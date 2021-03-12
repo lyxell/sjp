@@ -3,7 +3,11 @@
 
 int curr = 1;
 
-#define report(a,b,c) printf("%s\t%d\n", a, curr++);
+void report(const char* token, const char* start, const char* end) {
+    char buf[120];
+    snprintf(buf, end - start + 1, "%s", start);
+    printf("%s\t%s\t%d\n", token, buf, curr++);
+}
 
 int lex(const char *YYCURSOR) {
     while (1) {
@@ -76,7 +80,8 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("if (2 - 2 - 2) {}");
+    lex("if (300 - 2 - x) {}");
+    report("TOKEN_EOF", 0, 0);
     return 0;
 }
 
