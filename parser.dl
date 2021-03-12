@@ -1,0 +1,82 @@
+.decl token(s: symbol, n: number)
+.decl statement(n: number, l: number)
+.decl one_or_more_statements(n: number, l: number)
+.decl expr(n: number, l: number)
+.decl par_expr(n: number, l: number)
+
+#define TOKEN_IF "if"
+#define TOKEN_LEFT_PAREN "("
+#define TOKEN_RIGHT_PAREN ")"
+#define TOKEN_EQUALS "=="
+#define TOKEN_PLUS "+"
+#define TOKEN_NUMBER "20"
+#define TOKEN_LEFT_CURLY "{"
+#define TOKEN_RIGHT_CURLY "}"
+
+token("if", 2).
+token("(",  3).
+token("20", 4).
+token("==", 5).
+token("20", 6).
+token(")",  7).
+token("{",  8).
+
+    token("if", 9).
+    token("(",  10).
+    token("20", 11).
+    token("+", 12).
+    token("20", 13).
+    token(")",  14).
+    token("{",  15).
+    token("}",  16).
+
+    token("if", 17).
+    token("(",  18).
+    token("20", 19).
+    token("+", 20).
+    token("20", 21).
+    token(")",  22).
+    token("{",  23).
+    token("}",  24).
+
+token("}",  25).
+
+// constant number expression
+expr(A, A) :- token(TOKEN_NUMBER, A).
+
+// comparison expression
+expr(A, C) :- expr(A, B), B >= A,
+              token(TOKEN_EQUALS, B + 1),
+              expr(B + 2, C), C >= B + 2.
+
+// addition expression
+expr(A, C) :- expr(A, B), B >= A,
+              token(TOKEN_PLUS, B + 1),
+              expr(B + 2, C), C >= B + 2.
+
+// empty block statement
+statement(A, A + 1) :-  token(TOKEN_LEFT_CURLY, A),
+                        token(TOKEN_RIGHT_CURLY, A + 1).
+// block statement
+statement(A, B + 1) :-  token(TOKEN_LEFT_CURLY, A),
+                        one_or_more_statements(A+1, B), B >= A+1,
+                        token(TOKEN_RIGHT_CURLY, B + 1).
+
+one_or_more_statements(A, B) :- statement(A,B).
+one_or_more_statements(A, C) :- statement(A,B), B >= A,
+                                one_or_more_statements(B+1,C), C >= B+1.
+
+// if statement
+statement(A, C) :-
+    token(TOKEN_IF, A),
+    par_expr(A+1, B),   B >= A+1,
+    statement(B+1, C),  C >= B+1.
+
+// parenthesized expression
+par_expr(A, B + 1) :-
+    token(TOKEN_LEFT_PAREN,  A),
+    expr(A + 1, B), B >= A + 1,
+    token(TOKEN_RIGHT_PAREN, B + 1).
+
+.output par_expr
+.output statement
