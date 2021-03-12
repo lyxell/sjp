@@ -66,7 +66,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("do { x = x + 1; } while (x == 3)");
+    lex("do { } while (x == 3)");
     report("TOKEN_EOF", 0, 0);
     return 0;
 }

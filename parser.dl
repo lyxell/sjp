@@ -2,12 +2,14 @@
                  | Identifier {id: symbol}
                  | Eq {e1: Expression, e2: Expression}
                  | Add {e1: Expression, e2: Expression}
+                 | Mul {e1: Expression, e2: Expression}
                  | Sub {e1: Expression, e2: Expression}
                  | Assign {e1: Expression, e2: Expression}
                  | LessThan {e1: Expression, e2: Expression}
 
 .type Statement = If {cond: Expression, then: Statement}
                 | While {cond: Expression, then: Statement}
+                | DoWhile {cond: Expression, then: Statement}
                 | Block {s: StatementList }
                 | Return {e: Expression }
                 | Empty {}
@@ -18,12 +20,15 @@
 ]
 
 .decl token(s: symbol, c: symbol, n: number)
+/* statement */
 .decl statement(s: Statement, n: number, l: number)
 .decl one_or_more_statements(s: StatementList, n: number, l: number)
-.decl expr(e: Expression, n: number, l: number)
-.decl expr1(e: Expression, n: number, l: number)
-.decl bin_op(e1: Expression, e2: Expression, a: number, b: number, t: symbol)
-.decl par_expr(e: Expression, n: number, l: number)
+/* expressions */
+.decl expression(e: Expression, n: number, l: number)
+.decl additive_expression(e: Expression, n: number, l: number)
+.decl multiplicative_expression(e: Expression, n: number, l: number)
+.decl unary_expression(e: Expression, n: number, l: number)
+/* root */
 .decl root(s: Statement)
 
 .input token
@@ -39,63 +44,70 @@ one_or_more_statements([e, tail], A, C) :-
     statement(e, A, B), B >= A,
     one_or_more_statements(tail, B + 1, C), C >= B + 1.
 
-// empty block statement
 statement($Block(nil), A, A + 1) :-
     token("TOKEN_BRACKET", "{", A),
     token("TOKEN_BRACKET", "}", A + 1).
 
-// block statement
 statement($Block(s), A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
     one_or_more_statements(s, A + 1, B), B >= A + 1,
     token("TOKEN_BRACKET", "}", B + 1).
 
-// if statement
 statement($If(cond, then), A, C) :-
     token("TOKEN_KEYWORD", "if", A),
-    par_expr(cond, A + 1, B),   B >= A + 1,
-    statement(then, B + 1, C),  C >= B + 1.
+    token("TOKEN_BRACKET", "(", A + 1),
+    expression(cond, A + 2, B), B >= A + 2,
+    token("TOKEN_BRACKET", ")", B + 1),
+    statement(then, B + 2, C),  C >= B + 2.
 
-// while statement
+statement($DoWhile(cond, do), A, C + 1) :-
+    token("TOKEN_KEYWORD", "do", A),
+    statement(do, A + 1, B),  B >= A + 1,
+    token("TOKEN_KEYWORD", "while", B + 1),
+    token("TOKEN_BRACKET", "(", B + 2),
+    expression(cond, B + 3, C), C >= B + 3,
+    token("TOKEN_BRACKET", ")", C + 1).
+
 statement($While(cond, do), A, C) :-
     token("TOKEN_KEYWORD", "while", A),
-    par_expr(cond, A + 1, B), B >= A + 1,
-    statement(do, B + 1, C),  C >= B + 1.
+    token("TOKEN_BRACKET", "(", A + 1),
+    expression(cond, A + 2, B), B >= A + 2,
+    token("TOKEN_BRACKET", ")", B + 1),
+    statement(do, B + 2, C),  C >= B + 2.
 
-// return statement
-statement($Return(e), A, B) :-
+statement($Return(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "return", A),
-    expr(e, A + 1, B), B >= A + 1.
+    expression(e, A + 1, B), B >= A + 1.
+    token("TOKEN_SEPARATOR", ";", B + 1),
 
 /**
  * Expressions
  */
 
-// parenthesized expression
-par_expr(e, A, B + 1) :-
-    token("TOKEN_BRACKET", "(",  A),
-    expr(e, A + 1, B), B >= A + 1,
-    token("TOKEN_BRACKET", ")", B + 1).
+expression(e, A, B) :- additive_expression(e, A, B).
 
-bin_op(e1, e2, A, C, T) :-
-    expr(e1, A, B), B >= A,
-    token("TOKEN_INFIX_OPERATOR", T, B + 1),
-    expr1(e2, B + 2, C), C >= B + 2.
+/* additive */
 
-expr($Eq(e1, e2), A, B)         :- bin_op(e1, e2, A, B, "==").
-expr($Add(e1, e2), A, B)        :- bin_op(e1, e2, A, B, "+").
-expr($Sub(e1, e2), A, B)        :- bin_op(e1, e2, A, B, "-").
-expr($LessThan(e1, e2), A, B)   :- bin_op(e1, e2, A, B, "<").
+additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
 
-expr(e, A, B) :- expr1(e, A, B).
+additive_expression($Add(e1, e2), A, C) :-
+    additive_expression(e1, A, B), B >= A,
+    token("TOKEN_OPERATOR", "+", B + 1),
+    multiplicative_expression(e2, B + 2, C), C >= B + 2.
 
-// identifier
-expr1($Identifier(id), A, A) :-
-    token("TOKEN_IDENTIFIER", id, A).
+/* multiplicative */
 
-// number
-expr1($Number(to_number(s)), A, A) :-
-    token("TOKEN_NUMBER", s, A).
+additive_expression(e, A, B) :- unary_expression(e, A, B).
+
+multiplicative_expression($Mul(e1, e2), A, B) :-
+    multiplicative_expression(e1, A, B), B >= A,
+    token("TOKEN_OPERATOR", "*", B + 1),
+    unary_expression(e2, B + 2, C), C >= B + 2.
+
+/* unary */
+
+unary_expression($Identifier(id), A, A) :- token("TOKEN_IDENTIFIER", id, A).
+unary_expression($Number(to_number(n)), A, A) :- token("TOKEN_NUMBER", n, A).
 
 /**
  * Root
@@ -103,7 +115,4 @@ expr1($Number(to_number(s)), A, A) :-
 
 root(s) :- statement(s, 1, N), token("TOKEN_EOF", _, N+1).
 
-.output par_expr
-.output statement
-.output expr
-.output root
+.output expression
