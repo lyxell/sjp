@@ -16,13 +16,20 @@ int lex(const char *YYCURSOR) {
         re2c:define:YYCTYPE = char;
         re2c:yyfill:enable = 0;
         re2c:flags:case-ranges = 1;
-       
-        "if" | "return" | "while" {
+      
+        "abstract" | "assert" | "boolean" | "break" | "byte" | "case" |
+        "catch" | "char" | "class" | "const" | "continue" | "default" |
+        "do" | "double" | "else" | "enum" | "extends" | "final" | "finally" |
+        "float" | "for" | "goto" | "if" | "implements" | "import" |
+        "instanceof" | "int" | "interface" | "long" | "native" | "new" |
+        "package" | "private" | "protected" | "public" | "return" | "short" |
+        "static" | "strictfp" | "super" | "switch" | "synchronized" | "this" |
+        "throw" | "throws" | "transient" | "try" | "void" | "volatile" |
+        "while" {
             report("TOKEN_KEYWORD", YYSTART, YYCURSOR);
             continue;
         }
         [ \t\v\n\r] {
-            //report("TOKEN_WHITESPACE", YYSTART, YYCURSOR);
             continue;
         }
         "{" | "}" | "(" | ")" | "[" | "]" {
@@ -35,8 +42,9 @@ int lex(const char *YYCURSOR) {
             report("TOKEN_INFIX_OPERATOR", YYSTART, YYCURSOR);
             continue;
         }
-        "=" {
-            report("TOKEN_ASSIGN", YYSTART, YYCURSOR);
+        "="  | "+="  | "-="  | "*="   | "/=" | "&=" | "|=" | "^=" |
+        "%=" | "<<=" | ">>=" | ">>>=" {
+            report("TOKEN_ASSIGNMENT_OPERATOR", YYSTART, YYCURSOR);
             continue;
         }
         [1-9][0-9]* {
@@ -58,7 +66,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("if (300 - 2 - x) {}");
+    lex("do { x = x + 1; } while (x == 3)");
     report("TOKEN_EOF", 0, 0);
     return 0;
 }
