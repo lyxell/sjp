@@ -74,38 +74,9 @@
     tail: ExpressionList
 ]
 
-.type Type =
-      TypeParameter {}
-    | Boolean {}
-    | Byte {}
-    | Short {}
-    | Int {}
-    | Long {}
-    | Void {}
-    | Char {}
-    | Float {}
-    | Double {}
-         
-
-.type TypeList = [
-    head: Type,
-    tail: TypeList
-]
-
-.type TopLevel = 
-      Import                {s: SymbolList}
-    | ImportOnDemandFrom    {s: SymbolList}
-
-.type Declaration =
-      Class                 {modifiers: SymbolList, id: symbol, l: DeclarationList}
-    | Interface             {modifiers: SymbolList, id: symbol}
-    | Method                {modifiers: SymbolList, id: symbol}
-    | EmptyDeclaration      {}
-
-.type DeclarationList = [
-    head: Declaration,
-    tail: DeclarationList
-]
+/**
+ * Statements
+ */
 
 .type Statement =
       Assert                {e: Expression}
@@ -128,6 +99,47 @@
 .type StatementList = [
     head: Statement,
     tail: StatementList
+]
+
+/**
+ * Types
+ */
+
+.type Type =
+      TypeParameter {}
+    | Boolean {}
+    | Byte {}
+    | Short {}
+    | Int {}
+    | Long {}
+    | Void {}
+    | Char {}
+    | Float {}
+    | Double {}
+    | ClassType {}
+         
+.type TypeList = [
+    head: Type,
+    tail: TypeList
+]
+
+/**
+ * Misc
+ */
+
+.type TopLevel = 
+      Import                {s: SymbolList}
+    | ImportOnDemandFrom    {s: SymbolList}
+
+.type Declaration =
+      Class                 {modifiers: SymbolList, id: symbol, l: DeclarationList}
+    | Interface             {modifiers: SymbolList, id: symbol}
+    | Method                {modifiers: SymbolList, id: symbol}
+    | EmptyDeclaration      {}
+
+.type DeclarationList = [
+    head: Declaration,
+    tail: DeclarationList
 ]
 
 /**
@@ -205,12 +217,18 @@ floating_point_type($Double, A, A + 1) :-
     token("TOKEN_KEYWORD", "double", A).
 
 .decl reference_type(t: Type, a: number, b: number)
+reference_type(t, A, B) :- class_or_interface_type(t, A, B).
+reference_type(t, A, B) :- type_variable(t, A, B).
+reference_type(t, A, B) :- array_type(t, A, B).
 
 .decl class_or_interface_type(t: Type, a: number, b: number)
+class_or_interface_type(t, A, B) :- class_type(t, A, B).
+class_or_interface_type(t, A, B) :- interface_type(t, A, B).
 
 .decl class_type(t: Type, a: number, b: number)
 
 .decl interface_type(t: Type, a: number, b: number)
+interface_type(t, A, B) :- class_type(t, A, B).
 
 .decl type_variable(t: Type, a: number, b: number)
 
@@ -220,9 +238,22 @@ floating_point_type($Double, A, A + 1) :-
 
 .decl type_parameter(t: Type, a: number, b: number)
 
-.decl type_parameter_modifier(a: number, b: number)
+.decl type_parameter_modifier(t: Annotation, a: number, b: number)
+type_parameter_modifier(t, A, B) :- annotation(t, A, B).
 
 .decl type_bound(a: number, b: number)
+
+.decl additional_bound(a: number, b: number)
+
+.decl type_arguments(a: number, b: number)
+
+.decl type_argument_list(a: number, b: number)
+
+.decl type_argument(a: number, b: number)
+
+.decl wildcard(a: number, b: number)
+
+.decl wildcard_bounds(a: number, b: number)
 
 /**
  * Names
@@ -231,9 +262,9 @@ floating_point_type($Double, A, A + 1) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-// TODO ModuleName
+.decl module_name(s: SymbolList, a: number, b: number)
 
-// TODO PackageName
+.decl package_name(s: SymbolList, a: number, b: number)
 
 .decl type_name(s: SymbolList, a: number, b: number)
 type_name([t, nil], A, B) :- type_identifier(t, A, B).
