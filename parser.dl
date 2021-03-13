@@ -36,9 +36,20 @@
     tail: ExpressionList
 ]
 
-.type Other =
+.type TopLevel = 
       Import                {s: SymbolList}
     | ImportOnDemandFrom    {s: SymbolList}
+
+.type Declaration =
+      Class                 {modifiers: SymbolList, id: symbol, l: DeclarationList}
+    | Interface             {modifiers: SymbolList, id: symbol}
+    | Method                {modifiers: SymbolList, id: symbol}
+    | EmptyDeclaration      {}
+
+.type DeclarationList = [
+    head: Declaration,
+    tail: DeclarationList
+]
 
 .type Statement =
       Assert                {e: Expression}
@@ -61,13 +72,26 @@
 
 .decl token(s: symbol, c: symbol, n: number)
 
+.decl field_declaration(s: Declaration, a: number, b: number)
+.decl method_declaration(s: Declaration, a: number, b: number)
+.decl interface_declaration(s: Declaration, a: number, b: number)
+.decl class_declaration(s: Declaration, a: number, b: number)
+.decl normal_class_declaration(s: Declaration, a: number, b: number)
+.decl class_member_declaration(s: Declaration, a: number, b: number)
+.decl enum_declaration(s: Declaration, a: number, b: number)
+.decl class_body(s: DeclarationList, a: number, b: number)
+.decl class_body_declaration(d: Declaration, a: number, b: number)
+.decl class_body_declarations(d: DeclarationList, a: number, b: number)
+
+.decl class_modifier(s: symbol, a: number, b: number)
+.decl class_modifiers(s: SymbolList, a: number, b: number)
 .decl type_identifier(s: symbol, l: number, n: number)
 
 .decl type_name(s: SymbolList, a: number, b: number)
 .decl package_or_type_name(s: SymbolList, a: number, b: number)
-.decl import_declaration(s: Other, a: number, b: number)
-.decl single_type_import_declaration(s: Other, a: number, b: number)
-.decl type_import_on_demand_declaration(s: Other, a: number, b: number)
+.decl import_declaration(s: TopLevel, a: number, b: number)
+.decl single_type_import_declaration(s: TopLevel, a: number, b: number)
+.decl type_import_on_demand_declaration(s: TopLevel, a: number, b: number)
 
 .decl block(s: Statement, n: number, l: number)
 .decl block_statements(s: StatementList, n: number, l: number)
@@ -115,6 +139,14 @@
 
 .input token
 
+
+/**
+ * Meta
+ */
+
+.decl any_position(n: number)
+any_position(n) :- token(_, _, n).
+
 /**
  * Lexical structure
  *
@@ -123,7 +155,7 @@
  */
 
 type_identifier(t, A, A + 1) :-
-    token("IDENTIFIER", t, A).
+    token("TOKEN_IDENTIFIER", t, A).
 // TODO not var or yield
 
 /**
@@ -211,6 +243,64 @@ type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B + 3) :-
 // TODO RequiresModifier
 
 /**
+ * Classes
+ *
+ * Adapted from §8 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ */
+
+class_declaration(e, A, B) :- normal_class_declaration(e, A, B).
+class_declaration(e, A, B) :- enum_declaration(e, A, B).
+
+normal_class_declaration($Class(modifiers, id, declarations), A, D) :-
+    class_modifiers(modifiers, A, B),
+    token("TOKEN_KEYWORD", "class", B),
+    type_identifier(id, B + 1, C), C > B + 1,
+    class_body(declarations, C, D).
+
+class_modifiers(nil, A, A) :- any_position(A).
+class_modifiers([sym, tail], A, C) :-
+    class_modifier(sym, A, B),
+    class_modifiers(tail, B, C).
+
+class_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
+class_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
+class_modifier("protected", A, A + 1) :- token("TOKEN_KEYWORD", "protected", A).
+
+//type_parameters?(e, A, B) :-
+//    token("TOKEN_KEYWORD", "class", B),
+
+// TODO TypeParameters
+
+// TODO TypeParameterList
+
+// TODO Superclass
+
+// TODO Superinterfaces
+
+// TODO InterfaceTypeList
+
+class_body(declarations, A, B + 1) :-
+    token("TOKEN_BRACKET", "{", A),
+    class_body_declarations(declarations, A + 1, B),
+    token("TOKEN_BRACKET", "}", B).
+
+class_body_declarations(nil, A, A) :- any_position(A).
+class_body_declarations([e, tail], A, C) :-
+    class_body_declaration(e, A, B),
+    class_body_declarations(tail, B, C).
+
+class_body_declaration(e, A, B) :- class_member_declaration(e, A, B).
+// ... TODO
+
+class_member_declaration(e, A, B) :- field_declaration(e, A, B).
+class_member_declaration(e, A, B) :- method_declaration(e, A, B).
+class_member_declaration(e, A, B) :- class_declaration(e, A, B).
+class_member_declaration(e, A, B) :- interface_declaration(e, A, B).
+class_member_declaration($EmptyDeclaration, A, A + 1)
+    :- token("TOKEN_SEPARATOR", ";", A).
+
+/**
  * Arrays
  *
  * Adapted from §10 of
@@ -236,7 +326,7 @@ block($Block(s), A, B + 1) :-
     block_statements(s, A + 1, B),
     token("TOKEN_BRACKET", "}", B).
 
-block_statements(nil, A, A) :- token(_, _, A).
+block_statements(nil, A, A) :- any_position(A).
 block_statements([e, tail], A, C) :-
     block_statement(e, A, B), B > A,
     block_statements(tail, B, C).
@@ -501,7 +591,6 @@ switch_expression($SwitchExpr(e1), A, C) :-
     token("TOKEN_BRACKET", ")", B),
     switch_block($Empty, B + 1, C).
 
-
 /*************** Root *****************************/
 
 root(s) :-
@@ -510,4 +599,8 @@ root(s) :-
 
 .output expression
 .output statement
-.output if_then_else_statement
+.output class_declaration
+.output class_modifiers
+.output type_identifier
+.output class_body
+.output normal_class_declaration

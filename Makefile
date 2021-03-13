@@ -1,9 +1,9 @@
 .PHONY: run
 
-run: root.csv
-	cat statement.csv
+run: class_declaration.csv
+	cat class_declaration.csv
 
-root.csv: token.facts parser.dl
+class_declaration.csv: token.facts parser.dl
 	souffle parser.dl
 
 token.facts: build/scanner
