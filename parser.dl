@@ -45,7 +45,7 @@
 ]
 
 .decl token(s: symbol, c: symbol, n: number)
-/* blocks and statements */
+
 .decl block(s: Statement, n: number, l: number)
 .decl block_statements(s: StatementList, n: number, l: number)
 .decl block_statement(s: Statement, n: number, l: number)
@@ -63,7 +63,7 @@
 .decl return_statement(s: Statement, n: number, l: number)
 .decl switch_statement(s: Statement, n: number, l: number)
 .decl do_statement(s: Statement, n: number, l: number)
-/* expressions */
+
 .decl expression(e: Expression, n: number, l: number)
 .decl inclusive_or_expression(e: Expression, n: number, l: number)
 .decl pre_increment_expression(e: Expression, n: number, l: number)
@@ -86,7 +86,7 @@
 .decl multiplicative_expression(e: Expression, n: number, l: number)
 .decl unary_expression(e: Expression, n: number, l: number)
 .decl switch_expression(e: Expression, n: number, l: number)
-/* root */
+
 .decl root(s: Statement)
 
 .input token
