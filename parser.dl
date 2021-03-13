@@ -95,6 +95,7 @@
 .decl type_parameter(s: Type, a: number, b: number)
 .decl field_declaration(s: Declaration, a: number, b: number)
 .decl method_declaration(s: Declaration, a: number, b: number)
+.decl method_body(s: Statement, a: number, b: number)
 .decl interface_declaration(s: Declaration, a: number, b: number)
 .decl class_declaration(s: Declaration, a: number, b: number)
 .decl normal_class_declaration(s: Declaration, a: number, b: number)
@@ -102,6 +103,8 @@
 .decl enum_declaration(s: Declaration, a: number, b: number)
 .decl class_body(s: DeclarationList, a: number, b: number)
 .decl class_body_declaration(d: Declaration, a: number, b: number)
+.decl instance_initializer(s: Statement, a: number, b: number)
+.decl static_initializer(s: Statement, a: number, b: number)
 .decl class_body_declarations(d: DeclarationList, a: number, b: number)
 .decl variable_initializer(s: Expression, a: number, b: number)
 .decl variable_initializer_list(s: ExpressionList, a: number, b: number)
@@ -112,6 +115,7 @@
 .decl numeric_type(t: Type, a: number, b: number)
 .decl integral_type(t: Type, a: number, b: number)
 .decl floating_point_type(t: Type, a: number, b: number)
+.decl simple_type_name(s: symbol, l: number, n: number)
 
 .decl class_modifier(s: symbol, a: number, b: number)
 .decl class_modifiers(s: SymbolList, a: number, b: number)
@@ -413,11 +417,16 @@ unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
 // TODO ExceptionType
 
-// TODO MethodBody
+method_body(e, A, B + 1) :-
+    block(e, A, B),
+    token("TOKEN_SEPARATOR", ";", B).
 
-// TODO InstanceInitializer
+instance_initializer(e, A, B) :- block(e, A, B).
 
-// TODO StaticInitializer
+static_initializer(e, A, B) :-
+    token("TOKEN_KEYWORD", "static", A),
+    block(e, A + 1, B).
+// ... TODO - looses static information
 
 // TODO ConstructorDeclaration
 
@@ -425,7 +434,7 @@ unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
 // TODO ConstructorDeclarator
 
-// TODO SimpleTypeName
+simple_type_name(e, A, B) :- type_identifier(e, A, B).
 
 // TODO ConstructorBody
 
