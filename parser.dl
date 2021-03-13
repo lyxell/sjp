@@ -10,7 +10,13 @@
                  | BitwiseInclOr {e1: Expression, e2: Expression}
                  | BitwiseExclOr {e1: Expression, e2: Expression}
                  | BitwiseAnd {e1: Expression, e2: Expression}
+                 | BitwiseNot {e1: Expression}
+                 | Not {e1: Expression}
                  | Or {e1: Expression, e2: Expression}
+                 | PreIncrement {e1: Expression}
+                 | PostIncrement {e1: Expression}
+                 | PreDecrement {e1: Expression}
+                 | PostDecrement {e1: Expression}
                  | And {e1: Expression, e2: Expression}
                  | ShiftRight {e1: Expression, e2: Expression}
                  | ShiftRightUnsigned {e1: Expression, e2: Expression}
@@ -38,15 +44,22 @@
 /* expressions */
 .decl expression(e: Expression, n: number, l: number)
 .decl inclusive_or_expression(e: Expression, n: number, l: number)
+.decl pre_increment_expression(e: Expression, n: number, l: number)
+.decl pre_decrement_expression(e: Expression, n: number, l: number)
+.decl post_increment_expression(e: Expression, n: number, l: number)
 .decl exclusive_or_expression(e: Expression, n: number, l: number)
 .decl assignment_expression(e: Expression, n: number, l: number)
 .decl conditional_expression(e: Expression, n: number, l: number)
 .decl equality_expression(e: Expression, n: number, l: number)
+.decl post_decrement_expression(e: Expression, n: number, l: number)
 .decl conditional_or_expression(e: Expression, n: number, l: number)
+.decl unary_expression_not_plus_minus(e: Expression, n: number, l: number)
+.decl postfix_expression(e: Expression, n: number, l: number)
 .decl conditional_and_expression(e: Expression, n: number, l: number)
 .decl and_expression(e: Expression, n: number, l: number)
 .decl relational_expression(e: Expression, n: number, l: number)
 .decl shift_expression(e: Expression, n: number, l: number)
+.decl expression_name(e: Expression, n: number, l: number)
 .decl additive_expression(e: Expression, n: number, l: number)
 .decl multiplicative_expression(e: Expression, n: number, l: number)
 .decl unary_expression(e: Expression, n: number, l: number)
@@ -112,11 +125,21 @@ statement($Yield(e), A, B + 1) :-
  * Expressions
  */
 
-#define BINOP(node, current_level, next_level, symbol) \
-    current_level(node(e1,e2), a, c) :- \
-        current_level(e1, a, b), b >= a, \
-        token("TOKEN_OPERATOR", symbol, b + 1), \
-        next_level(e2, b + 2, c), c >= b + 2.
+#define INFIXOP(node, current_level, next_level, symbol) \
+    current_level(node(e1, e2), A, C) :- \
+        current_level(e1, A, B), B >= A, \
+        token("TOKEN_OPERATOR", symbol, B + 1), \
+        next_level(e2, B + 2, C), C >= B + 2.
+
+#define PREFIXOP(node, current_level, next_level, symbol) \
+    current_level(node(e1), A, B) :- \
+        token("TOKEN_OPERATOR", symbol, A), \
+        next_level(e1, A + 1, B), B >= A + 1.
+
+#define POSTFIXOP(node, current_level, next_level, symbol) \
+    current_level(node(e1), A, B + 1) :- \
+        next_level(e1, A, B), B >= A, \
+        token("TOKEN_OPERATOR", symbol, B + 1).
 
 expression(e, A, B) :- conditional_expression(e, A, B).
 
@@ -132,42 +155,61 @@ conditional_expression(e, A, D) :-
 // TODO: lambda
 
 conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
-BINOP($Or, conditional_or_expression, conditional_and_expression, "||")
+INFIXOP($Or, conditional_or_expression, conditional_and_expression, "||")
 
 conditional_and_expression(e, A, B) :- inclusive_or_expression(e, A, B).
-BINOP($And, conditional_and_expression, inclusive_or_expression, "&&")
+INFIXOP($And, conditional_and_expression, inclusive_or_expression, "&&")
 
 inclusive_or_expression(e, A, B) :- exclusive_or_expression(e, A, B).
-BINOP($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
+INFIXOP($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
 
 exclusive_or_expression(e, A, B) :- and_expression(e, A, B).
-BINOP($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
+INFIXOP($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
 
 and_expression(e, A, B) :- equality_expression(e, A, B).
-BINOP($BitwiseAnd, and_expression, equality_expression, "&")
+INFIXOP($BitwiseAnd, and_expression, equality_expression, "&")
 
 equality_expression(e, A, B) :-       relational_expression(e, A, B).
-BINOP($Equal,    equality_expression, relational_expression, "==")
-BINOP($NotEqual, equality_expression, relational_expression, "!=")
+INFIXOP($Equal,    equality_expression, relational_expression, "==")
+INFIXOP($NotEqual, equality_expression, relational_expression, "!=")
 
 relational_expression(e, A, B) :- shift_expression(e, A, B).
 
 shift_expression(e, A, B) :- additive_expression(e, A, B).
-BINOP($ShiftLeft,          shift_expression, additive_expression, "<<")
-BINOP($ShiftRight,         shift_expression, additive_expression, ">>")
-BINOP($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
+INFIXOP($ShiftLeft,          shift_expression, additive_expression, "<<")
+INFIXOP($ShiftRight,         shift_expression, additive_expression, ">>")
+INFIXOP($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
 
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
-BINOP($Add, additive_expression, multiplicative_expression, "+")
-BINOP($Sub, additive_expression, multiplicative_expression, "-")
+INFIXOP($Add, additive_expression, multiplicative_expression, "+")
+INFIXOP($Sub, additive_expression, multiplicative_expression, "-")
 
 multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
-BINOP($Mul, multiplicative_expression, unary_expression, "*")
-BINOP($Div, multiplicative_expression, unary_expression, "/")
-BINOP($Mod, multiplicative_expression, unary_expression, "%")
+INFIXOP($Mul, multiplicative_expression, unary_expression, "*")
+INFIXOP($Div, multiplicative_expression, unary_expression, "/")
+INFIXOP($Mod, multiplicative_expression, unary_expression, "%")
 
-unary_expression($Identifier(id), A, A) :- token("TOKEN_IDENTIFIER", id, A).
-unary_expression($Number(to_number(n)), A, A) :- token("TOKEN_NUMBER", n, A).
+unary_expression(e, A, B) :- postfix_expression(e, A, B).
+unary_expression(e, A, B) :- pre_increment_expression(e, A, B).
+unary_expression(e, A, B) :- pre_decrement_expression(e, A, B).
+
+PREFIXOP($PreIncrement, pre_increment_expression, unary_expression, "++")
+PREFIXOP($PreDecrement, pre_decrement_expression, unary_expression, "--")
+
+unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
+PREFIXOP($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
+PREFIXOP($Not, unary_expression_not_plus_minus, unary_expression, "!")
+
+postfix_expression(e, A, B) :- expression_name(e, A, B).
+postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
+postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
+
+POSTFIXOP($PostIncrement, post_increment_expression, postfix_expression, "++")
+POSTFIXOP($PostDecrement, post_decrement_expression, postfix_expression, "--")
+
+// TODO
+expression_name($Identifier(id), A, A) :- token("TOKEN_IDENTIFIER", id, A).
+expression_name($Number(to_number(n)), A, A) :- token("TOKEN_NUMBER", n, A).
 
 /**
  * Root
