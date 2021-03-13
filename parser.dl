@@ -154,8 +154,8 @@
 
 
 /**
- * Meta
- */
+ * Helper functions
+ **************************************************************************/
 
 .decl any_position(n: number)
 any_position(n) :- token(_, _, n).
@@ -165,7 +165,7 @@ any_position(n) :- token(_, _, n).
  *
  * Adapted from §3 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
- */
+ **************************************************************************/
 
 type_identifier(t, A, A + 1) :-
     token("TOKEN_IDENTIFIER", t, A).
@@ -176,7 +176,7 @@ type_identifier(t, A, A + 1) :-
  *
  * Adapted from §6 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
- */
+ **************************************************************************/
 
 // TODO ModuleName
 
@@ -207,7 +207,7 @@ package_or_type_name([t, tail], A, B + 2) :-
  *
  * Adapted from §7 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
- */
+ **************************************************************************/
 
 // TODO CompilationUnit
 
@@ -216,14 +216,6 @@ package_or_type_name([t, tail], A, B + 2) :-
 // TODO ModularCompilationUnit
 
 // TODO PackageDeclaration
-
-/*
-package_declaration($PackageDeclaration(nil, syms), A, B + 1) :-
-    token("TOKEN_KEYWORD", "import", A),
-    type_name(syms, A + 1, B),
-    token("TOKEN_SEPARATOR", ";", B).
-
-package_name_specifier(*/
 
 // TODO PackageModifier
 
@@ -260,7 +252,7 @@ type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B + 3) :-
  *
  * Adapted from §8 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
- */
+ **************************************************************************/
 
 class_declaration(e, A, B) :- normal_class_declaration(e, A, B).
 class_declaration(e, A, B) :- enum_declaration(e, A, B).
@@ -407,7 +399,7 @@ variable_initializer(e, A, B) :- array_initializer(e, A, B).
  *
  * Adapted from §10 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
- */
+ **************************************************************************/
 
 array_initializer($ArrayInitializer(e), A, B + 1) :- 
     token("TOKEN_BRACKET", "{", A),
@@ -429,7 +421,7 @@ variable_initializer_list([e, tail], A, C) :-
  *
  * Adapted from §14 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
- */
+ **************************************************************************/
 
 block($Block(s), A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
@@ -606,20 +598,20 @@ return_statement($Return(e), A, B + 1) :-
  *
  * Adapted from §15 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
- */
+ **************************************************************************/
 
-#define INFIXOP(node, current_level, next_level, symbol) \
+#define INFIX(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
         current_level(e1, A, B), B > A, \
         token("TOKEN_OPERATOR", symbol, B), \
         next_level(e2, B + 1, C), C > B + 1.
 
-#define PREFIXOP(node, current_level, next_level, symbol) \
+#define PREFIX(node, current_level, next_level, symbol) \
     current_level(node(e1), A, B) :- \
         token("TOKEN_OPERATOR", symbol, A), \
         next_level(e1, A + 1, B), B > A + 1.
 
-#define POSTFIXOP(node, current_level, next_level, symbol) \
+#define POSTFIX(node, current_level, next_level, symbol) \
     current_level(node(e1), A, B + 1) :- \
         next_level(e1, A, B), B > A, \
         token("TOKEN_OPERATOR", symbol, B).
@@ -638,57 +630,57 @@ conditional_expression(e, A, D) :-
 // TODO: lambda
 
 conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
-INFIXOP($Or, conditional_or_expression, conditional_and_expression, "||")
+INFIX($Or, conditional_or_expression, conditional_and_expression, "||")
 
 conditional_and_expression(e, A, B) :- inclusive_or_expression(e, A, B).
-INFIXOP($And, conditional_and_expression, inclusive_or_expression, "&&")
+INFIX($And, conditional_and_expression, inclusive_or_expression, "&&")
 
 inclusive_or_expression(e, A, B) :- exclusive_or_expression(e, A, B).
-INFIXOP($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
+INFIX($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
 
 exclusive_or_expression(e, A, B) :- and_expression(e, A, B).
-INFIXOP($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
+INFIX($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
 
 and_expression(e, A, B) :- equality_expression(e, A, B).
-INFIXOP($BitwiseAnd, and_expression, equality_expression, "&")
+INFIX($BitwiseAnd, and_expression, equality_expression, "&")
 
 equality_expression(e, A, B) :-       relational_expression(e, A, B).
-INFIXOP($Equal,    equality_expression, relational_expression, "==")
-INFIXOP($NotEqual, equality_expression, relational_expression, "!=")
+INFIX($Equal,    equality_expression, relational_expression, "==")
+INFIX($NotEqual, equality_expression, relational_expression, "!=")
 
 relational_expression(e, A, B) :- shift_expression(e, A, B).
 
 shift_expression(e, A, B) :- additive_expression(e, A, B).
-INFIXOP($ShiftLeft,          shift_expression, additive_expression, "<<")
-INFIXOP($ShiftRight,         shift_expression, additive_expression, ">>")
-INFIXOP($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
+INFIX($ShiftLeft,          shift_expression, additive_expression, "<<")
+INFIX($ShiftRight,         shift_expression, additive_expression, ">>")
+INFIX($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
 
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
-INFIXOP($Add, additive_expression, multiplicative_expression, "+")
-INFIXOP($Sub, additive_expression, multiplicative_expression, "-")
+INFIX($Add, additive_expression, multiplicative_expression, "+")
+INFIX($Sub, additive_expression, multiplicative_expression, "-")
 
 multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
-INFIXOP($Mul, multiplicative_expression, unary_expression, "*")
-INFIXOP($Div, multiplicative_expression, unary_expression, "/")
-INFIXOP($Mod, multiplicative_expression, unary_expression, "%")
+INFIX($Mul, multiplicative_expression, unary_expression, "*")
+INFIX($Div, multiplicative_expression, unary_expression, "/")
+INFIX($Mod, multiplicative_expression, unary_expression, "%")
 
 unary_expression(e, A, B) :- postfix_expression(e, A, B).
 unary_expression(e, A, B) :- pre_increment_expression(e, A, B).
 unary_expression(e, A, B) :- pre_decrement_expression(e, A, B).
 
-PREFIXOP($PreIncrement, pre_increment_expression, unary_expression, "++")
-PREFIXOP($PreDecrement, pre_decrement_expression, unary_expression, "--")
+PREFIX($PreIncrement, pre_increment_expression, unary_expression, "++")
+PREFIX($PreDecrement, pre_decrement_expression, unary_expression, "--")
 
 unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
-PREFIXOP($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
-PREFIXOP($Not, unary_expression_not_plus_minus, unary_expression, "!")
+PREFIX($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
+PREFIX($Not, unary_expression_not_plus_minus, unary_expression, "!")
 
 postfix_expression(e, A, B) :- expression_name(e, A, B).
 postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
 
-POSTFIXOP($PostIncrement, post_increment_expression, postfix_expression, "++")
-POSTFIXOP($PostDecrement, post_decrement_expression, postfix_expression, "--")
+POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
+POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
 // TODO
 expression_name($Identifier(id), A, A + 1) :- token("TOKEN_IDENTIFIER", id, A).
@@ -701,7 +693,9 @@ switch_expression($SwitchExpr(e1), A, C) :-
     token("TOKEN_BRACKET", ")", B),
     switch_block($Empty, B + 1, C).
 
-/*************** Root *****************************/
+/**
+ * Root
+ **************************************************************************/
 
 root(s) :-
     statement(s, 1, N),
