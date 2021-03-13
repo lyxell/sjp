@@ -44,6 +44,7 @@
     | Short {}
     | Int {}
     | Long {}
+    | Void {}
     | Char {}
     | Float {}
     | Double {}
@@ -79,8 +80,10 @@
     | IfThen                {e: Expression, s: Statement}
     | IfThenElse            {e: Expression, s1: Statement, s2: Statement}
     | Return                {e: Expression}
+    | Throw                 {e: Expression}
     | ReturnVoid            {}
     | Switch                {e: Expression, s: Statement}
+    | Synchronized          {e: Expression, s: Statement}
     | While                 {e: Expression, s: Statement}
     | ExpressionStatement   {e: Expression}
     | Yield                 {e: Expression}
@@ -90,95 +93,12 @@
     tail: StatementList
 ]
 
-.decl token(s: symbol, c: symbol, n: number)
-
-.decl type_parameter_list(s: TypeList, a: number, b: number)
-.decl type_parameters(s: TypeList, a: number, b: number)
-.decl type_parameter(s: Type, a: number, b: number)
-.decl field_declaration(s: Declaration, a: number, b: number)
-.decl method_declaration(s: Declaration, a: number, b: number)
-.decl method_body(s: Statement, a: number, b: number)
-.decl interface_declaration(s: Declaration, a: number, b: number)
-.decl class_declaration(s: Declaration, a: number, b: number)
-.decl normal_class_declaration(s: Declaration, a: number, b: number)
-.decl class_member_declaration(s: Declaration, a: number, b: number)
-.decl enum_declaration(s: Declaration, a: number, b: number)
-.decl class_body(s: DeclarationList, a: number, b: number)
-.decl class_body_declaration(d: Declaration, a: number, b: number)
-.decl instance_initializer(s: Statement, a: number, b: number)
-.decl static_initializer(s: Statement, a: number, b: number)
-.decl class_body_declarations(d: DeclarationList, a: number, b: number)
-.decl variable_initializer(s: Expression, a: number, b: number)
-.decl variable_initializer_list(s: ExpressionList, a: number, b: number)
-
-.decl unann_primitive_type(t: Type, a: number, b: number)
-.decl unann_type(t: Type, a: number, b: number)
-.decl unann_reference_type(t: Type, a: number, b: number)
-.decl numeric_type(t: Type, a: number, b: number)
-.decl integral_type(t: Type, a: number, b: number)
-.decl floating_point_type(t: Type, a: number, b: number)
-.decl simple_type_name(s: symbol, l: number, n: number)
-
-.decl class_modifier(s: symbol, a: number, b: number)
-.decl class_modifiers(s: SymbolList, a: number, b: number)
-.decl type_identifier(s: symbol, l: number, n: number)
-
-.decl type_name(s: SymbolList, a: number, b: number)
-.decl package_or_type_name(s: SymbolList, a: number, b: number)
-.decl import_declaration(s: TopLevel, a: number, b: number)
-.decl single_type_import_declaration(s: TopLevel, a: number, b: number)
-.decl type_import_on_demand_declaration(s: TopLevel, a: number, b: number)
-
-.decl block(s: Statement, n: number, l: number)
-.decl block_statements(s: StatementList, n: number, l: number)
-.decl block_statement(s: Statement, n: number, l: number)
-.decl statement(s: Statement, n: number, l: number)
-.decl empty_statement(s: Statement, n: number, l: number)
-.decl statement_without_trailing_substatement(s: Statement, n: number, l: number)
-.decl statement_no_short_if(s: Statement, n: number, l: number)
-.decl assert_statement(s: Statement, n: number, l: number)
-.decl labeled_statement(s: Statement, n: number, l: number)
-.decl labeled_statement_no_short_if(s: Statement, n: number, l: number)
-.decl if_then_statement(s: Statement, n: number, l: number)
-.decl if_then_else_statement(s: Statement, n: number, l: number)
-.decl while_statement(s: Statement, n: number, l: number)
-.decl case_constant(e: Expression, n: number, l: number)
-.decl switch_block(s: Statement, n: number, l: number)
-.decl yield_statement(s: Statement, n: number, l: number)
-.decl return_statement(s: Statement, n: number, l: number)
-.decl switch_statement(s: Statement, n: number, l: number)
-.decl do_statement(s: Statement, n: number, l: number)
-.decl expression_statement(e: Statement, n: number, l: number)
-.decl statement_expression(e: Expression, n: number, l: number)
-
-.decl expression(e: Expression, n: number, l: number)
-.decl array_initializer(e: Expression, a: number, b: number)
-.decl inclusive_or_expression(e: Expression, n: number, l: number)
-.decl pre_increment_expression(e: Expression, n: number, l: number)
-.decl pre_decrement_expression(e: Expression, n: number, l: number)
-.decl post_increment_expression(e: Expression, n: number, l: number)
-.decl exclusive_or_expression(e: Expression, n: number, l: number)
-.decl assignment_expression(e: Expression, n: number, l: number)
-.decl conditional_expression(e: Expression, n: number, l: number)
-.decl equality_expression(e: Expression, n: number, l: number)
-.decl post_decrement_expression(e: Expression, n: number, l: number)
-.decl conditional_or_expression(e: Expression, n: number, l: number)
-.decl unary_expression_not_plus_minus(e: Expression, n: number, l: number)
-.decl postfix_expression(e: Expression, n: number, l: number)
-.decl conditional_and_expression(e: Expression, n: number, l: number)
-.decl and_expression(e: Expression, n: number, l: number)
-.decl relational_expression(e: Expression, n: number, l: number)
-.decl shift_expression(e: Expression, n: number, l: number)
-.decl expression_name(e: Expression, n: number, l: number)
-.decl additive_expression(e: Expression, n: number, l: number)
-.decl multiplicative_expression(e: Expression, n: number, l: number)
-.decl unary_expression(e: Expression, n: number, l: number)
-.decl switch_expression(e: Expression, n: number, l: number)
-
-.decl root(s: Statement)
+/**
+ * Inputs
+ **************************************************************************/
 
 .input token
-
+.decl token(s: symbol, c: symbol, n: number)
 
 /**
  * Helper functions
@@ -191,6 +111,22 @@ any_position(n) :- token(_, _, n).
     xs(nil, A, A) :- any_position(A). \
     xs([e, tail], A, C) :- x(e, A, B), xs(tail, B, C).
 
+#define INFIX(node, current_level, next_level, symbol) \
+    current_level(node(e1, e2), A, C) :- \
+        current_level(e1, A, B), B > A, \
+        token("TOKEN_OPERATOR", symbol, B), \
+        next_level(e2, B + 1, C), C > B + 1.
+
+#define PREFIX(node, current_level, next_level, symbol) \
+    current_level(node(e1), A, B) :- \
+        token("TOKEN_OPERATOR", symbol, A), \
+        next_level(e1, A + 1, B), B > A + 1.
+
+#define POSTFIX(node, current_level, next_level, symbol) \
+    current_level(node(e1), A, B + 1) :- \
+        next_level(e1, A, B), B > A, \
+        token("TOKEN_OPERATOR", symbol, B).
+
 /**
  * Lexical structure
  *
@@ -198,6 +134,7 @@ any_position(n) :- token(_, _, n).
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
+.decl type_identifier(s: symbol, l: number, n: number)
 type_identifier(t, A, A + 1) :-
     token("TOKEN_IDENTIFIER", t, A).
 // TODO not var or yield
@@ -209,19 +146,46 @@ type_identifier(t, A, A + 1) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
+.decl type(s: Type, a: number, b: number)
+
+.decl primitive_type(s: Type, a: number, b: number)
+
+.decl numeric_type(s: Type, a: number, b: number)
 numeric_type(e, A, B) :- integral_type(e, A, B).
 numeric_type(e, A, B) :- floating_point_type(e, A, B).
 
+.decl integral_type(t: Type, a: number, b: number)
 integral_type($Byte, A, A + 1) :- token("TOKEN_KEYWORD", "byte", A).
 integral_type($Short, A, A + 1) :- token("TOKEN_KEYWORD", "short", A).
 integral_type($Int, A, A + 1) :- token("TOKEN_KEYWORD", "int", A).
 integral_type($Long, A, A + 1) :- token("TOKEN_KEYWORD", "long", A).
 integral_type($Char, A, A + 1) :- token("TOKEN_KEYWORD", "char", A).
 
+.decl floating_point_type(t: Type, a: number, b: number)
 floating_point_type($Float, A, A + 1) :-
     token("TOKEN_KEYWORD", "float", A).
 floating_point_type($Double, A, A + 1) :-
     token("TOKEN_KEYWORD", "double", A).
+
+.decl reference_type(t: Type, a: number, b: number)
+
+.decl class_or_interface_type(t: Type, a: number, b: number)
+
+.decl class_type(t: Type, a: number, b: number)
+
+.decl interface_type(t: Type, a: number, b: number)
+
+.decl type_variable(t: Type, a: number, b: number)
+
+.decl array_type(t: Type, a: number, b: number)
+
+.decl dims(a: number, b: number)
+
+.decl type_parameter(t: Type, a: number, b: number)
+
+.decl type_parameter_modifier(a: number, b: number)
+
+.decl type_bound(a: number, b: number)
 
 /**
  * Names
@@ -234,6 +198,7 @@ floating_point_type($Double, A, A + 1) :-
 
 // TODO PackageName
 
+.decl type_name(s: SymbolList, a: number, b: number)
 type_name([t, nil], A, B) :- type_identifier(t, A, B).
 type_name([t, tail], A, C) :-
     package_or_type_name(tail, A, B),
@@ -245,9 +210,9 @@ type_name([t, tail], A, C) :-
 
 // TODO MethodName
 
+.decl package_or_type_name(s: SymbolList, a: number, b: number)
 package_or_type_name([t, nil], A, A + 1) :-
     token("IDENTIFIER", t, A).
-
 package_or_type_name([t, tail], A, B + 2) :-
     package_or_type_name(tail, A, B), B > A,
     token("TOKEN_SEPARATOR", ".", B),
@@ -280,15 +245,18 @@ ordinary_compilation_unit(e, A, B) :-
 
 // TODO PackageModifier
 
+.decl import_declaration(s: TopLevel, a: number, b: number)
 import_declaration(e, A, B) :- single_type_import_declaration(e, A, B).
 import_declaration(e, A, B) :- type_import_on_demand_declaration(e, A, B).
 // ... TODO
 
+.decl single_type_import_declaration(s: TopLevel, a: number, b: number)
 single_type_import_declaration($Import(syms), A, B + 1) :-
     token("TOKEN_KEYWORD", "import", A),
     type_name(syms, A + 1, B), B > A + 1,
     token("TOKEN_SEPARATOR", ";", B).
 
+.decl type_import_on_demand_declaration(s: TopLevel, a: number, b: number)
 type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B + 3) :-
     token("TOKEN_KEYWORD", "import", A),
     type_name(syms, A + 1, B), B > A + 1,
@@ -315,27 +283,34 @@ type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B + 3) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
+.output class_declaration
+.decl class_declaration(s: Declaration, a: number, b: number)
 class_declaration(e, A, B) :- normal_class_declaration(e, A, B).
 class_declaration(e, A, B) :- enum_declaration(e, A, B).
 
+.decl normal_class_declaration(s: Declaration, a: number, b: number)
 normal_class_declaration($Class(modifiers, id, declarations), A, D) :-
     class_modifiers(modifiers, A, B),
     token("TOKEN_KEYWORD", "class", B),
     type_identifier(id, B + 1, C), C > B + 1,
     class_body(declarations, C, D).
 
+.decl class_modifiers(s: SymbolList, a: number, b: number)
 ZERO_OR_MORE(class_modifiers, class_modifier)
 
+.decl class_modifier(s: symbol, a: number, b: number)
 class_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
 class_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
 class_modifier("protected", A, A + 1) :- token("TOKEN_KEYWORD", "protected", A).
 
+.decl type_parameters(s: TypeList, a: number, b: number)
 type_parameters(nil, A, A) :- any_position(A).
 type_parameters(l, A, B) :-
     token("TOKEN_OPERATOR", "<", A),
     type_parameter_list(l, A + 1, B),
     token("TOKEN_OPERATOR", ">", B).
 
+.decl type_parameter_list(s: TypeList, a: number, b: number)
 type_parameter_list([e, nil], A, B) :- type_parameter(e, A, B).
 type_parameter_list([e, tail], A, C) :-
     type_parameter(e, A, B),
@@ -348,16 +323,20 @@ type_parameter_list([e, tail], A, C) :-
 
 // TODO InterfaceTypeList
 
+.decl class_body(s: DeclarationList, a: number, b: number)
 class_body(declarations, A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
     class_body_declarations(declarations, A + 1, B),
     token("TOKEN_BRACKET", "}", B).
 
+.decl class_body_declarations(d: DeclarationList, a: number, b: number)
 ZERO_OR_MORE(class_body_declarations, class_body_declaration)
 
+.decl class_body_declaration(d: Declaration, a: number, b: number)
 class_body_declaration(e, A, B) :- class_member_declaration(e, A, B).
 // ... TODO
 
+.decl class_member_declaration(s: Declaration, a: number, b: number)
 class_member_declaration(e, A, B) :- field_declaration(e, A, B).
 class_member_declaration(e, A, B) :- method_declaration(e, A, B).
 class_member_declaration(e, A, B) :- class_declaration(e, A, B).
@@ -365,7 +344,7 @@ class_member_declaration(e, A, B) :- interface_declaration(e, A, B).
 class_member_declaration($EmptyDeclaration, A, A + 1)
     :- token("TOKEN_SEPARATOR", ";", A).
 
-// TODO FieldDeclaration
+.decl field_declaration(s: Declaration, a: number, b: number)
 
 // TODO FieldModifier
 
@@ -375,17 +354,20 @@ class_member_declaration($EmptyDeclaration, A, A + 1)
 
 // TODO VariableDeclaratorId
 
+.decl variable_initializer(s: Expression, a: number, b: number)
 variable_initializer(e, A, B) :- expression(e, A, B).
 variable_initializer(e, A, B) :- array_initializer(e, A, B).
 
+.decl unann_type(t: Type, a: number, b: number)
 unann_type(e, A, B) :- unann_primitive_type(e, A, B).
 unann_type(e, A, B) :- unann_reference_type(e, A, B).
 
+.decl unann_primitive_type(t: Type, a: number, b: number)
 unann_primitive_type($Boolean, A, A + 1) :-
     token("TOKEN_KEYWORD", "boolean", A).
 unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
-// TODO UnannReferenceType
+.decl unann_reference_type(t: Type, a: number, b: number)
 
 // TODO UnannClassOrInterfaceType
 
@@ -397,13 +379,15 @@ unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
 // TODO UnannArrayType
 
-// TODO MethodDeclaration
+.decl method_declaration(s: Declaration, a: number, b: number)
 
 // TODO MethodModifier
 
 // TODO MethodHeader
 
-// TODO Result
+.decl result(t: Type, a: number, b: number)
+result(t, A, B) :- unann_type(t, A, B).
+result($Void, A, A + 1) :- token("TOKEN_KEYWORD", "void", A).
 
 // TODO MethodDeclarator
 
@@ -423,12 +407,15 @@ unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
 // TODO ExceptionType
 
+.decl method_body(s: Statement, a: number, b: number)
 method_body(e, A, B + 1) :-
     block(e, A, B),
     token("TOKEN_SEPARATOR", ";", B).
 
+.decl instance_initializer(s: Statement, a: number, b: number)
 instance_initializer(e, A, B) :- block(e, A, B).
 
+.decl static_initializer(s: Statement, a: number, b: number)
 static_initializer(e, A, B) :-
     token("TOKEN_KEYWORD", "static", A),
     block(e, A + 1, B).
@@ -440,13 +427,14 @@ static_initializer(e, A, B) :-
 
 // TODO ConstructorDeclarator
 
+.decl simple_type_name(s: symbol, l: number, n: number)
 simple_type_name(e, A, B) :- type_identifier(e, A, B).
 
 // TODO ConstructorBody
 
 // TODO ExplicitConstructorInvocation
 
-// TODO EnumDeclaration
+.decl enum_declaration(s: Declaration, a: number, b: number)
 
 // TODO EnumBody
 
@@ -459,12 +447,22 @@ simple_type_name(e, A, B) :- type_identifier(e, A, B).
 // TODO EnumBodyDeclaration
 
 /**
+ * Interfaces
+ *
+ * Adapted from §9 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ **************************************************************************/
+
+.decl interface_declaration(s: Declaration, a: number, b: number)
+
+/**
  * Arrays
  *
  * Adapted from §10 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
+.decl array_initializer(e: Expression, a: number, b: number)
 array_initializer($ArrayInitializer(e), A, B + 1) :- 
     token("TOKEN_BRACKET", "{", A),
     variable_initializer_list(e, A + 1, B),
@@ -475,6 +473,7 @@ array_initializer($ArrayInitializer(e), A, B + 2) :-
     token("TOKEN_SEPARATOR", ",", B),
     token("TOKEN_BRACKET", "}", B + 1).
 
+.decl variable_initializer_list(s: ExpressionList, a: number, b: number)
 variable_initializer_list(nil, A, A) :- any_position(A).
 variable_initializer_list([e, tail], A, C) :-
     variable_initializer(e, A, B), B > A,
@@ -489,59 +488,74 @@ variable_initializer_list([e, tail], A, C) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
+.decl block(s: Statement, a: number, b: number)
 block($Block(s), A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
     block_statements(s, A + 1, B),
     token("TOKEN_BRACKET", "}", B).
 
+.decl block_statements(s: StatementList, a: number, b: number)
 ZERO_OR_MORE(block_statements, block_statement)
 
+.decl block_statement(s: Statement, a: number, b: number)
 block_statement(e, A, B) :- statement(e, A, B).
-// TODO block_statement(e, A, B) :- class_declaration(e, A, B).
 
-// TODO: LocalVariableDeclarationStatement
+.decl local_variable_declaration_statement(s: Statement, a: number, b: number)
+local_variable_declaration_statement(e, A, B + 1) :-
+    local_variable_declaration(e, A, B),
+    token("TOKEN_SEPARATOR", ";", B).
 
-// TODO: LocalVariableDeclaration
+.decl local_variable_declaration(s: Statement, a: number, b: number)
 
-// TODO: LocalVariableType
+.decl local_variable_type(t: Type, a: number, b: number)
+local_variable_type(t, A, B) :- unann_type(t, A, B).
 
+.decl statement(s: Statement, a: number, b: number)
 statement(e, A, B) :- statement_without_trailing_substatement(e, A, B).
 statement(e, A, B) :- if_then_statement(e, A, B).
 statement(e, A, B) :- if_then_else_statement(e, A, B).
 statement(e, A, B) :- while_statement(e, A, B).
 // ... TODO
 
+.decl statement_no_short_if(s: Statement, a: number, b: number)
 statement_no_short_if(e, A, B) :- statement(e, A, B).
 // ... TODO
 
+.decl statement_without_trailing_substatement(s: Statement, a: number, b: number)
 statement_without_trailing_substatement(e, A, B) :- block(e, A, B).
 statement_without_trailing_substatement(e, A, B) :- empty_statement(e, A, B).
 statement_without_trailing_substatement(e, A, B) :- assert_statement(e, A, B).
 // ... TODO
 
-empty_statement($Empty, A, A+1) :-
+.decl empty_statement(s: Statement, a: number, b: number)
+empty_statement($Empty, A, A + 1) :-
     token("TOKEN_SEPARATOR", ";", A).
 
+.decl labeled_statement(s: Statement, a: number, b: number)
 labeled_statement($Label(id, st), A, B) :-
     token("TOKEN_IDENTIFIER", id, A),
     token("TOKEN_SEPARATOR", ":", A + 1),
     statement(st, A + 2, B).
 
+.decl labeled_statement_no_short_if(s: Statement, a: number, b: number)
 labeled_statement_no_short_if($Label(id, st), A, B) :-
     token("TOKEN_IDENTIFIER", id, A),
     token("TOKEN_SEPARATOR", ":", A + 1),
     statement_no_short_if(st, A + 2, B).
 
+.decl expression_statement(e: Statement, a: number, b: number)
 expression_statement($ExpressionStatement(e), A, B + 1) :-
     statement_expression(e, A, B),
     token("TOKEN_SEPARATOR", ";", B).
 
+.decl statement_expression(e: Expression, a: number, b: number)
 statement_expression(e, A, B) :- pre_increment_expression(e, A, B).
 statement_expression(e, A, B) :- pre_decrement_expression(e, A, B).
 statement_expression(e, A, B) :- post_increment_expression(e, A, B).
 statement_expression(e, A, B) :- post_decrement_expression(e, A, B).
 // ... TODO
 
+.decl if_then_statement(s: Statement, a: number, b: number)
 if_then_statement($IfThen(e, s), A, C) :-
     token("TOKEN_KEYWORD", "if", A),
     token("TOKEN_BRACKET", "(", A + 1),
@@ -549,6 +563,7 @@ if_then_statement($IfThen(e, s), A, C) :-
     token("TOKEN_BRACKET", ")", B),
     statement(s, B + 1, C), C > B + 1.
 
+.decl if_then_else_statement(s: Statement, a: number, b: number)
 if_then_else_statement($IfThenElse(e, s1, s2), A, D) :-
     token("TOKEN_KEYWORD", "if", A),
     token("TOKEN_BRACKET", "(", A + 1),
@@ -558,8 +573,9 @@ if_then_else_statement($IfThenElse(e, s1, s2), A, D) :-
     token("TOKEN_KEYWORD", "else", C),
     statement(s2, C + 1, D), D > C + 1.
 
-// TODO IfThenElseStatementNoShortIf
+.decl if_then_else_statement_no_short_if(s: Statement, a: number, b: number)
 
+.decl assert_statement(s: Statement, a: number, b: number)
 assert_statement($Assert(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "assert", A),
     expression(e, A + 1, B), B > A + 1,
@@ -571,6 +587,7 @@ assert_statement($AssertDetailed(e1, e2), A, C + 1) :-
     expression(e2, B + 1, C), C > B + 1,
     token("TOKEN_SEPARATOR", ";", C).
 
+.decl switch_statement(s: Statement, a: number, b: number)
 switch_statement($Switch(e, $Empty), A, C) :-
     token("TOKEN_KEYWORD", "switch", A),
     token("TOKEN_BRACKET", "(", A + 1),
@@ -578,6 +595,7 @@ switch_statement($Switch(e, $Empty), A, C) :-
     token("TOKEN_BRACKET", ")", B),
     switch_block($Empty, B + 1, C), C > B + 1.
 
+.decl switch_block(s: Statement, a: number, b: number)
 switch_block($Empty, A, A + 2) :-
     token("TOKEN_BRACKET", "{", A),
     token("TOKEN_BRACKET", "}", A + 1).
@@ -589,8 +607,10 @@ switch_block($Empty, A, A + 2) :-
 
 // TODO SwitchLabel
 
+.decl case_constant(e: Expression, a: number, b: number)
 case_constant(e, A, B) :- conditional_expression(e, A, B).
 
+.decl while_statement(s: Statement, a: number, b: number)
 while_statement($While(cond, do), A, C) :-
     token("TOKEN_KEYWORD", "while", A),
     token("TOKEN_BRACKET", "(", A + 1),
@@ -598,8 +618,9 @@ while_statement($While(cond, do), A, C) :-
     token("TOKEN_BRACKET", ")", B),
     statement(do, B + 1, C), C > B + 1.
 
-// TODO WhileStatementNoShortIf
+.decl while_statement_no_short_if(s: Statement, a: number, b: number)
 
+.decl do_statement(s: Statement, a: number, b: number)
 do_statement($Do(cond, do), A, C + 2) :-
     token("TOKEN_KEYWORD", "do", A),
     statement(do, A + 1, B),  B > A + 1,
@@ -609,13 +630,13 @@ do_statement($Do(cond, do), A, C + 2) :-
     token("TOKEN_BRACKET", ")", C),
     token("TOKEN_SEPARATOR", ";", C + 1).
 
-// TODO ForStatement
+.decl for_statement(s: Statement, a: number, b: number)
 
-// TODO ForStatementNoShortIf
+.decl for_statement_no_short_if(s: Statement, a: number, b: number)
 
-// TODO BasicForStatement
+.decl basic_for_statement(s: Statement, a: number, b: number)
 
-// TODO BasicForStatementNoShortIf
+.decl basic_for_statement_no_short_if(s: Statement, a: number, b: number)
 
 // TODO ForInit
 
@@ -623,19 +644,21 @@ do_statement($Do(cond, do), A, C + 2) :-
 
 // TODO StatementExpressionList
 
-// TODO EnhancedForStatement
+.decl enhanced_for_statement(s: Statement, a: number, b: number)
 
-// TODO EnhancedForStatementNoShortIf
+.decl enhanced_for_statement_no_short_if(s: Statement, a: number, b: number)
 
-// TODO BreakStatement
+.decl break_statement(s: Statement, a: number, b: number)
 
+.decl yield_statement(s: Statement, a: number, b: number)
 yield_statement($Yield(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "yield", A),
     expression(e, A + 1, B), B > A + 1,
     token("TOKEN_SEPARATOR", ";", B).
 
-// TODO ContinueStatement
+.decl continue_statement(s: Statement, a: number, b: number)
 
+.decl return_statement(s: Statement, a: number, b: number)
 return_statement($ReturnVoid, A, A + 2) :-
     token("TOKEN_KEYWORD", "return", A),
     token("TOKEN_SEPARATOR", ";", A + 1).
@@ -644,11 +667,21 @@ return_statement($Return(e), A, B + 1) :-
     expression(e, A + 1, B), B > A + 1,
     token("TOKEN_SEPARATOR", ";", B).
 
-// TODO ThrowStatement
+.decl throw_statement(s: Statement, a: number, b: number)
+throw_statement($Throw(e), A, B + 1) :-
+    token("TOKEN_KEYWORD", "throw", A),
+    expression(e, A + 1, B),
+    token("TOKEN_SEPARATOR", ";", B).
 
-// TODO SynchronizedStatement
+.decl synchronized_statement(s: Statement, a: number, b: number)
+synchronized_statement($Synchronized(e, s), A, C) :-
+    token("TOKEN_KEYWORD", "synchronized", A),
+    token("TOKEN_BRACKET", "(", A + 1),
+    expression(e, A + 2, B),
+    token("TOKEN_BRACKET", ")", B),
+    block(s, B, C).
 
-// TODO TryStatement
+.decl try_statement(s: Statement, a: number, b: number)
 
 // TODO Catches
 
@@ -675,26 +708,13 @@ return_statement($Return(e), A, B + 1) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-#define INFIX(node, current_level, next_level, symbol) \
-    current_level(node(e1, e2), A, C) :- \
-        current_level(e1, A, B), B > A, \
-        token("TOKEN_OPERATOR", symbol, B), \
-        next_level(e2, B + 1, C), C > B + 1.
-
-#define PREFIX(node, current_level, next_level, symbol) \
-    current_level(node(e1), A, B) :- \
-        token("TOKEN_OPERATOR", symbol, A), \
-        next_level(e1, A + 1, B), B > A + 1.
-
-#define POSTFIX(node, current_level, next_level, symbol) \
-    current_level(node(e1), A, B + 1) :- \
-        next_level(e1, A, B), B > A, \
-        token("TOKEN_OPERATOR", symbol, B).
-
+.decl expression(e: Expression, a: number, b: number)
 expression(e, A, B) :- conditional_expression(e, A, B).
 
+.decl assignment_expression(e: Expression, a: number, b: number)
 assignment_expression(e, A, B) :- conditional_expression(e, A, B).
 
+.decl conditional_expression(e: Expression, a: number, b: number)
 conditional_expression(e, A, B) :- conditional_or_expression(e, A, B).
 conditional_expression(e, A, D) :-
     conditional_or_expression(e, A, B), B > A,
@@ -704,63 +724,82 @@ conditional_expression(e, A, D) :-
     conditional_expression(e, C + 1, D), D > C + 1.
 // TODO: lambda
 
+.decl conditional_or_expression(e: Expression, a: number, b: number)
 conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
 INFIX($Or, conditional_or_expression, conditional_and_expression, "||")
 
+.decl conditional_and_expression(e: Expression, a: number, b: number)
 conditional_and_expression(e, A, B) :- inclusive_or_expression(e, A, B).
 INFIX($And, conditional_and_expression, inclusive_or_expression, "&&")
 
+.decl inclusive_or_expression(e: Expression, a: number, b: number)
 inclusive_or_expression(e, A, B) :- exclusive_or_expression(e, A, B).
 INFIX($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
 
+.decl exclusive_or_expression(e: Expression, a: number, b: number)
 exclusive_or_expression(e, A, B) :- and_expression(e, A, B).
 INFIX($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
 
+.decl and_expression(e: Expression, a: number, b: number)
 and_expression(e, A, B) :- equality_expression(e, A, B).
 INFIX($BitwiseAnd, and_expression, equality_expression, "&")
 
+.decl equality_expression(e: Expression, a: number, b: number)
 equality_expression(e, A, B) :-       relational_expression(e, A, B).
 INFIX($Equal,    equality_expression, relational_expression, "==")
 INFIX($NotEqual, equality_expression, relational_expression, "!=")
 
+.decl relational_expression(e: Expression, a: number, b: number)
 relational_expression(e, A, B) :- shift_expression(e, A, B).
 
+.decl shift_expression(e: Expression, a: number, b: number)
 shift_expression(e, A, B) :- additive_expression(e, A, B).
 INFIX($ShiftLeft,          shift_expression, additive_expression, "<<")
 INFIX($ShiftRight,         shift_expression, additive_expression, ">>")
 INFIX($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
 
+.decl additive_expression(e: Expression, a: number, b: number)
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
 INFIX($Add, additive_expression, multiplicative_expression, "+")
 INFIX($Sub, additive_expression, multiplicative_expression, "-")
 
+.decl multiplicative_expression(e: Expression, a: number, b: number)
 multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
 INFIX($Mul, multiplicative_expression, unary_expression, "*")
 INFIX($Div, multiplicative_expression, unary_expression, "/")
 INFIX($Mod, multiplicative_expression, unary_expression, "%")
 
+.decl unary_expression(e: Expression, a: number, b: number)
 unary_expression(e, A, B) :- postfix_expression(e, A, B).
 unary_expression(e, A, B) :- pre_increment_expression(e, A, B).
 unary_expression(e, A, B) :- pre_decrement_expression(e, A, B).
 
+.decl pre_increment_expression(e: Expression, a: number, b: number)
 PREFIX($PreIncrement, pre_increment_expression, unary_expression, "++")
+
+.decl pre_decrement_expression(e: Expression, a: number, b: number)
 PREFIX($PreDecrement, pre_decrement_expression, unary_expression, "--")
 
+.decl unary_expression_not_plus_minus(e: Expression, a: number, b: number)
 unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
 PREFIX($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
 PREFIX($Not, unary_expression_not_plus_minus, unary_expression, "!")
 
+.decl postfix_expression(e: Expression, a: number, b: number)
 postfix_expression(e, A, B) :- expression_name(e, A, B).
 postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
 
+.decl post_increment_expression(e: Expression, a: number, b: number)
 POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
+.decl post_decrement_expression(e: Expression, a: number, b: number)
 POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
-// TODO
+.decl expression_name(e: Expression, a: number, b: number)
 expression_name($Identifier(id), A, A + 1) :- token("TOKEN_IDENTIFIER", id, A).
 expression_name($Number(to_number(n)), A, A + 1) :- token("TOKEN_NUMBER", n, A).
 
+.decl switch_expression(e: Expression, a: number, b: number)
 switch_expression($SwitchExpr(e1), A, C) :-
     token("TOKEN_KEYWORD", "switch", A),
     token("TOKEN_BRACKET", "(", A + 1),
@@ -772,13 +811,13 @@ switch_expression($SwitchExpr(e1), A, C) :-
  * Root
  **************************************************************************/
 
+.decl root(s: Statement)
 root(s) :-
     statement(s, 1, N),
     token("TOKEN_EOF", _, N+1).
 
 .output expression
 .output statement
-.output class_declaration
 .output class_modifiers
 .output type_identifier
 .output class_body
