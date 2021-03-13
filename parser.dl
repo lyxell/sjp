@@ -4,14 +4,20 @@
                  | Add {e1: Expression, e2: Expression}
                  | Mul {e1: Expression, e2: Expression}
                  | Sub {e1: Expression, e2: Expression}
+                 | Mod {e1: Expression, e2: Expression}
+                 | ShiftLeft {e1: Expression, e2: Expression}
+                 | ShiftRight {e1: Expression, e2: Expression}
+                 | ShiftRightUnsigned {e1: Expression, e2: Expression}
+                 | Div {e1: Expression, e2: Expression}
                  | Assign {e1: Expression, e2: Expression}
                  | LessThan {e1: Expression, e2: Expression}
 
 .type Statement = If {cond: Expression, then: Statement}
                 | While {cond: Expression, then: Statement}
-                | DoWhile {cond: Expression, then: Statement}
+                | Do {cond: Expression, then: Statement}
                 | Block {s: StatementList }
                 | Return {e: Expression }
+                | Yield {e: Expression }
                 | Empty {}
 
 .type StatementList = [
@@ -25,6 +31,7 @@
 .decl one_or_more_statements(s: StatementList, n: number, l: number)
 /* expressions */
 .decl expression(e: Expression, n: number, l: number)
+.decl shift_expression(e: Expression, n: number, l: number)
 .decl additive_expression(e: Expression, n: number, l: number)
 .decl multiplicative_expression(e: Expression, n: number, l: number)
 .decl unary_expression(e: Expression, n: number, l: number)
@@ -60,13 +67,14 @@ statement($If(cond, then), A, C) :-
     token("TOKEN_BRACKET", ")", B + 1),
     statement(then, B + 2, C),  C >= B + 2.
 
-statement($DoWhile(cond, do), A, C + 1) :-
+statement($Do(cond, do), A, C + 2) :-
     token("TOKEN_KEYWORD", "do", A),
     statement(do, A + 1, B),  B >= A + 1,
     token("TOKEN_KEYWORD", "while", B + 1),
     token("TOKEN_BRACKET", "(", B + 2),
     expression(cond, B + 3, C), C >= B + 3,
-    token("TOKEN_BRACKET", ")", C + 1).
+    token("TOKEN_BRACKET", ")", C + 1),
+    token("TOKEN_SEPARATOR", ";", C + 2).
 
 statement($While(cond, do), A, C) :-
     token("TOKEN_KEYWORD", "while", A),
@@ -77,34 +85,39 @@ statement($While(cond, do), A, C) :-
 
 statement($Return(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "return", A),
-    expression(e, A + 1, B), B >= A + 1.
-    token("TOKEN_SEPARATOR", ";", B + 1),
+    expression(e, A + 1, B), B >= A + 1,
+    token("TOKEN_SEPARATOR", ";", B + 1).
+
+statement($Yield(e), A, B + 1) :-
+    token("TOKEN_KEYWORD", "yield", A),
+    expression(e, A + 1, B), B >= A + 1,
+    token("TOKEN_SEPARATOR", ";", B + 1).
 
 /**
  * Expressions
  */
 
-expression(e, A, B) :- additive_expression(e, A, B).
+#define REGISTER_BINOP(node, current_level, next_level, symbol) \
+    current_level(node(e1,e2), a, c) :- \
+        current_level(e1, a, b), b >= a, \
+        token("TOKEN_OPERATOR", symbol, b + 1), \
+        next_level(e2, b + 2, c), c >= b + 2.
 
-/* additive */
+expression(e, A, B) :- shift_expression(e, A, B).
+
+shift_expression(e, A, B) :- additive_expression(e, A, B).
+REGISTER_BINOP($ShiftLeft, shift_expression, additive_expression, "<<")
+REGISTER_BINOP($ShiftRight, shift_expression, additive_expression, ">>")
+REGISTER_BINOP($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
 
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
+REGISTER_BINOP($Add, additive_expression, multiplicative_expression, "+")
+REGISTER_BINOP($Sub, additive_expression, multiplicative_expression, "-")
 
-additive_expression($Add(e1, e2), A, C) :-
-    additive_expression(e1, A, B), B >= A,
-    token("TOKEN_OPERATOR", "+", B + 1),
-    multiplicative_expression(e2, B + 2, C), C >= B + 2.
-
-/* multiplicative */
-
-additive_expression(e, A, B) :- unary_expression(e, A, B).
-
-multiplicative_expression($Mul(e1, e2), A, B) :-
-    multiplicative_expression(e1, A, B), B >= A,
-    token("TOKEN_OPERATOR", "*", B + 1),
-    unary_expression(e2, B + 2, C), C >= B + 2.
-
-/* unary */
+multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
+REGISTER_BINOP($Mul, multiplicative_expression, unary_expression, "*")
+REGISTER_BINOP($Div, multiplicative_expression, unary_expression, "/")
+REGISTER_BINOP($Mod, multiplicative_expression, unary_expression, "%")
 
 unary_expression($Identifier(id), A, A) :- token("TOKEN_IDENTIFIER", id, A).
 unary_expression($Number(to_number(n)), A, A) :- token("TOKEN_NUMBER", n, A).

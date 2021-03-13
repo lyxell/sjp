@@ -1,7 +1,7 @@
 .PHONY: run
 
 run: root.csv
-	cat root.csv
+	cat expression.csv
 
 root.csv: token.facts parser.dl
 	souffle parser.dl

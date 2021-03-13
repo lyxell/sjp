@@ -39,7 +39,7 @@ int lex(const char *YYCURSOR) {
         "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
         ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
         "*"  | "/"  | "%" {
-            report("TOKEN_INFIX_OPERATOR", YYSTART, YYCURSOR);
+            report("TOKEN_OPERATOR", YYSTART, YYCURSOR);
             continue;
         }
         "="  | "+="  | "-="  | "*="   | "/=" | "&=" | "|=" | "^=" |
@@ -66,7 +66,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("do { } while (x == 3)");
+    lex("x * 1 / 2 >>> 2");
     report("TOKEN_EOF", 0, 0);
     return 0;
 }
