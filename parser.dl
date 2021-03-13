@@ -61,7 +61,7 @@
 
 .decl token(s: symbol, c: symbol, n: number)
 
-.decl type_identifier(s: symbol, l: number)
+.decl type_identifier(s: symbol, l: number, n: number)
 
 .decl type_name(s: SymbolList, a: number, b: number)
 .decl package_or_type_name(s: SymbolList, a: number, b: number)
@@ -122,7 +122,7 @@
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  */
 
-type_identifier(t, A) :-
+type_identifier(t, A, A + 1) :-
     token("IDENTIFIER", t, A).
 // TODO not var or yield
 
@@ -137,22 +137,23 @@ type_identifier(t, A) :-
 
 // TODO PackageName
 
-type_name([t, nil], A, A) :- type_identifier(t, A).
-type_name([t, tail], A, B + 2) :-
+type_name([t, nil], A, B) :- type_identifier(t, A, B).
+type_name([t, tail], A, C) :-
     package_or_type_name(tail, A, B),
-    token("TOKEN_SEPARATOR", ".", B + 1),
-    type_identifier(t, B + 2).
+    token("TOKEN_SEPARATOR", ".", B),
+    type_identifier(t, B + 1, C).
 
 // TODO ExpressionName
 
 // TODO MethodName
 
-package_or_type_name([t, nil], A, A) :-
+package_or_type_name([t, nil], A, A + 1) :-
     token("IDENTIFIER", t, A).
-package_or_type_name([t, tail], A, A) :-
-    package_or_type_name(tail, A, B),
-    token("TOKEN_SEPARATOR", ".", B + 1),
-    token("IDENTIFIER", t, A).
+
+package_or_type_name([t, tail], A, B + 2) :-
+    package_or_type_name(tail, A, B), B > A,
+    token("TOKEN_SEPARATOR", ".", B),
+    token("IDENTIFIER", t, B + 1).
 
 // TODO AmbiguousName
 
@@ -171,23 +172,31 @@ package_or_type_name([t, tail], A, A) :-
 
 // TODO PackageDeclaration
 
+/*
+package_declaration($PackageDeclaration(nil, syms), A, B + 1) :-
+    token("TOKEN_KEYWORD", "import", A),
+    type_name(syms, A + 1, B),
+    token("TOKEN_SEPARATOR", ";", B).
+
+package_name_specifier(*/
+
 // TODO PackageModifier
 
 import_declaration(e, A, B) :- single_type_import_declaration(e, A, B).
 import_declaration(e, A, B) :- type_import_on_demand_declaration(e, A, B).
 // ... TODO
 
-single_type_import_declaration($Import(syms), A, B) :-
+single_type_import_declaration($Import(syms), A, B + 1) :-
     token("TOKEN_KEYWORD", "import", A),
-    type_name(syms, A + 1, B),
-    token("TOKEN_SEPARATOR", ";", B + 1).
+    type_name(syms, A + 1, B), B > A + 1,
+    token("TOKEN_SEPARATOR", ";", B).
 
-type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B) :-
+type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B + 3) :-
     token("TOKEN_KEYWORD", "import", A),
-    type_name(syms, A + 1, B),
-    token("TOKEN_SEPARATOR", ".", B + 1),
-    token("TOKEN_OPERATOR",  "*", B + 2),
-    token("TOKEN_SEPARATOR", ";", B + 3).
+    type_name(syms, A + 1, B), B > A + 1,
+    token("TOKEN_SEPARATOR", ".", B),
+    token("TOKEN_OPERATOR",  "*", B + 1),
+    token("TOKEN_SEPARATOR", ";", B + 2).
 
 // TODO SingleStaticImportDeclaration
 
@@ -208,7 +217,7 @@ type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  */
 
-array_initializer(nil, A, A + 1) :- 
+array_initializer(nil, A, A + 2) :- 
     token("TOKEN_BRACKET", "{", A),
     token("TOKEN_BRACKET", "}", A + 1).
 // TODO ...
@@ -222,19 +231,15 @@ array_initializer(nil, A, A + 1) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  */
 
-block($Block(nil), A, A + 1) :-
-    token("TOKEN_BRACKET", "{", A),
-    token("TOKEN_BRACKET", "}", A + 1).
 block($Block(s), A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
-    block_statements(s, A + 1, B), B >= A + 1,
-    token("TOKEN_BRACKET", "}", B + 1).
+    block_statements(s, A + 1, B),
+    token("TOKEN_BRACKET", "}", B).
 
-block_statements([e, nil], A, B) :-
-    block_statement(e, A, B).
+block_statements(nil, A, A) :- token(_, _, A).
 block_statements([e, tail], A, C) :-
-    block_statement(e, A, B), B >= A,
-    block_statements(tail, B + 1, C), C >= B + 1.
+    block_statement(e, A, B), B > A,
+    block_statements(tail, B, C).
 
 // TODO
 block_statement(e, A, B) :- statement(e, A, B).
@@ -245,6 +250,7 @@ block_statement(e, A, B) :- statement(e, A, B).
 
 // TODO: LocalVariableType
 
+statement(e, A, B) :- statement_without_trailing_substatement(e, A, B).
 statement(e, A, B) :- if_then_statement(e, A, B).
 statement(e, A, B) :- if_then_else_statement(e, A, B).
 statement(e, A, B) :- while_statement(e, A, B).
@@ -255,9 +261,10 @@ statement_no_short_if(e, A, B) :- statement(e, A, B).
 
 statement_without_trailing_substatement(e, A, B) :- block(e, A, B).
 statement_without_trailing_substatement(e, A, B) :- empty_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- assert_statement(e, A, B).
 // ... TODO
 
-empty_statement($Empty, A, A) :-
+empty_statement($Empty, A, A+1) :-
     token("TOKEN_SEPARATOR", ";", A).
 
 // TODO LabeledStatement
@@ -268,43 +275,43 @@ empty_statement($Empty, A, A) :-
 
 // TODO StatementExpression
 
-if_then_statement($IfThen(e, s), A, B) :-
+if_then_statement($IfThen(e, s), A, C) :-
     token("TOKEN_KEYWORD", "if", A),
     token("TOKEN_BRACKET", "(", A + 1),
-    expression(e, A + 2, B), B >= A + 2,
-    token("TOKEN_BRACKET", ")", B + 1),
-    statement(s, B + 2, C), C >= B + 2.
+    expression(e, A + 2, B), B > A + 2,
+    token("TOKEN_BRACKET", ")", B),
+    statement(s, B + 1, C), C > B + 1.
 
 if_then_else_statement($IfThenElse(e, s1, s2), A, D) :-
     token("TOKEN_KEYWORD", "if", A),
     token("TOKEN_BRACKET", "(", A + 1),
-    expression(e, A + 2, B), B >= A + 2,
-    token("TOKEN_BRACKET", ")", B + 1),
-    statement_no_short_if(s1, B + 2, C), C >= B + 2,
-    token("TOKEN_KEYWORD", "else", C + 1),
-    statement(s2, C + 2, D), D >= C + 2.
+    expression(e, A + 2, B), B > A + 2,
+    token("TOKEN_BRACKET", ")", B),
+    statement_no_short_if(s1, B + 1, C), C > B + 1,
+    token("TOKEN_KEYWORD", "else", C),
+    statement(s2, C + 1, D), D > C + 1.
 
 // TODO IfThenElseStatementNoShortIf
 
 assert_statement($Assert(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "assert", A),
-    expression(e, A + 1, B), B >= A + 1,
-    token("TOKEN_SEPARATOR", ";", B + 1).
+    expression(e, A + 1, B), B > A + 1,
+    token("TOKEN_SEPARATOR", ";", B).
 assert_statement($AssertDetailed(e1, e2), A, C + 1) :-
     token("TOKEN_KEYWORD", "assert", A),
-    expression(e1, A + 1, B), B >= A + 1,
-    token("TOKEN_SEPARATOR", ":", B + 1),
-    expression(e2, B + 2, C), C >= B + 2,
-    token("TOKEN_SEPARATOR", ";", C + 1).
+    expression(e1, A + 1, B), B > A + 1,
+    token("TOKEN_SEPARATOR", ":", B),
+    expression(e2, B + 1, C), C > B + 1,
+    token("TOKEN_SEPARATOR", ";", C).
 
-switch_statement($Switch(e, $Empty), A, B) :-
+switch_statement($Switch(e, $Empty), A, C) :-
     token("TOKEN_KEYWORD", "switch", A),
     token("TOKEN_BRACKET", "(", A + 1),
-    expression(e, A + 2, B), B >= A + 2,
-    token("TOKEN_BRACKET", ")", B + 1),
-    switch_block($Empty, B + 2, C), C >= B + 2.
+    expression(e, A + 2, B), B > A + 2,
+    token("TOKEN_BRACKET", ")", B),
+    switch_block($Empty, B + 1, C), C > B + 1.
 
-switch_block($Empty, A, A + 1) :-
+switch_block($Empty, A, A + 2) :-
     token("TOKEN_BRACKET", "{", A),
     token("TOKEN_BRACKET", "}", A + 1).
 // TODO ...
@@ -320,20 +327,20 @@ case_constant(e, A, B) :- conditional_expression(e, A, B).
 while_statement($While(cond, do), A, C) :-
     token("TOKEN_KEYWORD", "while", A),
     token("TOKEN_BRACKET", "(", A + 1),
-    expression(cond, A + 2, B), B >= A + 2,
-    token("TOKEN_BRACKET", ")", B + 1),
-    statement(do, B + 2, C),  C >= B + 2.
+    expression(cond, A + 2, B), B > A + 2,
+    token("TOKEN_BRACKET", ")", B),
+    statement(do, B + 1, C), C > B + 1.
 
 // TODO WhileStatementNoShortIf
 
 do_statement($Do(cond, do), A, C + 2) :-
     token("TOKEN_KEYWORD", "do", A),
-    statement(do, A + 1, B),  B >= A + 1,
-    token("TOKEN_KEYWORD", "while", B + 1),
-    token("TOKEN_BRACKET", "(", B + 2),
-    expression(cond, B + 3, C), C >= B + 3,
-    token("TOKEN_BRACKET", ")", C + 1),
-    token("TOKEN_SEPARATOR", ";", C + 2).
+    statement(do, A + 1, B),  B > A + 1,
+    token("TOKEN_KEYWORD", "while", B),
+    token("TOKEN_BRACKET", "(", B + 1),
+    expression(cond, B + 2, C), C > B + 2,
+    token("TOKEN_BRACKET", ")", C),
+    token("TOKEN_SEPARATOR", ";", C + 1).
 
 // TODO ForStatement
 
@@ -357,18 +364,18 @@ do_statement($Do(cond, do), A, C + 2) :-
 
 yield_statement($Yield(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "yield", A),
-    expression(e, A + 1, B), B >= A + 1,
-    token("TOKEN_SEPARATOR", ";", B + 1).
+    expression(e, A + 1, B), B > A + 1,
+    token("TOKEN_SEPARATOR", ";", B).
 
 // TODO ContinueStatement
 
-return_statement($ReturnVoid, A, A + 1) :-
+return_statement($ReturnVoid, A, A + 2) :-
     token("TOKEN_KEYWORD", "return", A),
     token("TOKEN_SEPARATOR", ";", A + 1).
 return_statement($Return(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "return", A),
-    expression(e, A + 1, B), B >= A + 1,
-    token("TOKEN_SEPARATOR", ";", B + 1).
+    expression(e, A + 1, B), B > A + 1,
+    token("TOKEN_SEPARATOR", ";", B).
 
 // TODO ThrowStatement
 
@@ -403,19 +410,19 @@ return_statement($Return(e), A, B + 1) :-
 
 #define INFIXOP(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
-        current_level(e1, A, B), B >= A, \
-        token("TOKEN_OPERATOR", symbol, B + 1), \
-        next_level(e2, B + 2, C), C >= B + 2.
+        current_level(e1, A, B), B > A, \
+        token("TOKEN_OPERATOR", symbol, B), \
+        next_level(e2, B + 1, C), C > B + 1.
 
 #define PREFIXOP(node, current_level, next_level, symbol) \
     current_level(node(e1), A, B) :- \
         token("TOKEN_OPERATOR", symbol, A), \
-        next_level(e1, A + 1, B), B >= A + 1.
+        next_level(e1, A + 1, B), B > A + 1.
 
 #define POSTFIXOP(node, current_level, next_level, symbol) \
     current_level(node(e1), A, B + 1) :- \
-        next_level(e1, A, B), B >= A, \
-        token("TOKEN_OPERATOR", symbol, B + 1).
+        next_level(e1, A, B), B > A, \
+        token("TOKEN_OPERATOR", symbol, B).
 
 expression(e, A, B) :- conditional_expression(e, A, B).
 
@@ -423,11 +430,11 @@ assignment_expression(e, A, B) :- conditional_expression(e, A, B).
 
 conditional_expression(e, A, B) :- conditional_or_expression(e, A, B).
 conditional_expression(e, A, D) :-
-    conditional_or_expression(e, A, B), B >= A,
-    token("TOKEN_SEPARATOR", "?", B + 1),
-    expression(e, B + 2, C), C >= B + 2,
-    token("TOKEN_SEPARATOR", ":", C + 1),
-    conditional_expression(e, C+2, D), D >= C + 2.
+    conditional_or_expression(e, A, B), B > A,
+    token("TOKEN_SEPARATOR", "?", B),
+    expression(e, B + 1, C), C > B + 1,
+    token("TOKEN_SEPARATOR", ":", C),
+    conditional_expression(e, C + 1, D), D > C + 1.
 // TODO: lambda
 
 conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
@@ -484,20 +491,22 @@ POSTFIXOP($PostIncrement, post_increment_expression, postfix_expression, "++")
 POSTFIXOP($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
 // TODO
-expression_name($Identifier(id), A, A) :- token("TOKEN_IDENTIFIER", id, A).
-expression_name($Number(to_number(n)), A, A) :- token("TOKEN_NUMBER", n, A).
+expression_name($Identifier(id), A, A + 1) :- token("TOKEN_IDENTIFIER", id, A).
+expression_name($Number(to_number(n)), A, A + 1) :- token("TOKEN_NUMBER", n, A).
 
 switch_expression($SwitchExpr(e1), A, C) :-
     token("TOKEN_KEYWORD", "switch", A),
     token("TOKEN_BRACKET", "(", A + 1),
     expression(e1, A + 2, B),
-    token("TOKEN_BRACKET", ")", B + 1),
-    switch_block($Empty, B + 2, C).
+    token("TOKEN_BRACKET", ")", B),
+    switch_block($Empty, B + 1, C).
 
 
 /*************** Root *****************************/
 
-root(s) :- statement(s, 1, N), token("TOKEN_EOF", _, N+1).
+root(s) :-
+    statement(s, 1, N),
+    token("TOKEN_EOF", _, N+1).
 
 .output expression
 .output statement

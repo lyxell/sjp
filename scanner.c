@@ -66,7 +66,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("if (x == 20) {} else {}");
+    lex("if (x == 20) { } else {}");
     report("TOKEN_EOF", 0, 0);
     return 0;
 }
