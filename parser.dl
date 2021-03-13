@@ -26,6 +26,11 @@
     | Sub                   {e1: Expression, e2: Expression}
     | SwitchExpr            {e: Expression}
 
+.type ExpressionList = [
+    head: Expression,
+    tail: ExpressionList
+]
+
 .type Statement =
       Assert                {e: Expression}
     | AssertDetailed        {e1: Expression, e2: Expression}
@@ -66,6 +71,7 @@
 .decl do_statement(s: Statement, n: number, l: number)
 
 .decl expression(e: Expression, n: number, l: number)
+.decl array_initializer(e: ExpressionList, a: number, b: number)
 .decl inclusive_or_expression(e: Expression, n: number, l: number)
 .decl pre_increment_expression(e: Expression, n: number, l: number)
 .decl pre_decrement_expression(e: Expression, n: number, l: number)
@@ -92,7 +98,26 @@
 
 .input token
 
-/************** Blocks and Statements ********************/
+/**
+ * Arrays
+ *
+ * Adapted from §10 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ */
+
+array_initializer(nil, A, A + 1) :- 
+    token("TOKEN_BRACKET", "{", A),
+    token("TOKEN_BRACKET", "}", A + 1).
+// TODO ...
+
+// TODO VariableInitializerList
+
+/**
+ * Blocks and Statements
+ *
+ * Adapted from §14 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ */
 
 block($Block(nil), A, A + 1) :-
     token("TOKEN_BRACKET", "{", A),
@@ -266,7 +291,12 @@ return_statement($Return(e), A, B + 1) :-
 
 // TODO Resource
 
-/************** Expressions ********************/
+/**
+ * Expressions
+ *
+ * Adapted from §15 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ */
 
 #define INFIXOP(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
