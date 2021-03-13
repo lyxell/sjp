@@ -26,10 +26,19 @@
     | Sub                   {e1: Expression, e2: Expression}
     | SwitchExpr            {e: Expression}
 
+.type SymbolList = [
+    head: symbol,
+    tail: SymbolList
+]
+
 .type ExpressionList = [
     head: Expression,
     tail: ExpressionList
 ]
+
+.type Other =
+      Import                {s: SymbolList}
+    | ImportOnDemandFrom    {s: SymbolList}
 
 .type Statement =
       Assert                {e: Expression}
@@ -51,6 +60,14 @@
 ]
 
 .decl token(s: symbol, c: symbol, n: number)
+
+.decl type_identifier(s: symbol, l: number)
+
+.decl type_name(s: SymbolList, a: number, b: number)
+.decl package_or_type_name(s: SymbolList, a: number, b: number)
+.decl import_declaration(s: Other, a: number, b: number)
+.decl single_type_import_declaration(s: Other, a: number, b: number)
+.decl type_import_on_demand_declaration(s: Other, a: number, b: number)
 
 .decl block(s: Statement, n: number, l: number)
 .decl block_statements(s: StatementList, n: number, l: number)
@@ -97,6 +114,92 @@
 .decl root(s: Statement)
 
 .input token
+
+/**
+ * Lexical structure
+ *
+ * Adapted from §3 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ */
+
+type_identifier(t, A) :-
+    token("IDENTIFIER", t, A).
+// TODO not var or yield
+
+/**
+ * Names
+ *
+ * Adapted from §6 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ */
+
+// TODO ModuleName
+
+// TODO PackageName
+
+type_name([t, nil], A, A) :- type_identifier(t, A).
+type_name([t, tail], A, B + 2) :-
+    package_or_type_name(tail, A, B),
+    token("TOKEN_SEPARATOR", ".", B + 1),
+    type_identifier(t, B + 2).
+
+// TODO ExpressionName
+
+// TODO MethodName
+
+package_or_type_name([t, nil], A, A) :-
+    token("IDENTIFIER", t, A).
+package_or_type_name([t, tail], A, A) :-
+    package_or_type_name(tail, A, B),
+    token("TOKEN_SEPARATOR", ".", B + 1),
+    token("IDENTIFIER", t, A).
+
+// TODO AmbiguousName
+
+/**
+ * Packages and Modules
+ *
+ * Adapted from §7 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ */
+
+// TODO CompilationUnit
+
+// TODO OrdinaryCompilationUnit
+
+// TODO ModularCompilationUnit
+
+// TODO PackageDeclaration
+
+// TODO PackageModifier
+
+import_declaration(e, A, B) :- single_type_import_declaration(e, A, B).
+import_declaration(e, A, B) :- type_import_on_demand_declaration(e, A, B).
+// ... TODO
+
+single_type_import_declaration($Import(syms), A, B) :-
+    token("TOKEN_KEYWORD", "import", A),
+    type_name(syms, A + 1, B),
+    token("TOKEN_SEPARATOR", ";", B + 1).
+
+type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B) :-
+    token("TOKEN_KEYWORD", "import", A),
+    type_name(syms, A + 1, B),
+    token("TOKEN_SEPARATOR", ".", B + 1),
+    token("TOKEN_OPERATOR",  "*", B + 2),
+    token("TOKEN_SEPARATOR", ";", B + 3).
+
+// TODO SingleStaticImportDeclaration
+
+// TODO StaticImportOnDemandDeclaration
+
+// TODO TypeDeclaration
+
+// TODO ModuleDeclaration
+
+// TODO ModuleDirective
+
+// TODO RequiresModifier
 
 /**
  * Arrays
