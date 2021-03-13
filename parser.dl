@@ -37,7 +37,17 @@
     tail: ExpressionList
 ]
 
-.type Type = TypeParameter {}
+.type Type =
+      TypeParameter {}
+    | Boolean {}
+    | Byte {}
+    | Short {}
+    | Int {}
+    | Long {}
+    | Char {}
+    | Float {}
+    | Double {}
+         
 
 .type TypeList = [
     head: Type,
@@ -95,6 +105,13 @@
 .decl class_body_declarations(d: DeclarationList, a: number, b: number)
 .decl variable_initializer(s: Expression, a: number, b: number)
 .decl variable_initializer_list(s: ExpressionList, a: number, b: number)
+
+.decl unann_primitive_type(t: Type, a: number, b: number)
+.decl unann_type(t: Type, a: number, b: number)
+.decl unann_reference_type(t: Type, a: number, b: number)
+.decl numeric_type(t: Type, a: number, b: number)
+.decl integral_type(t: Type, a: number, b: number)
+.decl floating_point_type(t: Type, a: number, b: number)
 
 .decl class_modifier(s: symbol, a: number, b: number)
 .decl class_modifiers(s: SymbolList, a: number, b: number)
@@ -160,6 +177,10 @@
 .decl any_position(n: number)
 any_position(n) :- token(_, _, n).
 
+#define ZERO_OR_MORE(xs, x) \
+    xs(nil, A, A) :- any_position(A). \
+    xs([e, tail], A, C) :- x(e, A, B), xs(tail, B, C).
+
 /**
  * Lexical structure
  *
@@ -170,6 +191,27 @@ any_position(n) :- token(_, _, n).
 type_identifier(t, A, A + 1) :-
     token("TOKEN_IDENTIFIER", t, A).
 // TODO not var or yield
+
+/**
+ * Types, Values and Variables
+ *
+ * Adapted from §4 of
+ * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ **************************************************************************/
+
+numeric_type(e, A, B) :- integral_type(e, A, B).
+numeric_type(e, A, B) :- floating_point_type(e, A, B).
+
+integral_type($Byte, A, A + 1) :- token("TOKEN_KEYWORD", "byte", A).
+integral_type($Short, A, A + 1) :- token("TOKEN_KEYWORD", "short", A).
+integral_type($Int, A, A + 1) :- token("TOKEN_KEYWORD", "int", A).
+integral_type($Long, A, A + 1) :- token("TOKEN_KEYWORD", "long", A).
+integral_type($Char, A, A + 1) :- token("TOKEN_KEYWORD", "char", A).
+
+floating_point_type($Float, A, A + 1) :-
+    token("TOKEN_KEYWORD", "float", A).
+floating_point_type($Double, A, A + 1) :-
+    token("TOKEN_KEYWORD", "double", A).
 
 /**
  * Names
@@ -187,6 +229,7 @@ type_name([t, tail], A, C) :-
     package_or_type_name(tail, A, B),
     token("TOKEN_SEPARATOR", ".", B),
     type_identifier(t, B + 1, C).
+// ... TODO: reverse?
 
 // TODO ExpressionName
 
@@ -211,7 +254,15 @@ package_or_type_name([t, tail], A, B + 2) :-
 
 // TODO CompilationUnit
 
+//compilation_unit(e, A, B) :- ordinary_compilation_unit(e, A, B).
+
 // TODO OrdinaryCompilationUnit
+
+/*
+ordinary_compilation_unit(e, A, B) :-
+    package_declaration(e, A, B),
+    import_declarations(e, A, B),
+    import_declarations(e, A, B).*/
 
 // TODO ModularCompilationUnit
 
@@ -263,10 +314,7 @@ normal_class_declaration($Class(modifiers, id, declarations), A, D) :-
     type_identifier(id, B + 1, C), C > B + 1,
     class_body(declarations, C, D).
 
-class_modifiers(nil, A, A) :- any_position(A).
-class_modifiers([sym, tail], A, C) :-
-    class_modifier(sym, A, B),
-    class_modifiers(tail, B, C).
+ZERO_OR_MORE(class_modifiers, class_modifier)
 
 class_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
 class_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
@@ -281,7 +329,8 @@ type_parameters(l, A, B) :-
 type_parameter_list([e, nil], A, B) :- type_parameter(e, A, B).
 type_parameter_list([e, tail], A, C) :-
     type_parameter(e, A, B),
-    type_parameter_list(tail, B, C).
+    token("TOKEN_SEPARATOR", ",", B),
+    type_parameter_list(tail, B+1, C).
 
 // TODO Superclass
 
@@ -294,10 +343,7 @@ class_body(declarations, A, B + 1) :-
     class_body_declarations(declarations, A + 1, B),
     token("TOKEN_BRACKET", "}", B).
 
-class_body_declarations(nil, A, A) :- any_position(A).
-class_body_declarations([e, tail], A, C) :-
-    class_body_declaration(e, A, B),
-    class_body_declarations(tail, B, C).
+ZERO_OR_MORE(class_body_declarations, class_body_declaration)
 
 class_body_declaration(e, A, B) :- class_member_declaration(e, A, B).
 // ... TODO
@@ -322,9 +368,12 @@ class_member_declaration($EmptyDeclaration, A, A + 1)
 variable_initializer(e, A, B) :- expression(e, A, B).
 variable_initializer(e, A, B) :- array_initializer(e, A, B).
 
-// TODO UnannType
+unann_type(e, A, B) :- unann_primitive_type(e, A, B).
+unann_type(e, A, B) :- unann_reference_type(e, A, B).
 
-// TODO UnannPrimitiveType
+unann_primitive_type($Boolean, A, A + 1) :-
+    token("TOKEN_KEYWORD", "boolean", A).
+unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
 // TODO UnannReferenceType
 
@@ -414,7 +463,9 @@ array_initializer($ArrayInitializer(e), A, B + 2) :-
 variable_initializer_list(nil, A, A) :- any_position(A).
 variable_initializer_list([e, tail], A, C) :-
     variable_initializer(e, A, B), B > A,
+    token("TOKEN_SEPARATOR", ",", B),
     variable_initializer_list(tail, B, C).
+    // TODO, logic here is broken
 
 /**
  * Blocks and Statements
@@ -428,13 +479,10 @@ block($Block(s), A, B + 1) :-
     block_statements(s, A + 1, B),
     token("TOKEN_BRACKET", "}", B).
 
-block_statements(nil, A, A) :- any_position(A).
-block_statements([e, tail], A, C) :-
-    block_statement(e, A, B), B > A,
-    block_statements(tail, B, C).
+ZERO_OR_MORE(block_statements, block_statement)
 
-// TODO
 block_statement(e, A, B) :- statement(e, A, B).
+// TODO block_statement(e, A, B) :- class_declaration(e, A, B).
 
 // TODO: LocalVariableDeclarationStatement
 
