@@ -36,11 +36,15 @@
  * Expressions
  */
 
+.type LambdaBody =
+      LambdaBodyExpression {e: Expression}
+    | LambdaBodyBlock      {e: Statement}
+
 .type Expression =
       Add                   {e1: Expression, e2: Expression}
     | And                   {e1: Expression, e2: Expression}
     | ArrayInitializer      {e: ExpressionList}
-    | Assign                {e1: Expression, e2: Expression}
+    | Assign                {e1: Expression, s: symbol, e2: Expression}
     | BitwiseAnd            {e1: Expression, e2: Expression}
     | BitwiseExclOr         {e1: Expression, e2: Expression}
     | BitwiseInclOr         {e1: Expression, e2: Expression}
@@ -188,11 +192,11 @@ numeric_type(e, A, B) :- integral_type(e, A, B).
 numeric_type(e, A, B) :- floating_point_type(e, A, B).
 
 .decl integral_type(t: Type, a: number, b: number)
-integral_type($Byte, A, A + 1)  :- token("TOKEN_KEYWORD", "byte", A).
-integral_type($Short, A, A + 1) :- token("TOKEN_KEYWORD", "short", A).
-integral_type($Int, A, A + 1)   :- token("TOKEN_KEYWORD", "int", A).
-integral_type($Long, A, A + 1)  :- token("TOKEN_KEYWORD", "long", A).
-integral_type($Char, A, A + 1)  :- token("TOKEN_KEYWORD", "char", A).
+integral_type($Byte,    A, A + 1) :- token("TOKEN_KEYWORD", "byte", A).
+integral_type($Short,   A, A + 1) :- token("TOKEN_KEYWORD", "short", A).
+integral_type($Int,     A, A + 1) :- token("TOKEN_KEYWORD", "int", A).
+integral_type($Long,    A, A + 1) :- token("TOKEN_KEYWORD", "long", A).
+integral_type($Char,    A, A + 1) :- token("TOKEN_KEYWORD", "char", A).
 
 .decl floating_point_type(t: Type, a: number, b: number)
 floating_point_type($Float, A, A + 1) :-
@@ -766,9 +770,37 @@ synchronized_statement($Synchronized(e, s), A, C) :-
 
 .decl expression(e: Expression, a: number, b: number)
 expression(e, A, B) :- conditional_expression(e, A, B).
+expression(e, A, B) :- lambda_expression(e, A, B).
+
+.decl lambda_expression(e: Expression, a: number, b: number)
+
+.decl lambda_body(e: LambdaBody, a: number, b: number)
 
 .decl assignment_expression(e: Expression, a: number, b: number)
 assignment_expression(e, A, B) :- conditional_expression(e, A, B).
+assignment_expression(e, A, B) :- assignment(e, A, B).
+
+.decl assignment(e: Expression, a: number, b: number)
+assignment($Assign(e1, s, e2), A, D) :-
+    left_hand_side(e1, A, B),
+    assignment_operator(s, B, C),
+    expression(e2, C, D).
+
+.decl left_hand_side(e: Expression, a: number, b: number)
+
+.decl assignment_operator(s: symbol, a: number, b: number)
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "==".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "*=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "/=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "%=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "+=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "-=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "<<=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = ">>=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = ">>>=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "&=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "^=".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "|=".
 
 .decl conditional_expression(e: Expression, a: number, b: number)
 conditional_expression(e, A, B) :- conditional_or_expression(e, A, B).
