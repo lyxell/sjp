@@ -19,18 +19,25 @@
                  | PostDecrement {e1: Expression}
                  | And {e1: Expression, e2: Expression}
                  | ShiftRight {e1: Expression, e2: Expression}
+                 | SwitchExpr {e1: Expression}
                  | ShiftRightUnsigned {e1: Expression, e2: Expression}
                  | Div {e1: Expression, e2: Expression}
                  | Assign {e1: Expression, e2: Expression}
                  | LessThan {e1: Expression, e2: Expression}
 
-.type Statement = If {cond: Expression, then: Statement}
-                | While {cond: Expression, then: Statement}
-                | Do {cond: Expression, then: Statement}
-                | Block {s: StatementList }
-                | Return {e: Expression }
-                | Yield {e: Expression }
-                | Empty {}
+.type Statement =
+      IfThen {cond: Expression, then: Statement}
+    | IfThenElse {cond: Expression, then: Statement, else: Statement}
+    | While {cond: Expression, then: Statement}
+    | Assert {cond: Expression}
+    | AssertDetailed {cond: Expression, value: Expression}
+    | Do {cond: Expression, then: Statement}
+    | Block {s: StatementList}
+    | Switch {e: Expression, s: Statement}
+    | Return {e: Expression}
+    | ReturnVoid {}
+    | Yield {e: Expression}
+    | Empty {}
 
 .type StatementList = [
     head: Statement,
@@ -38,9 +45,24 @@
 ]
 
 .decl token(s: symbol, c: symbol, n: number)
-/* statement */
+/* blocks and statements */
+.decl block(s: Statement, n: number, l: number)
+.decl block_statements(s: StatementList, n: number, l: number)
+.decl block_statement(s: Statement, n: number, l: number)
 .decl statement(s: Statement, n: number, l: number)
-.decl one_or_more_statements(s: StatementList, n: number, l: number)
+.decl empty_statement(s: Statement, n: number, l: number)
+.decl statement_without_trailing_substatement(s: Statement, n: number, l: number)
+.decl statement_no_short_if(s: Statement, n: number, l: number)
+.decl assert_statement(s: Statement, n: number, l: number)
+.decl if_then_statement(s: Statement, n: number, l: number)
+.decl if_then_else_statement(s: Statement, n: number, l: number)
+.decl while_statement(s: Statement, n: number, l: number)
+.decl case_constant(e: Expression, n: number, l: number)
+.decl switch_block(s: Statement, n: number, l: number)
+.decl yield_statement(s: Statement, n: number, l: number)
+.decl return_statement(s: Statement, n: number, l: number)
+.decl switch_statement(s: Statement, n: number, l: number)
+.decl do_statement(s: Statement, n: number, l: number)
 /* expressions */
 .decl expression(e: Expression, n: number, l: number)
 .decl inclusive_or_expression(e: Expression, n: number, l: number)
@@ -63,39 +85,119 @@
 .decl additive_expression(e: Expression, n: number, l: number)
 .decl multiplicative_expression(e: Expression, n: number, l: number)
 .decl unary_expression(e: Expression, n: number, l: number)
+.decl switch_expression(e: Expression, n: number, l: number)
 /* root */
 .decl root(s: Statement)
 
 .input token
 
-/**
- * Blocks/statements
- */
+/************** Blocks and Statements ********************/
 
-one_or_more_statements([e, nil], A, B) :-
-    statement(e, A, B).
-
-one_or_more_statements([e, tail], A, C) :-
-    statement(e, A, B), B >= A,
-    one_or_more_statements(tail, B + 1, C), C >= B + 1.
-
-statement($Block(nil), A, A + 1) :-
+block($Block(nil), A, A + 1) :-
     token("TOKEN_BRACKET", "{", A),
     token("TOKEN_BRACKET", "}", A + 1).
-
-statement($Block(s), A, B + 1) :-
+block($Block(s), A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
-    one_or_more_statements(s, A + 1, B), B >= A + 1,
+    block_statements(s, A + 1, B), B >= A + 1,
     token("TOKEN_BRACKET", "}", B + 1).
 
-statement($If(cond, then), A, C) :-
+block_statements([e, nil], A, B) :-
+    block_statement(e, A, B).
+block_statements([e, tail], A, C) :-
+    block_statement(e, A, B), B >= A,
+    block_statements(tail, B + 1, C), C >= B + 1.
+
+// TODO
+block_statement(e, A, B) :- statement(e, A, B).
+
+// TODO: LocalVariableDeclarationStatement
+
+// TODO: LocalVariableDeclaration
+
+// TODO: LocalVariableType
+
+statement(e, A, B) :- if_then_statement(e, A, B).
+statement(e, A, B) :- if_then_else_statement(e, A, B).
+statement(e, A, B) :- while_statement(e, A, B).
+// ... TODO
+
+statement_no_short_if(e, A, B) :- statement(e, A, B).
+// ... TODO
+
+statement_without_trailing_substatement(e, A, B) :- block(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- empty_statement(e, A, B).
+// ... TODO
+
+empty_statement($Empty, A, A) :-
+    token("TOKEN_SEPARATOR", ";", A).
+
+// TODO LabeledStatement
+
+// TODO LabeledStatementNoShortIf
+
+// TODO ExpressionStatement
+
+// TODO StatementExpression
+
+if_then_statement($IfThen(e, s), A, B) :-
     token("TOKEN_KEYWORD", "if", A),
+    token("TOKEN_BRACKET", "(", A + 1),
+    expression(e, A + 2, B), B >= A + 2,
+    token("TOKEN_BRACKET", ")", B + 1),
+    statement(s, B + 2, C), C >= B + 2.
+
+if_then_else_statement($IfThenElse(e, s1, s2), A, D) :-
+    token("TOKEN_KEYWORD", "if", A),
+    token("TOKEN_BRACKET", "(", A + 1),
+    expression(e, A + 2, B), B >= A + 2,
+    token("TOKEN_BRACKET", ")", B + 1),
+    statement_no_short_if(s1, B + 2, C), C >= B + 2,
+    token("TOKEN_KEYWORD", "else", C + 1),
+    statement(s2, C + 2, D), D >= C + 2.
+
+// TODO IfThenElseStatementNoShortIf
+
+assert_statement($Assert(e), A, B + 1) :-
+    token("TOKEN_KEYWORD", "assert", A),
+    expression(e, A + 1, B), B >= A + 1,
+    token("TOKEN_SEPARATOR", ";", B + 1).
+assert_statement($AssertDetailed(e1, e2), A, C + 1) :-
+    token("TOKEN_KEYWORD", "assert", A),
+    expression(e1, A + 1, B), B >= A + 1,
+    token("TOKEN_SEPARATOR", ":", B + 1),
+    expression(e2, B + 2, C), C >= B + 2,
+    token("TOKEN_SEPARATOR", ";", C + 1).
+
+switch_statement($Switch(e, $Empty), A, B) :-
+    token("TOKEN_KEYWORD", "switch", A),
+    token("TOKEN_BRACKET", "(", A + 1),
+    expression(e, A + 2, B), B >= A + 2,
+    token("TOKEN_BRACKET", ")", B + 1),
+    switch_block($Empty, B + 2, C), C >= B + 2.
+
+switch_block($Empty, A, A + 1) :-
+    token("TOKEN_BRACKET", "{", A),
+    token("TOKEN_BRACKET", "}", A + 1).
+// TODO ...
+
+// TODO SwitchRule
+
+// TODO SwitchBlockStatementGroup
+
+// TODO SwitchLabel
+
+case_constant(e, A, B) :- conditional_expression(e, A, B).
+
+while_statement($While(cond, do), A, C) :-
+    token("TOKEN_KEYWORD", "while", A),
     token("TOKEN_BRACKET", "(", A + 1),
     expression(cond, A + 2, B), B >= A + 2,
     token("TOKEN_BRACKET", ")", B + 1),
-    statement(then, B + 2, C),  C >= B + 2.
+    statement(do, B + 2, C),  C >= B + 2.
 
-statement($Do(cond, do), A, C + 2) :-
+// TODO WhileStatementNoShortIf
+
+do_statement($Do(cond, do), A, C + 2) :-
     token("TOKEN_KEYWORD", "do", A),
     statement(do, A + 1, B),  B >= A + 1,
     token("TOKEN_KEYWORD", "while", B + 1),
@@ -104,26 +206,66 @@ statement($Do(cond, do), A, C + 2) :-
     token("TOKEN_BRACKET", ")", C + 1),
     token("TOKEN_SEPARATOR", ";", C + 2).
 
-statement($While(cond, do), A, C) :-
-    token("TOKEN_KEYWORD", "while", A),
-    token("TOKEN_BRACKET", "(", A + 1),
-    expression(cond, A + 2, B), B >= A + 2,
-    token("TOKEN_BRACKET", ")", B + 1),
-    statement(do, B + 2, C),  C >= B + 2.
+// TODO ForStatement
 
-statement($Return(e), A, B + 1) :-
-    token("TOKEN_KEYWORD", "return", A),
-    expression(e, A + 1, B), B >= A + 1,
-    token("TOKEN_SEPARATOR", ";", B + 1).
+// TODO ForStatementNoShortIf
 
-statement($Yield(e), A, B + 1) :-
+// TODO BasicForStatement
+
+// TODO BasicForStatementNoShortIf
+
+// TODO ForInit
+
+// TODO ForUpdate
+
+// TODO StatementExpressionList
+
+// TODO EnhancedForStatement
+
+// TODO EnhancedForStatementNoShortIf
+
+// TODO BreakStatement
+
+yield_statement($Yield(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "yield", A),
     expression(e, A + 1, B), B >= A + 1,
     token("TOKEN_SEPARATOR", ";", B + 1).
 
-/**
- * Expressions
- */
+// TODO ContinueStatement
+
+return_statement($ReturnVoid, A, A + 1) :-
+    token("TOKEN_KEYWORD", "return", A),
+    token("TOKEN_SEPARATOR", ";", A + 1).
+return_statement($Return(e), A, B + 1) :-
+    token("TOKEN_KEYWORD", "return", A),
+    expression(e, A + 1, B), B >= A + 1,
+    token("TOKEN_SEPARATOR", ";", B + 1).
+
+// TODO ThrowStatement
+
+// TODO SynchronizedStatement
+
+// TODO TryStatement
+
+// TODO Catches
+
+// TODO CatchClause
+
+// TODO CatchFormalParameter
+
+// TODO CatchType
+
+// TODO Finally
+
+// TODO TryWithResourcesStatement
+
+// TODO ResourceSpecification
+
+// TODO ResourceList
+
+// TODO Resource
+
+/************** Expressions ********************/
 
 #define INFIXOP(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
@@ -211,10 +353,18 @@ POSTFIXOP($PostDecrement, post_decrement_expression, postfix_expression, "--")
 expression_name($Identifier(id), A, A) :- token("TOKEN_IDENTIFIER", id, A).
 expression_name($Number(to_number(n)), A, A) :- token("TOKEN_NUMBER", n, A).
 
-/**
- * Root
- */
+switch_expression($SwitchExpr(e1), A, C) :-
+    token("TOKEN_KEYWORD", "switch", A),
+    token("TOKEN_BRACKET", "(", A + 1),
+    expression(e1, A + 2, B),
+    token("TOKEN_BRACKET", ")", B + 1),
+    switch_block($Empty, B + 2, C).
+
+
+/*************** Root *****************************/
 
 root(s) :- statement(s, 1, N), token("TOKEN_EOF", _, N+1).
 
 .output expression
+.output statement
+.output if_then_else_statement

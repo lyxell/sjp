@@ -66,7 +66,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("x * 1 / 2 >>> 2");
+    lex("if (x == 20) {} else {}");
     report("TOKEN_EOF", 0, 0);
     return 0;
 }
