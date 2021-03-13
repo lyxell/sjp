@@ -1,6 +1,12 @@
+.type SymbolList = [
+    head: symbol,
+    tail: SymbolList
+]
+
 .type Expression =
       Add                   {e1: Expression, e2: Expression}
     | And                   {e1: Expression, e2: Expression}
+    | ArrayInitializer      {e: ExpressionList}
     | Assign                {e1: Expression, e2: Expression}
     | BitwiseAnd            {e1: Expression, e2: Expression}
     | BitwiseExclOr         {e1: Expression, e2: Expression}
@@ -26,14 +32,16 @@
     | Sub                   {e1: Expression, e2: Expression}
     | SwitchExpr            {e: Expression}
 
-.type SymbolList = [
-    head: symbol,
-    tail: SymbolList
-]
-
 .type ExpressionList = [
     head: Expression,
     tail: ExpressionList
+]
+
+.type Type = TypeParameter {}
+
+.type TypeList = [
+    head: Type,
+    tail: TypeList
 ]
 
 .type TopLevel = 
@@ -72,6 +80,9 @@
 
 .decl token(s: symbol, c: symbol, n: number)
 
+.decl type_parameter_list(s: TypeList, a: number, b: number)
+.decl type_parameters(s: TypeList, a: number, b: number)
+.decl type_parameter(s: Type, a: number, b: number)
 .decl field_declaration(s: Declaration, a: number, b: number)
 .decl method_declaration(s: Declaration, a: number, b: number)
 .decl interface_declaration(s: Declaration, a: number, b: number)
@@ -82,6 +93,8 @@
 .decl class_body(s: DeclarationList, a: number, b: number)
 .decl class_body_declaration(d: Declaration, a: number, b: number)
 .decl class_body_declarations(d: DeclarationList, a: number, b: number)
+.decl variable_initializer(s: Expression, a: number, b: number)
+.decl variable_initializer_list(s: ExpressionList, a: number, b: number)
 
 .decl class_modifier(s: symbol, a: number, b: number)
 .decl class_modifiers(s: SymbolList, a: number, b: number)
@@ -112,7 +125,7 @@
 .decl do_statement(s: Statement, n: number, l: number)
 
 .decl expression(e: Expression, n: number, l: number)
-.decl array_initializer(e: ExpressionList, a: number, b: number)
+.decl array_initializer(e: Expression, a: number, b: number)
 .decl inclusive_or_expression(e: Expression, n: number, l: number)
 .decl pre_increment_expression(e: Expression, n: number, l: number)
 .decl pre_decrement_expression(e: Expression, n: number, l: number)
@@ -267,12 +280,16 @@ class_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
 class_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
 class_modifier("protected", A, A + 1) :- token("TOKEN_KEYWORD", "protected", A).
 
-//type_parameters?(e, A, B) :-
-//    token("TOKEN_KEYWORD", "class", B),
+type_parameters(nil, A, A) :- any_position(A).
+type_parameters(l, A, B) :-
+    token("TOKEN_OPERATOR", "<", A),
+    type_parameter_list(l, A + 1, B),
+    token("TOKEN_OPERATOR", ">", B).
 
-// TODO TypeParameters
-
-// TODO TypeParameterList
+type_parameter_list([e, nil], A, B) :- type_parameter(e, A, B).
+type_parameter_list([e, tail], A, C) :-
+    type_parameter(e, A, B),
+    type_parameter_list(tail, B, C).
 
 // TODO Superclass
 
@@ -300,6 +317,91 @@ class_member_declaration(e, A, B) :- interface_declaration(e, A, B).
 class_member_declaration($EmptyDeclaration, A, A + 1)
     :- token("TOKEN_SEPARATOR", ";", A).
 
+// TODO FieldDeclaration
+
+// TODO FieldModifier
+
+// TODO VariableDeclaratorList
+
+// TODO VariableDeclarator
+
+// TODO VariableDeclaratorId
+
+variable_initializer(e, A, B) :- expression(e, A, B).
+variable_initializer(e, A, B) :- array_initializer(e, A, B).
+
+// TODO UnannType
+
+// TODO UnannPrimitiveType
+
+// TODO UnannReferenceType
+
+// TODO UnannClassOrInterfaceType
+
+// TODO UnannClassType
+
+// TODO UnannInterfaceType
+
+// TODO UnannTypeVariable
+
+// TODO UnannArrayType
+
+// TODO MethodDeclaration
+
+// TODO MethodModifier
+
+// TODO MethodHeader
+
+// TODO Result
+
+// TODO MethodDeclarator
+
+// TODO ReceiverParameter
+
+// TODO FormalParameterList
+
+// TODO FormalParameter
+
+// TODO VariableArityParameter
+
+// TODO VariableModifier
+
+// TODO Throws
+
+// TODO ExceptionTypeList
+
+// TODO ExceptionType
+
+// TODO MethodBody
+
+// TODO InstanceInitializer
+
+// TODO StaticInitializer
+
+// TODO ConstructorDeclaration
+
+// TODO ConstructorModifier
+
+// TODO ConstructorDeclarator
+
+// TODO SimpleTypeName
+
+// TODO ConstructorBody
+
+// TODO ExplicitConstructorInvocation
+
+// TODO EnumDeclaration
+
+// TODO EnumBody
+
+// TODO EnumConstantList
+
+// TODO EnumConstant
+
+// TODO EnumConstantModifier
+
+// TODO EnumBodyDeclaration
+
 /**
  * Arrays
  *
@@ -307,12 +409,20 @@ class_member_declaration($EmptyDeclaration, A, A + 1)
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  */
 
-array_initializer(nil, A, A + 2) :- 
+array_initializer($ArrayInitializer(e), A, B + 1) :- 
     token("TOKEN_BRACKET", "{", A),
-    token("TOKEN_BRACKET", "}", A + 1).
-// TODO ...
+    variable_initializer_list(e, A + 1, B),
+    token("TOKEN_BRACKET", "}", B).
+array_initializer($ArrayInitializer(e), A, B + 2) :- 
+    token("TOKEN_BRACKET", "{", A),
+    variable_initializer_list(e, A + 1, B),
+    token("TOKEN_SEPARATOR", ",", B),
+    token("TOKEN_BRACKET", "}", B + 1).
 
-// TODO VariableInitializerList
+variable_initializer_list(nil, A, A) :- any_position(A).
+variable_initializer_list([e, tail], A, C) :-
+    variable_initializer(e, A, B), B > A,
+    variable_initializer_list(tail, B, C).
 
 /**
  * Blocks and Statements
