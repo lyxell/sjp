@@ -1,11 +1,17 @@
 .type Expression = Number {n: number}
                  | Identifier {id: symbol}
-                 | Eq {e1: Expression, e2: Expression}
+                 | Equal {e1: Expression, e2: Expression}
+                 | NotEqual {e1: Expression, e2: Expression}
                  | Add {e1: Expression, e2: Expression}
                  | Mul {e1: Expression, e2: Expression}
                  | Sub {e1: Expression, e2: Expression}
                  | Mod {e1: Expression, e2: Expression}
                  | ShiftLeft {e1: Expression, e2: Expression}
+                 | BitwiseInclOr {e1: Expression, e2: Expression}
+                 | BitwiseExclOr {e1: Expression, e2: Expression}
+                 | BitwiseAnd {e1: Expression, e2: Expression}
+                 | Or {e1: Expression, e2: Expression}
+                 | And {e1: Expression, e2: Expression}
                  | ShiftRight {e1: Expression, e2: Expression}
                  | ShiftRightUnsigned {e1: Expression, e2: Expression}
                  | Div {e1: Expression, e2: Expression}
@@ -31,6 +37,15 @@
 .decl one_or_more_statements(s: StatementList, n: number, l: number)
 /* expressions */
 .decl expression(e: Expression, n: number, l: number)
+.decl inclusive_or_expression(e: Expression, n: number, l: number)
+.decl exclusive_or_expression(e: Expression, n: number, l: number)
+.decl assignment_expression(e: Expression, n: number, l: number)
+.decl conditional_expression(e: Expression, n: number, l: number)
+.decl equality_expression(e: Expression, n: number, l: number)
+.decl conditional_or_expression(e: Expression, n: number, l: number)
+.decl conditional_and_expression(e: Expression, n: number, l: number)
+.decl and_expression(e: Expression, n: number, l: number)
+.decl relational_expression(e: Expression, n: number, l: number)
 .decl shift_expression(e: Expression, n: number, l: number)
 .decl additive_expression(e: Expression, n: number, l: number)
 .decl multiplicative_expression(e: Expression, n: number, l: number)
@@ -97,27 +112,59 @@ statement($Yield(e), A, B + 1) :-
  * Expressions
  */
 
-#define REGISTER_BINOP(node, current_level, next_level, symbol) \
+#define BINOP(node, current_level, next_level, symbol) \
     current_level(node(e1,e2), a, c) :- \
         current_level(e1, a, b), b >= a, \
         token("TOKEN_OPERATOR", symbol, b + 1), \
         next_level(e2, b + 2, c), c >= b + 2.
 
-expression(e, A, B) :- shift_expression(e, A, B).
+expression(e, A, B) :- conditional_expression(e, A, B).
+
+assignment_expression(e, A, B) :- conditional_expression(e, A, B).
+
+conditional_expression(e, A, B) :- conditional_or_expression(e, A, B).
+conditional_expression(e, A, D) :-
+    conditional_or_expression(e, A, B), B >= A,
+    token("TOKEN_SEPARATOR", "?", B + 1),
+    expression(e, B + 2, C), C >= B + 2,
+    token("TOKEN_SEPARATOR", ":", C + 1),
+    conditional_expression(e, C+2, D), D >= C + 2.
+// TODO: lambda
+
+conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
+BINOP($Or, conditional_or_expression, conditional_and_expression, "||")
+
+conditional_and_expression(e, A, B) :- inclusive_or_expression(e, A, B).
+BINOP($And, conditional_and_expression, inclusive_or_expression, "&&")
+
+inclusive_or_expression(e, A, B) :- exclusive_or_expression(e, A, B).
+BINOP($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
+
+exclusive_or_expression(e, A, B) :- and_expression(e, A, B).
+BINOP($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
+
+and_expression(e, A, B) :- equality_expression(e, A, B).
+BINOP($BitwiseAnd, and_expression, equality_expression, "&")
+
+equality_expression(e, A, B) :-       relational_expression(e, A, B).
+BINOP($Equal,    equality_expression, relational_expression, "==")
+BINOP($NotEqual, equality_expression, relational_expression, "!=")
+
+relational_expression(e, A, B) :- shift_expression(e, A, B).
 
 shift_expression(e, A, B) :- additive_expression(e, A, B).
-REGISTER_BINOP($ShiftLeft, shift_expression, additive_expression, "<<")
-REGISTER_BINOP($ShiftRight, shift_expression, additive_expression, ">>")
-REGISTER_BINOP($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
+BINOP($ShiftLeft,          shift_expression, additive_expression, "<<")
+BINOP($ShiftRight,         shift_expression, additive_expression, ">>")
+BINOP($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
 
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
-REGISTER_BINOP($Add, additive_expression, multiplicative_expression, "+")
-REGISTER_BINOP($Sub, additive_expression, multiplicative_expression, "-")
+BINOP($Add, additive_expression, multiplicative_expression, "+")
+BINOP($Sub, additive_expression, multiplicative_expression, "-")
 
 multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
-REGISTER_BINOP($Mul, multiplicative_expression, unary_expression, "*")
-REGISTER_BINOP($Div, multiplicative_expression, unary_expression, "/")
-REGISTER_BINOP($Mod, multiplicative_expression, unary_expression, "%")
+BINOP($Mul, multiplicative_expression, unary_expression, "*")
+BINOP($Div, multiplicative_expression, unary_expression, "/")
+BINOP($Mod, multiplicative_expression, unary_expression, "%")
 
 unary_expression($Identifier(id), A, A) :- token("TOKEN_IDENTIFIER", id, A).
 unary_expression($Number(to_number(n)), A, A) :- token("TOKEN_NUMBER", n, A).
