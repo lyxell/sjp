@@ -75,12 +75,14 @@
     | Block                 {s: StatementList}
     | Do                    {e: Expression, s: Statement}
     | Empty                 {}
+    | Label                 {id: symbol, s: Statement}
     | IfThen                {e: Expression, s: Statement}
     | IfThenElse            {e: Expression, s1: Statement, s2: Statement}
     | Return                {e: Expression}
     | ReturnVoid            {}
     | Switch                {e: Expression, s: Statement}
     | While                 {e: Expression, s: Statement}
+    | ExpressionStatement   {e: Expression}
     | Yield                 {e: Expression}
 
 .type StatementList = [
@@ -135,6 +137,8 @@
 .decl statement_without_trailing_substatement(s: Statement, n: number, l: number)
 .decl statement_no_short_if(s: Statement, n: number, l: number)
 .decl assert_statement(s: Statement, n: number, l: number)
+.decl labeled_statement(s: Statement, n: number, l: number)
+.decl labeled_statement_no_short_if(s: Statement, n: number, l: number)
 .decl if_then_statement(s: Statement, n: number, l: number)
 .decl if_then_else_statement(s: Statement, n: number, l: number)
 .decl while_statement(s: Statement, n: number, l: number)
@@ -144,6 +148,8 @@
 .decl return_statement(s: Statement, n: number, l: number)
 .decl switch_statement(s: Statement, n: number, l: number)
 .decl do_statement(s: Statement, n: number, l: number)
+.decl expression_statement(e: Statement, n: number, l: number)
+.decl statement_expression(e: Expression, n: number, l: number)
 
 .decl expression(e: Expression, n: number, l: number)
 .decl array_initializer(e: Expression, a: number, b: number)
@@ -516,13 +522,25 @@ statement_without_trailing_substatement(e, A, B) :- assert_statement(e, A, B).
 empty_statement($Empty, A, A+1) :-
     token("TOKEN_SEPARATOR", ";", A).
 
-// TODO LabeledStatement
+labeled_statement($Label(id, st), A, B) :-
+    token("TOKEN_IDENTIFIER", id, A),
+    token("TOKEN_SEPARATOR", ":", A + 1),
+    statement(st, A + 2, B).
 
-// TODO LabeledStatementNoShortIf
+labeled_statement_no_short_if($Label(id, st), A, B) :-
+    token("TOKEN_IDENTIFIER", id, A),
+    token("TOKEN_SEPARATOR", ":", A + 1),
+    statement_no_short_if(st, A + 2, B).
 
-// TODO ExpressionStatement
+expression_statement($ExpressionStatement(e), A, B + 1) :-
+    statement_expression(e, A, B),
+    token("TOKEN_SEPARATOR", ";", B).
 
-// TODO StatementExpression
+statement_expression(e, A, B) :- pre_increment_expression(e, A, B).
+statement_expression(e, A, B) :- pre_decrement_expression(e, A, B).
+statement_expression(e, A, B) :- post_increment_expression(e, A, B).
+statement_expression(e, A, B) :- post_decrement_expression(e, A, B).
+// ... TODO
 
 if_then_statement($IfThen(e, s), A, C) :-
     token("TOKEN_KEYWORD", "if", A),
