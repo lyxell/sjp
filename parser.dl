@@ -3,6 +3,39 @@
     tail: SymbolList
 ]
 
+/**
+ * Identifiers
+ */
+
+.type Identifier = symbol
+
+/**
+ * Annotations
+ */
+
+.type ElementValue = ElementValueExpression {e: Expression}
+                   | ElementValueAnnotation {a: Annotation}
+// TODO ElementValueArrayInitializer                   
+
+.type ElementValuePair = [
+    key: Identifier,
+    value: ElementValue
+]
+
+.type ElementValuePairList = [
+    head: ElementValuePair,
+    tail: ElementValuePairList
+]
+
+.type Annotation = [
+    name: SymbolList,
+    pairs: ElementValuePairList
+]
+
+/**
+ * Expressions
+ */
+
 .type Expression =
       Add                   {e1: Expression, e2: Expression}
     | And                   {e1: Expression, e2: Expression}
@@ -155,11 +188,11 @@ numeric_type(e, A, B) :- integral_type(e, A, B).
 numeric_type(e, A, B) :- floating_point_type(e, A, B).
 
 .decl integral_type(t: Type, a: number, b: number)
-integral_type($Byte, A, A + 1) :- token("TOKEN_KEYWORD", "byte", A).
+integral_type($Byte, A, A + 1)  :- token("TOKEN_KEYWORD", "byte", A).
 integral_type($Short, A, A + 1) :- token("TOKEN_KEYWORD", "short", A).
-integral_type($Int, A, A + 1) :- token("TOKEN_KEYWORD", "int", A).
-integral_type($Long, A, A + 1) :- token("TOKEN_KEYWORD", "long", A).
-integral_type($Char, A, A + 1) :- token("TOKEN_KEYWORD", "char", A).
+integral_type($Int, A, A + 1)   :- token("TOKEN_KEYWORD", "int", A).
+integral_type($Long, A, A + 1)  :- token("TOKEN_KEYWORD", "long", A).
+integral_type($Char, A, A + 1)  :- token("TOKEN_KEYWORD", "char", A).
 
 .decl floating_point_type(t: Type, a: number, b: number)
 floating_point_type($Float, A, A + 1) :-
@@ -454,6 +487,29 @@ simple_type_name(e, A, B) :- type_identifier(e, A, B).
  **************************************************************************/
 
 .decl interface_declaration(s: Declaration, a: number, b: number)
+
+.decl annotation(e: Annotation, a: number, b: number)
+annotation(e, A, B) :- normal_annotation(e, A, B).
+
+.decl normal_annotation(e: Annotation, a: number, b: number)
+normal_annotation([name, nil], A, B + 2) :-
+    token("TOKEN_SEPARATOR", "@", A),
+    type_name(name, A + 1, B),
+    token("TOKEN_BRACKET", "(", B),
+    token("TOKEN_BRACKET", ")", B + 1).
+normal_annotation([name, pairs], A, C + 1) :-
+    token("TOKEN_SEPARATOR", "@", A),
+    type_name(name, A + 1, B),
+    token("TOKEN_BRACKET", "(", B),
+    element_value_pair_list(pairs, B + 1, C),
+    token("TOKEN_BRACKET", ")", C).
+
+.decl element_value_pair_list(e: ElementValuePairList, a: number, b: number)
+
+.decl element_value_pair(e: ElementValuePair, a: number, b: number)
+
+.decl element_value(e: ElementValue, a: number, b: number)
+
 
 /**
  * Arrays
