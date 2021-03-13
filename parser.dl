@@ -1,44 +1,44 @@
 .type Expression =
-      Number                {n: number}
-    | Identifier            {id: symbol}
-    | Equal                 {e1: Expression, e2: Expression}
-    | NotEqual              {e1: Expression, e2: Expression}
-    | Add                   {e1: Expression, e2: Expression}
-    | Mul                   {e1: Expression, e2: Expression}
-    | Sub                   {e1: Expression, e2: Expression}
-    | Mod                   {e1: Expression, e2: Expression}
-    | ShiftLeft             {e1: Expression, e2: Expression}
-    | BitwiseInclOr         {e1: Expression, e2: Expression}
-    | BitwiseExclOr         {e1: Expression, e2: Expression}
+      Add                   {e1: Expression, e2: Expression}
+    | And                   {e1: Expression, e2: Expression}
+    | Assign                {e1: Expression, e2: Expression}
     | BitwiseAnd            {e1: Expression, e2: Expression}
+    | BitwiseExclOr         {e1: Expression, e2: Expression}
+    | BitwiseInclOr         {e1: Expression, e2: Expression}
     | BitwiseNot            {e: Expression}
+    | Div                   {e1: Expression, e2: Expression}
+    | Equal                 {e1: Expression, e2: Expression}
+    | Identifier            {id: symbol}
+    | LessThan              {e1: Expression, e2: Expression}
+    | Mod                   {e1: Expression, e2: Expression}
+    | Mul                   {e1: Expression, e2: Expression}
     | Not                   {e: Expression}
+    | NotEqual              {e1: Expression, e2: Expression}
+    | Number                {n: number}
     | Or                    {e1: Expression, e2: Expression}
-    | PreIncrement          {e: Expression}
+    | PostDecrement         {e: Expression}
     | PostIncrement         {e: Expression}
     | PreDecrement          {e: Expression}
-    | PostDecrement         {e: Expression}
-    | And                   {e1: Expression, e2: Expression}
+    | PreIncrement          {e: Expression}
+    | ShiftLeft             {e1: Expression, e2: Expression}
     | ShiftRight            {e1: Expression, e2: Expression}
-    | SwitchExpr            {e: Expression}
     | ShiftRightUnsigned    {e1: Expression, e2: Expression}
-    | Div                   {e1: Expression, e2: Expression}
-    | Assign                {e1: Expression, e2: Expression}
-    | LessThan              {e1: Expression, e2: Expression}
+    | Sub                   {e1: Expression, e2: Expression}
+    | SwitchExpr            {e: Expression}
 
 .type Statement =
-      IfThen                {e: Expression, s: Statement}
-    | IfThenElse            {e: Expression, s1: Statement, s2: Statement}
-    | While                 {e: Expression, s: Statement}
-    | Assert                {e: Expression}
+      Assert                {e: Expression}
     | AssertDetailed        {e1: Expression, e2: Expression}
-    | Do                    {e: Expression, s: Statement}
     | Block                 {s: StatementList}
-    | Switch                {e: Expression, s: Statement}
+    | Do                    {e: Expression, s: Statement}
+    | Empty                 {}
+    | IfThen                {e: Expression, s: Statement}
+    | IfThenElse            {e: Expression, s1: Statement, s2: Statement}
     | Return                {e: Expression}
     | ReturnVoid            {}
+    | Switch                {e: Expression, s: Statement}
+    | While                 {e: Expression, s: Statement}
     | Yield                 {e: Expression}
-    | Empty                 {}
 
 .type StatementList = [
     head: Statement,
