@@ -31,7 +31,8 @@
     value: VariableDeclarationList
 ]
 
-.type PackageDeclaration = PackageDeclaration {}
+.type PackageDeclaration =
+    PackageDeclaration { modifiers: AnnotationList, ids: IdentifierList }
 
 .type ModuleDirective = ModuleDirective {}
 
@@ -98,6 +99,7 @@
     | Identifier            {id: Identifier}
     | Lambda                {p: LambdaParameters, b: LambdaBody}
     | LessThan              {e1: Expression, e2: Expression}
+    | Literal               {}
     | MethodInvocation      {id: Identifier, e: ExpressionList}
     | Mod                   {e1: Expression, e2: Expression}
     | Mul                   {e1: Expression, e2: Expression}
@@ -114,6 +116,7 @@
     | ShiftRightUnsigned    {e1: Expression, e2: Expression}
     | Sub                   {e1: Expression, e2: Expression}
     | SwitchExpr            {e: Expression, s: SwitchRuleList}
+    | This                  {}
 
 .type ExpressionOptional = [
     expr: Expression
@@ -288,6 +291,8 @@ identifier(t, A, A + 1) :- token("TOKEN_IDENTIFIER", t, A).
 .decl identifier?(s: IdentifierOptional, a: number, b: number)
 OPTIONAL(identifier?, identifier)
 
+.decl literal(a: number, b: number)
+
 /**
  * Types, Values and Variables
  *
@@ -426,8 +431,24 @@ compilation_unit(e, A, B) :- modular_compilation_unit(e, A, B).
 .decl modular_compilation_unit(e: CompilationUnit, a: number, b: number)
 
 .decl package_declaration(e: PackageDeclaration, a: number, b: number)
+package_declaration($PackageDeclaration(mods, ids), A, C + 1) :-
+    package_modifiers?(mods, A, B),
+    token("TOKEN_KEYWORD", "package", B),
+    package_declaration_identifiers(ids, B + 1, C),
+    token("TOKEN_SEPARATOR", ";", C).
+
+.decl package_declaration_identifiers(e: IdentifierList, a: number, b: number)
+package_declaration_identifiers([x, nil], A, B) :- identifier(x, A, B).
+package_declaration_identifiers([x, xs], A, C) :-
+    identifier(x, A, B),
+    token("TOKEN_SEPARATOR", ".", B),
+    package_declaration_identifiers(xs, B + 1, C).
 
 .decl package_modifier(e: Annotation, a: number, b: number)
+package_modifier(e, A, B) :- annotation(e, A, B).
+
+.decl package_modifiers?(e: AnnotationList, a: number, b: number)
+ZERO_OR_MORE(package_modifiers?, package_modifier)
 
 .decl import_declaration(s: ImportDeclaration, a: number, b: number)
 import_declaration(e, A, B) :- single_type_import_declaration(e, A, B).
@@ -1026,6 +1047,18 @@ primary(e, A, B) :- primary_no_new_array(e, A, B).
 primary(e, A, B) :- array_creation_expression(e, A, B).
 
 .decl primary_no_new_array(e: Expression, a: number, b: number)
+primary_no_new_array($Literal, A, B) :- literal(A, B).
+primary_no_new_array(e, A, B) :- class_literal(e, A, B).
+primary_no_new_array($This, A, A + 1) :- token("TOKEN_KEYWORD", "this", A).
+primary_no_new_array(e, A, B + 1) :-
+    token("TOKEN_BRACKET", "(", A),
+    expression(e, A + 1, B),
+    token("TOKEN_BRACKET", ")", B).
+primary_no_new_array(e, A, B) :- class_instance_creation_expression(e, A, B).
+primary_no_new_array(e, A, B) :- field_access(e, A, B).
+primary_no_new_array(e, A, B) :- array_access(e, A, B).
+primary_no_new_array(e, A, B) :- method_invocation(e, A, B).
+primary_no_new_array(e, A, B) :- method_reference(e, A, B).
 
 .decl class_literal(e: Expression, a: number, b: number)
 
@@ -1062,7 +1095,7 @@ argument_list([x, xs], A, C) :-
     token("TOKEN_SEPARATOR", ",", B),
     argument_list(xs, B + 1, C).
 
-.decl method_reference(a: number, b: number)
+.decl method_reference(e: Expression, a: number, b: number)
 
 .decl array_creation_expression(e: Expression, a: number, b: number)
 
@@ -1081,7 +1114,6 @@ lambda_expression($Lambda(params, body), A, C) :-
     lambda_parameters(params, A, B),
     token("TOKEN_SEPARATOR", "->", B),
     lambda_body(body, B + 1, C).
-
 
 .decl lambda_parameters(p: LambdaParameters, a: number, b: number)
 
@@ -1131,7 +1163,12 @@ conditional_expression(e, A, D) :-
     expression(e, B + 1, C), C > B + 1,
     token("TOKEN_SEPARATOR", ":", C),
     conditional_expression(e, C + 1, D), D > C + 1.
-// TODO: lambda
+conditional_expression(e, A, D) :-
+    conditional_or_expression(e, A, B), B > A,
+    token("TOKEN_SEPARATOR", "?", B),
+    expression(e, B + 1, C), C > B + 1,
+    token("TOKEN_SEPARATOR", ":", C),
+    lambda_expression(e, C + 1, D), D > C + 1.
 
 .decl conditional_or_expression(e: Expression, a: number, b: number)
 conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
@@ -1205,6 +1242,8 @@ POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
 .decl post_decrement_expression(e: Expression, a: number, b: number)
 POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
+.decl cast_expression(e: Expression, a: number, b: number)
+
 .decl switch_expression(e: Expression, a: number, b: number)
 switch_expression($SwitchExpr(e1, rules), A, C) :-
     token("TOKEN_KEYWORD", "switch", A),
@@ -1212,6 +1251,9 @@ switch_expression($SwitchExpr(e1, rules), A, C) :-
     expression(e1, A + 2, B),
     token("TOKEN_BRACKET", ")", B),
     switch_block(rules, B + 1, C).
+
+.decl constant_expression(e: Expression, a: number, b: number)
+constant_expression(e, A, B) :- expression(e, A, B).
 
 /**
  * Root
