@@ -188,8 +188,10 @@
     | Long {}
     | Var {}
     | Void {}
+    | Variable { id: Identifier }
     | Char {}
     | Float {}
+    | Array { type: Type, dims: DimensionList }
     | Double {}
     | ClassType {}
 
@@ -599,10 +601,16 @@ unann_class_or_interface_type(t, A, B) :- unann_interface_type(t, A, B).
 .decl unann_class_type(t: Type, a: number, b: number)
 
 .decl unann_interface_type(t: Type, a: number, b: number)
+unann_interface_type(t, A, B) :- unann_class_type(t, A, B).
 
 .decl unann_type_variable(t: Type, a: number, b: number)
+unann_type_variable($Variable(e), A, B) :- type_identifier(e, A, B).
 
 .decl unann_array_type(t: Type, a: number, b: number)
+unann_array_type($Array(t, d), A, C) :-
+    primitive_type(t, A, B),
+    dims(d, B, C).
+// ...
 
 .decl method_declaration(s: Declaration, a: number, b: number)
 method_declaration($MethodDeclaration(modifiers, header, body), A, D) :-
