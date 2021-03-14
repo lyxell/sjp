@@ -168,15 +168,24 @@
  */
 .type Declaration =
       ClassDeclaration {
-        modifiers: IdentifierList,
-        id: Identifier,
+        modifiers:  IdentifierList,
+        id:         Identifier,
         superclass: TypeOptional,
-        body: DeclarationList
+        body:       DeclarationList
       }
-    | InterfaceDeclaration  {modifiers: IdentifierList, id: Identifier}
-    | InstanceInitializerDeclaration {e: Statement}
-    | MethodDeclaration     {modifiers: IdentifierList, header: MethodHeader, body: Statement}
-    | EmptyDeclaration      {}
+    | InterfaceDeclaration {
+        modifiers:  IdentifierList,
+        id:         Identifier
+      }
+    | InstanceInitializerDeclaration {
+        statement:  Statement
+      }
+    | MethodDeclaration {
+        modifiers:  IdentifierList,
+        header:     MethodHeader,
+        body:       Statement
+      }
+    | EmptyDeclaration {}
 
 .type MethodHeader = MethodHeader {
     result: Type
