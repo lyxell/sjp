@@ -1,13 +1,17 @@
-.type SymbolList = [
-    head: symbol,
-    tail: SymbolList
-]
-
 /**
  * Identifiers
  */
 
-.type Identifier = symbol
+.type Identifier <: symbol
+
+.type IdentifierList = [
+    head: Identifier,
+    tail: IdentifierList
+]
+
+.type IdentifierOptional = [
+    id: Identifier
+]
 
 /**
  * Annotations
@@ -28,7 +32,7 @@
 ]
 
 .type Annotation = [
-    name: SymbolList,
+    name: IdentifierList,
     pairs: ElementValuePairList
 ]
 
@@ -51,7 +55,7 @@
     | BitwiseNot            {e: Expression}
     | Div                   {e1: Expression, e2: Expression}
     | Equal                 {e1: Expression, e2: Expression}
-    | Identifier            {id: symbol}
+    | Identifier            {id: Identifier}
     | LessThan              {e1: Expression, e2: Expression}
     | Mod                   {e1: Expression, e2: Expression}
     | Mul                   {e1: Expression, e2: Expression}
@@ -69,6 +73,10 @@
     | Sub                   {e1: Expression, e2: Expression}
     | SwitchExpr            {e: Expression}
 
+.type ExpressionOptional = [
+    expr: Expression
+]
+
 .type ExpressionList = [
     head: Expression,
     tail: ExpressionList
@@ -84,17 +92,32 @@
     | Block                 {s: StatementList}
     | Do                    {e: Expression, s: Statement}
     | Empty                 {}
-    | Label                 {id: symbol, s: Statement}
+    | Label                 {id: Identifier, s: Statement}
     | IfThen                {e: Expression, s: Statement}
     | IfThenElse            {e: Expression, s1: Statement, s2: Statement}
-    | Return                {e: Expression}
+    | Continue              {e: IdentifierOptional}
+    | Break                 {e: IdentifierOptional}
+    | Return                {e: ExpressionOptional}
     | Throw                 {e: Expression}
-    | ReturnVoid            {}
     | Switch                {e: Expression, s: Statement}
     | Synchronized          {e: Expression, s: Statement}
     | While                 {e: Expression, s: Statement}
     | ExpressionStatement   {e: Expression}
     | Yield                 {e: Expression}
+
+.type SwitchRule =
+      SwitchRuleExpression {label: SwitchLabel, s: Expression}
+    | SwitchRuleBlock      {label: SwitchLabel, s: Statement}
+    | SwitchRuleThrow      {label: SwitchLabel, s: Statement}
+
+.type SwitchRuleList = [
+    head: SwitchRule,
+    tail: SwitchRuleList
+]
+
+.type SwitchLabel =
+      SwitchCase {e: ExpressionList}
+    | SwitchDefault {}
 
 .type StatementList = [
     head: Statement,
@@ -128,13 +151,13 @@
  */
 
 .type TopLevel = 
-      Import                {s: SymbolList}
-    | ImportOnDemandFrom    {s: SymbolList}
+      Import                {s: IdentifierList}
+    | ImportOnDemandFrom    {s: IdentifierList}
 
 .type Declaration =
-      Class                 {modifiers: SymbolList, id: symbol, l: DeclarationList}
-    | Interface             {modifiers: SymbolList, id: symbol}
-    | Method                {modifiers: SymbolList, id: symbol}
+      Class                 {modifiers: IdentifierList, id: Identifier, l: DeclarationList}
+    | Interface             {modifiers: IdentifierList, id: Identifier}
+    | Method                {modifiers: IdentifierList, id: Identifier}
     | EmptyDeclaration      {}
 
 .type DeclarationList = [
@@ -147,7 +170,7 @@
  **************************************************************************/
 
 .input token
-.decl token(s: symbol, c: symbol, n: number)
+.decl token(s: symbol, c: Identifier, n: number)
 
 /**
  * Helper functions
@@ -156,9 +179,13 @@
 .decl any_position(n: number)
 any_position(n) :- token(_, _, n).
 
-#define ZERO_OR_MORE(xs, x) \
-    xs(nil, A, A) :- any_position(A). \
-    xs([e, tail], A, C) :- x(e, A, B), xs(tail, B, C).
+#define ZERO_OR_MORE(take_many, take_one) \
+    take_many(nil, A, A) :- any_position(A). \
+    take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
+
+#define ONE_OR_MORE(take_many, take_one) \
+    take_many([x, nil], A, B) :- take_one(x, A, B). \
+    take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
 
 #define INFIX(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
@@ -183,10 +210,13 @@ any_position(n) :- token(_, _, n).
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl type_identifier(s: symbol, l: number, n: number)
+.decl type_identifier(s: Identifier, a: number, b: number)
 type_identifier(t, A, A + 1) :-
     token("TOKEN_IDENTIFIER", t, A).
 // TODO not var or yield
+
+.decl identifier(s: Identifier, a: number, b: number)
+identifier(t, A, A + 1) :- token("TOKEN_IDENTIFIER", t, A).
 
 /**
  * Types, Values and Variables
@@ -262,11 +292,11 @@ type_parameter_modifier(t, A, B) :- annotation(t, A, B).
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl module_name(s: SymbolList, a: number, b: number)
+.decl module_name(s: IdentifierList, a: number, b: number)
 
-.decl package_name(s: SymbolList, a: number, b: number)
+.decl package_name(s: IdentifierList, a: number, b: number)
 
-.decl type_name(s: SymbolList, a: number, b: number)
+.decl type_name(s: IdentifierList, a: number, b: number)
 type_name([t, nil], A, B) :- type_identifier(t, A, B).
 type_name([t, tail], A, C) :-
     package_or_type_name(tail, A, B),
@@ -274,7 +304,7 @@ type_name([t, tail], A, C) :-
     type_identifier(t, B + 1, C).
 // ... TODO: reverse?
 
-.decl expression_name(s: SymbolList, a: number, b: number)
+.decl expression_name(s: IdentifierList, a: number, b: number)
 expression_name([e, nil], A, A + 1) :- token("TOKEN_IDENTIFIER", e, A).
 expression_name([e, tail], A, B + 2) :-
     ambiguous_name(tail, A, B),
@@ -286,14 +316,15 @@ expression_name([e, tail], A, B + 2) :-
 method_name(x, A, A + 1) :- token("TOKEN_IDENTIFIER", x, A).
 // ... TODO: not yield
 
-.decl package_or_type_name(s: SymbolList, a: number, b: number)
+.decl package_or_type_name(s: IdentifierList, a: number, b: number)
 package_or_type_name([x, nil], A, A + 1) :- token("TOKEN_IDENTIFIER", x, A).
 package_or_type_name([x, xs], A, B + 2) :-
     package_or_type_name(xs, A, B), B > A,
     token("TOKEN_SEPARATOR", ".", B),
     token("TOKEN_IDENTIFIER", x, B + 1).
+// ... TODO: reverse?
 
-.decl ambiguous_name(s: SymbolList, a: number, b: number)
+.decl ambiguous_name(s: IdentifierList, a: number, b: number)
 ambiguous_name([x, nil], A, A + 1) :- token("TOKEN_IDENTIFIER", x, A).
 ambiguous_name([x, xs], A, A + 1) :-
     ambiguous_name(xs, A, B),
@@ -376,10 +407,10 @@ normal_class_declaration($Class(modifiers, id, declarations), A, D) :-
     type_identifier(id, B + 1, C), C > B + 1,
     class_body(declarations, C, D).
 
-.decl class_modifiers(s: SymbolList, a: number, b: number)
+.decl class_modifiers(s: IdentifierList, a: number, b: number)
 ZERO_OR_MORE(class_modifiers, class_modifier)
 
-.decl class_modifier(s: symbol, a: number, b: number)
+.decl class_modifier(s: Identifier, a: number, b: number)
 class_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
 class_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
 class_modifier("protected", A, A + 1) :- token("TOKEN_KEYWORD", "protected", A).
@@ -449,16 +480,21 @@ unann_primitive_type($Boolean, A, A + 1) :-
 unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
 .decl unann_reference_type(t: Type, a: number, b: number)
+unann_reference_type(t, A, B) :- unann_class_or_interface_type(t, A, B).
+unann_reference_type(t, A, B) :- unann_type_variable(t, A, B).
+unann_reference_type(t, A, B) :- unann_array_type(t, A, B).
 
-// TODO UnannClassOrInterfaceType
+.decl unann_class_or_interface_type(t: Type, a: number, b: number)
+unann_class_or_interface_type(t, A, B) :- unann_class_type(t, A, B).
+unann_class_or_interface_type(t, A, B) :- unann_interface_type(t, A, B).
 
-// TODO UnannClassType
+.decl unann_class_type(t: Type, a: number, b: number)
 
-// TODO UnannInterfaceType
+.decl unann_interface_type(t: Type, a: number, b: number)
 
-// TODO UnannTypeVariable
+.decl unann_type_variable(t: Type, a: number, b: number)
 
-// TODO UnannArrayType
+.decl unann_array_type(t: Type, a: number, b: number)
 
 .decl method_declaration(s: Declaration, a: number, b: number)
 
@@ -701,14 +737,42 @@ switch_statement($Switch(e, $Empty), A, C) :-
 .decl switch_block(s: Statement, a: number, b: number)
 switch_block($Empty, A, A + 2) :-
     token("TOKEN_BRACKET", "{", A),
+    switch_rules(_, A + 1, B),
     token("TOKEN_BRACKET", "}", A + 1).
-// TODO ...
 
-// TODO SwitchRule
+.decl switch_rules(e: SwitchRuleList, a: number, b: number)
+ONE_OR_MORE(switch_rules, switch_rule)
+
+.decl switch_rule(e: SwitchRule, a: number, b: number)
+switch_rule($SwitchRuleExpression(label, expr), A, C + 1) :-
+    switch_label(label, A, B),
+    token("TOKEN_SEPARATOR", "->", B),
+    expression(expr, B + 1, C),
+    token("TOKEN_SEPARATOR", ";", C).
+switch_rule($SwitchRuleBlock(label, stmt), A, C) :-
+    switch_label(label, A, B),
+    token("TOKEN_SEPARATOR", "->", B),
+    block(stmt, B + 1, C).
+switch_rule($SwitchRuleBlock(label, stmt), A, C) :-
+    switch_label(label, A, B),
+    token("TOKEN_SEPARATOR", "->", B),
+    throw_statement(stmt, B + 1, C).
 
 // TODO SwitchBlockStatementGroup
 
-// TODO SwitchLabel
+.decl switch_label(s: SwitchLabel, a: number, b: number)
+switch_label($SwitchDefault, A, A + 1) :-
+    token("TOKEN_KEYWORD", "default", A).
+switch_label($SwitchCase(exprs), A, B) :-
+    token("TOKEN_KEYWORD", "case", A),
+    case_constants(exprs, A + 1, B).
+
+.decl case_constants(e: ExpressionList, a: number, b: number)
+case_constants([x, nil], A, B) :- case_constant(x, A, B).
+case_constants([x, xs], A, C) :-
+    case_constant(x, A, B),
+    token("TOKEN_SEPARATOR", ",", B),
+    case_constants(xs, B + 1, C).
 
 .decl case_constant(e: Expression, a: number, b: number)
 case_constant(e, A, B) :- conditional_expression(e, A, B).
@@ -752,6 +816,13 @@ do_statement($Do(cond, do), A, C + 2) :-
 .decl enhanced_for_statement_no_short_if(s: Statement, a: number, b: number)
 
 .decl break_statement(s: Statement, a: number, b: number)
+continue_statement($Break(nil), A, A + 2) :-
+    token("TOKEN_KEYWORD", "break", A),
+    token("TOKEN_SEPARATOR", ";", A + 1).
+continue_statement($Break([id]), A, B + 1) :-
+    token("TOKEN_KEYWORD", "break", A),
+    identifier(id, A + 1, B),
+    token("TOKEN_SEPARATOR", ";", B).
 
 .decl yield_statement(s: Statement, a: number, b: number)
 yield_statement($Yield(e), A, B + 1) :-
@@ -760,12 +831,19 @@ yield_statement($Yield(e), A, B + 1) :-
     token("TOKEN_SEPARATOR", ";", B).
 
 .decl continue_statement(s: Statement, a: number, b: number)
+continue_statement($Continue(nil), A, A + 2) :-
+    token("TOKEN_KEYWORD", "continue", A),
+    token("TOKEN_SEPARATOR", ";", A + 1).
+continue_statement($Continue([id]), A, B + 1) :-
+    token("TOKEN_KEYWORD", "continue", A),
+    identifier(id, A + 1, B),
+    token("TOKEN_SEPARATOR", ";", B).
 
 .decl return_statement(s: Statement, a: number, b: number)
-return_statement($ReturnVoid, A, A + 2) :-
+return_statement($Return(nil), A, A + 2) :-
     token("TOKEN_KEYWORD", "return", A),
     token("TOKEN_SEPARATOR", ";", A + 1).
-return_statement($Return(e), A, B + 1) :-
+return_statement($Return([e]), A, B + 1) :-
     token("TOKEN_KEYWORD", "return", A),
     expression(e, A + 1, B), B > A + 1,
     token("TOKEN_SEPARATOR", ";", B).
