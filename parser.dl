@@ -274,19 +274,32 @@ type_name([t, tail], A, C) :-
     type_identifier(t, B + 1, C).
 // ... TODO: reverse?
 
-// TODO ExpressionName
+.decl expression_name(s: SymbolList, a: number, b: number)
+expression_name([e, nil], A, A + 1) :- token("TOKEN_IDENTIFIER", e, A).
+expression_name([e, tail], A, B + 2) :-
+    ambiguous_name(tail, A, B),
+    token("TOKEN_SEPARATOR", ".", B),
+    token("TOKEN_IDENTIFIER", e, B + 1).
+// ... TODO: reverse?
 
-// TODO MethodName
+.decl method_name(x: symbol, a: number, b: number)
+method_name(x, A, A + 1) :- token("TOKEN_IDENTIFIER", x, A).
+// ... TODO: not yield
 
 .decl package_or_type_name(s: SymbolList, a: number, b: number)
-package_or_type_name([t, nil], A, A + 1) :-
-    token("IDENTIFIER", t, A).
-package_or_type_name([t, tail], A, B + 2) :-
-    package_or_type_name(tail, A, B), B > A,
+package_or_type_name([x, nil], A, A + 1) :- token("TOKEN_IDENTIFIER", x, A).
+package_or_type_name([x, xs], A, B + 2) :-
+    package_or_type_name(xs, A, B), B > A,
     token("TOKEN_SEPARATOR", ".", B),
-    token("IDENTIFIER", t, B + 1).
+    token("TOKEN_IDENTIFIER", x, B + 1).
 
-// TODO AmbiguousName
+.decl ambiguous_name(s: SymbolList, a: number, b: number)
+ambiguous_name([x, nil], A, A + 1) :- token("TOKEN_IDENTIFIER", x, A).
+ambiguous_name([x, xs], A, A + 1) :-
+    ambiguous_name(xs, A, B),
+    token("TOKEN_SEPARATOR", ".", B),
+    token("TOKEN_IDENTIFIER", x, B + 1).
+// ... TODO: reverse?
 
 /**
  * Packages and Modules
@@ -544,7 +557,6 @@ normal_annotation([name, pairs], A, C + 1) :-
 .decl element_value_pair(e: ElementValuePair, a: number, b: number)
 
 .decl element_value(e: ElementValue, a: number, b: number)
-
 
 /**
  * Arrays
@@ -905,18 +917,15 @@ PREFIX($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
 PREFIX($Not, unary_expression_not_plus_minus, unary_expression, "!")
 
 .decl postfix_expression(e: Expression, a: number, b: number)
-postfix_expression(e, A, B) :- expression_name(e, A, B).
 postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
+postfix_expression($Identifier(id), A, A + 1) :- token("TOKEN_IDENTIFIER", id, A).
+postfix_expression($Number(to_number(n)), A, A + 1) :- token("TOKEN_NUMBER", n, A).
 
 .decl post_increment_expression(e: Expression, a: number, b: number)
 POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
 .decl post_decrement_expression(e: Expression, a: number, b: number)
 POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
-
-.decl expression_name(e: Expression, a: number, b: number)
-expression_name($Identifier(id), A, A + 1) :- token("TOKEN_IDENTIFIER", id, A).
-expression_name($Number(to_number(n)), A, A + 1) :- token("TOKEN_NUMBER", n, A).
 
 .decl switch_expression(e: Expression, a: number, b: number)
 switch_expression($SwitchExpr(e1), A, C) :-
