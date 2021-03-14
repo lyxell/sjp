@@ -51,8 +51,8 @@ int lex(const char *YYCURSOR) {
             report("TOKEN_NUMBER", YYSTART, YYCURSOR);
             continue;
         }
-        ";" {
-            report("TOKEN_SEMICOLON", YYSTART, YYCURSOR);
+        ";" | "," | "." {
+            report("TOKEN_SEPARATOR", YYSTART, YYCURSOR);
             continue;
         }
         [a-zA-Z_][a-zA-Z_0-9]* {
@@ -66,7 +66,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("public class Data { public class Main {} }");
+    lex("return 2 + 2; return;");
     report("TOKEN_EOF", 0, 0);
     return 0;
 }

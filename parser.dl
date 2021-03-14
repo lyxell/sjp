@@ -57,6 +57,7 @@
     | Equal                 {e1: Expression, e2: Expression}
     | Identifier            {id: Identifier}
     | LessThan              {e1: Expression, e2: Expression}
+    | MethodInvocation      {id: Identifier, e: ExpressionList}
     | Mod                   {e1: Expression, e2: Expression}
     | Mul                   {e1: Expression, e2: Expression}
     | Not                   {e: Expression}
@@ -187,6 +188,10 @@ any_position(n) :- token(_, _, n).
     take_many([x, nil], A, B) :- take_one(x, A, B). \
     take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
 
+#define OPTIONAL(take_zero_or_one, take_one) \
+    take_zero_or_one(nil, A, A) :- any_position(A). \
+    take_zero_or_one([x], A, B) :- take_one(x, A, B).
+
 #define INFIX(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
         current_level(e1, A, B), B > A, \
@@ -217,6 +222,9 @@ type_identifier(t, A, A + 1) :-
 
 .decl identifier(s: Identifier, a: number, b: number)
 identifier(t, A, A + 1) :- token("TOKEN_IDENTIFIER", t, A).
+
+.decl identifier?(s: IdentifierOptional, a: number, b: number)
+OPTIONAL(identifier?, identifier)
 
 /**
  * Types, Values and Variables
@@ -312,7 +320,7 @@ expression_name([e, tail], A, B + 2) :-
     token("TOKEN_IDENTIFIER", e, B + 1).
 // ... TODO: reverse?
 
-.decl method_name(x: symbol, a: number, b: number)
+.decl method_name(x: Identifier, a: number, b: number)
 method_name(x, A, A + 1) :- token("TOKEN_IDENTIFIER", x, A).
 // ... TODO: not yield
 
@@ -831,12 +839,9 @@ do_statement($Do(cond, do), A, C + 2) :-
 .decl enhanced_for_statement_no_short_if(s: Statement, a: number, b: number)
 
 .decl break_statement(s: Statement, a: number, b: number)
-continue_statement($Break(nil), A, A + 2) :-
+break_statement($Break(id), A, B + 1) :-
     token("TOKEN_KEYWORD", "break", A),
-    token("TOKEN_SEPARATOR", ";", A + 1).
-continue_statement($Break([id]), A, B + 1) :-
-    token("TOKEN_KEYWORD", "break", A),
-    identifier(id, A + 1, B),
+    identifier?(id, A + 1, B),
     token("TOKEN_SEPARATOR", ";", B).
 
 .decl yield_statement(s: Statement, a: number, b: number)
@@ -846,21 +851,15 @@ yield_statement($Yield(e), A, B + 1) :-
     token("TOKEN_SEPARATOR", ";", B).
 
 .decl continue_statement(s: Statement, a: number, b: number)
-continue_statement($Continue(nil), A, A + 2) :-
+continue_statement($Continue(id), A, B + 1) :-
     token("TOKEN_KEYWORD", "continue", A),
-    token("TOKEN_SEPARATOR", ";", A + 1).
-continue_statement($Continue([id]), A, B + 1) :-
-    token("TOKEN_KEYWORD", "continue", A),
-    identifier(id, A + 1, B),
+    identifier?(id, A + 1, B),
     token("TOKEN_SEPARATOR", ";", B).
 
 .decl return_statement(s: Statement, a: number, b: number)
-return_statement($Return(nil), A, A + 2) :-
+return_statement($Return(e), A, B + 1) :-
     token("TOKEN_KEYWORD", "return", A),
-    token("TOKEN_SEPARATOR", ";", A + 1).
-return_statement($Return([e]), A, B + 1) :-
-    token("TOKEN_KEYWORD", "return", A),
-    expression(e, A + 1, B), B > A + 1,
+    expression?(e, A + 1, B),
     token("TOKEN_SEPARATOR", ";", B).
 
 .decl throw_statement(s: Statement, a: number, b: number)
@@ -923,8 +922,25 @@ synchronized_statement($Synchronized(e, s), A, C) :-
 .decl array_access(e: Expression, a: number, b: number)
 
 .decl method_invocation(e: Expression, a: number, b: number)
+method_invocation(e, A, B) :- method_invocation_with_method_name(e, A, B).
+
+.decl method_invocation_with_method_name(e: Expression, a: number, b: number)
+method_invocation_with_method_name($MethodInvocation(id, e), A, C + 1) :-
+    method_name(id, A, B),
+    token("TOKEN_BRACKET", "(", B),
+    argument_list?(e, B + 1, C),
+    token("TOKEN_BRACKET", ")", C).
+
+.decl argument_list?(e: ExpressionList, a: number, b: number)
+argument_list?(nil, A, A) :- any_position(A).
+argument_list?(e, A, B) :- argument_list(e, A, B).
 
 .decl argument_list(e: ExpressionList, a: number, b: number)
+argument_list([x, nil], A, B) :- expression(x, A, B).
+argument_list([x, xs], A, C) :-
+    expression(x, A, B),
+    token("TOKEN_SEPARATOR", ",", B),
+    argument_list(xs, B + 1, C).
 
 .decl method_reference(a: number, b: number)
 
@@ -936,6 +952,9 @@ synchronized_statement($Synchronized(e, s), A, C) :-
 .decl expression(e: Expression, a: number, b: number)
 expression(e, A, B) :- conditional_expression(e, A, B).
 expression(e, A, B) :- lambda_expression(e, A, B).
+
+.decl expression?(e: ExpressionOptional, a: number, b: number)
+OPTIONAL(expression?, expression)
 
 .decl lambda_expression(e: Expression, a: number, b: number)
 
@@ -1075,8 +1094,12 @@ root(s) :-
     token("TOKEN_EOF", _, N+1).
 
 .output expression
+.output return_statement
 .output statement
 .output class_modifiers
 .output type_identifier
 .output class_body
+.output continue_statement
+.output method_invocation
 .output normal_class_declaration
+.output argument_list?
