@@ -14,6 +14,28 @@
 ]
 
 /**
+ * Compilation unit
+ */
+
+.type PackageDeclaration = PackageDeclaration {}
+.type ImportDeclaration =
+      Import { s: IdentifierList }
+    | ImportOnDemandFrom { s: IdentifierList }
+
+.type ImportDeclarationList = [
+    key: ImportDeclaration,
+    value: ElementValue
+]
+
+.type CompilationUnit =
+    OrdinaryCompilationUnit {
+        package: PackageDeclaration,
+        imports: ImportDeclarationList,
+        declarations: DeclarationList
+    }
+    | ModularCompilationUnit {}
+
+/**
  * Annotations
  */
 
@@ -154,14 +176,6 @@
     head: Type,
     tail: TypeList
 ]
-
-/**
- * Misc
- */
-
-.type TopLevel = 
-      Import                {s: IdentifierList}
-    | ImportOnDemandFrom    {s: IdentifierList}
 
 /**
  * These are constructs that may occur inside a ClassBody
@@ -377,48 +391,45 @@ ambiguous_name([x, xs], A, A + 1) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-// TODO CompilationUnit
+.decl compilation_unit(e: CompilationUnit, a: number, b: number)
+compilation_unit(e, A, B) :- ordinary_compilation_unit(e, A, B).
+compilation_unit(e, A, B) :- modular_compilation_unit(e, A, B).
 
-//compilation_unit(e, A, B) :- ordinary_compilation_unit(e, A, B).
+.decl ordinary_compilation_unit(e: CompilationUnit, a: number, b: number)
 
-// TODO OrdinaryCompilationUnit
+.decl modular_compilation_unit(e: CompilationUnit, a: number, b: number)
 
-/*
-ordinary_compilation_unit(e, A, B) :-
-    package_declaration(e, A, B),
-    import_declarations(e, A, B),
-    import_declarations(e, A, B).*/
+.decl package_declaration(e: PackageDeclaration, a: number, b: number)
 
-// TODO ModularCompilationUnit
+.decl package_modifier(e: Annotation, a: number, b: number)
 
-// TODO PackageDeclaration
-
-// TODO PackageModifier
-
-.decl import_declaration(s: TopLevel, a: number, b: number)
+.decl import_declaration(s: ImportDeclaration, a: number, b: number)
 import_declaration(e, A, B) :- single_type_import_declaration(e, A, B).
 import_declaration(e, A, B) :- type_import_on_demand_declaration(e, A, B).
-// ... TODO
+import_declaration(e, A, B) :- single_static_import_declaration(e, A, B).
+import_declaration(e, A, B) :- static_import_on_demand_declaration(e, A, B).
 
-.decl single_type_import_declaration(s: TopLevel, a: number, b: number)
+.decl single_type_import_declaration(s: ImportDeclaration, a: number, b: number)
 single_type_import_declaration($Import(syms), A, B + 1) :-
     token("TOKEN_KEYWORD", "import", A),
-    type_name(syms, A + 1, B), B > A + 1,
+    type_name(syms, A + 1, B),
     token("TOKEN_SEPARATOR", ";", B).
 
-.decl type_import_on_demand_declaration(s: TopLevel, a: number, b: number)
+.decl type_import_on_demand_declaration(s: ImportDeclaration, a: number, b: number)
 type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B + 3) :-
     token("TOKEN_KEYWORD", "import", A),
-    type_name(syms, A + 1, B), B > A + 1,
+    type_name(syms, A + 1, B),
     token("TOKEN_SEPARATOR", ".", B),
     token("TOKEN_OPERATOR",  "*", B + 1),
     token("TOKEN_SEPARATOR", ";", B + 2).
 
-// TODO SingleStaticImportDeclaration
+.decl single_static_import_declaration(s: ImportDeclaration, a: number, b: number)
 
-// TODO StaticImportOnDemandDeclaration
+.decl static_import_on_demand_declaration(s: ImportDeclaration, a: number, b: number)
 
-// TODO TypeDeclaration
+.decl type_declaration(s: Declaration, a: number, b: number)
+type_declaration(e, A, B) :- class_declaration(e, A, B).
+type_declaration(e, A, B) :- interface_declaration(e, A, B).
 
 // TODO ModuleDeclaration
 
