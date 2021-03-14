@@ -785,7 +785,7 @@ switch_rule($SwitchRuleBlock(label, stmt), A, C) :-
     token("TOKEN_SEPARATOR", "->", B),
     throw_statement(stmt, B + 1, C).
 
-// TODO SwitchBlockStatementGroup
+.decl switch_block_statement_group(a: number, b: number)
 
 .decl switch_label(s: SwitchLabel, a: number, b: number)
 switch_label($SwitchDefault, A, A + 1) :-
@@ -832,11 +832,11 @@ do_statement($Do(cond, do), A, C + 2) :-
 
 .decl basic_for_statement_no_short_if(s: Statement, a: number, b: number)
 
-// TODO ForInit
+.decl for_init(s: Statement, a: number, b: number)
 
-// TODO ForUpdate
+.decl for_update(s: Statement, a: number, b: number)
 
-// TODO StatementExpressionList
+.decl statement_expression_list(s: Statement, a: number, b: number)
 
 .decl enhanced_for_statement(s: Statement, a: number, b: number)
 
@@ -908,6 +908,8 @@ synchronized_statement($Synchronized(e, s), A, C) :-
  **************************************************************************/
 
 .decl primary(e: Expression, a: number, b: number)
+primary(e, A, B) :- primary_no_new_array(e, A, B).
+primary(e, A, B) :- array_creation_expression(e, A, B).
 
 .decl primary_no_new_array(e: Expression, a: number, b: number)
 
