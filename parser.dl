@@ -40,12 +40,6 @@
  * Expressions
  */
 
-.type LambdaBody =
-      LambdaBodyExpression {e: Expression}
-    | LambdaBodyBlock      {e: Statement}
-
-.type LambdaParameters = symbol
-
 .type Expression =
       Add                   {e1: Expression, e2: Expression}
     | And                   {e1: Expression, e2: Expression}
@@ -85,6 +79,12 @@
     head: Expression,
     tail: ExpressionList
 ]
+
+.type LambdaBody =
+      LambdaBodyExpression {e: Expression}
+    | LambdaBodyBlock      {e: Statement}
+
+.type LambdaParameters = symbol
 
 /**
  * Statements
@@ -173,10 +173,14 @@
         superclass: TypeOptional,
         body: DeclarationList
       }
-    | Interface             {modifiers: IdentifierList, id: Identifier}
+    | InterfaceDeclaration  {modifiers: IdentifierList, id: Identifier}
     | InstanceInitializerDeclaration {e: Statement}
-    | Method                {modifiers: IdentifierList, id: Identifier}
+    | MethodDeclaration     {modifiers: IdentifierList, header: MethodHeader, body: Statement}
     | EmptyDeclaration      {}
+
+.type MethodHeader = MethodHeader {
+    result: Type
+}
 
 .type DeclarationList = [
     head: Declaration,
@@ -534,10 +538,26 @@ unann_class_or_interface_type(t, A, B) :- unann_interface_type(t, A, B).
 .decl unann_array_type(t: Type, a: number, b: number)
 
 .decl method_declaration(s: Declaration, a: number, b: number)
+method_declaration($MethodDeclaration(modifiers, header, body), A, D) :-
+    method_modifiers(modifiers, A, B),
+    method_header(header, B, C),
+    method_body(body, C, D).
 
-// TODO MethodModifier
+.decl method_modifiers(s: IdentifierList, a: number, b: number)
+ZERO_OR_MORE(method_modifiers, method_modifier)
 
-// TODO MethodHeader
+.decl method_modifier(s: Identifier, a: number, b: number)
+method_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
+method_modifier("protected", A, A + 1) :- token("TOKEN_KEYWORD", "protected", A).
+method_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
+method_modifier("abstract", A, A + 1) :- token("TOKEN_KEYWORD", "abstract", A).
+method_modifier("static", A, A + 1) :- token("TOKEN_KEYWORD", "static", A).
+method_modifier("final", A, A + 1) :- token("TOKEN_KEYWORD", "final", A).
+method_modifier("synchronized", A, A + 1) :- token("TOKEN_KEYWORD", "synchronized", A).
+method_modifier("native", A, A + 1) :- token("TOKEN_KEYWORD", "native", A).
+method_modifier("strictfp", A, A + 1) :- token("TOKEN_KEYWORD", "strictfp", A).
+
+.decl method_header(s: MethodHeader, a: number, b: number)
 
 .decl result(t: Type, a: number, b: number)
 result(t, A, B) :- unann_type(t, A, B).
