@@ -17,14 +17,31 @@
  * Compilation unit
  */
 
+.type VariableDeclaration = VariableDeclaration {}
+
+.type Dimension = Dimension { annotations: AnnotationList }
+
+.type DimensionList = [
+    key: Dimension,
+    value: DimensionList
+]
+
+.type VariableDeclarationList = [
+    key: VariableDeclaration,
+    value: VariableDeclarationList
+]
+
 .type PackageDeclaration = PackageDeclaration {}
+
+.type ModuleDirective = ModuleDirective {}
+
 .type ImportDeclaration =
       Import { s: IdentifierList }
     | ImportOnDemandFrom { s: IdentifierList }
 
 .type ImportDeclarationList = [
     key: ImportDeclaration,
-    value: ElementValue
+    value: ImportDeclarationList
 ]
 
 .type CompilationUnit =
@@ -56,6 +73,11 @@
 .type Annotation = [
     name: IdentifierList,
     pairs: ElementValuePairList
+]
+
+.type AnnotationList = [
+    name: Annotation,
+    pairs: AnnotationList
 ]
 
 /**
@@ -228,10 +250,6 @@ any_position(n) :- token(_, _, n).
     take_many(nil, A, A) :- any_position(A). \
     take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
 
-#define ONE_OR_MORE(take_many, take_one) \
-    take_many([x, nil], A, B) :- take_one(x, A, B). \
-    take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
-
 #define OPTIONAL(take_zero_or_one, take_one) \
     take_zero_or_one(nil, A, A) :- any_position(A). \
     take_zero_or_one([x], A, B) :- take_one(x, A, B).
@@ -316,7 +334,15 @@ interface_type(t, A, B) :- class_type(t, A, B).
 
 .decl array_type(t: Type, a: number, b: number)
 
-.decl dims(a: number, b: number)
+.decl dims(e: DimensionList, a: number, b: number)
+dims([x, nil], A, B) :- dim(x, A, B).
+dims([x, xs],  A, B) :- dim(x, A, B), dims(xs, A, B).
+
+.decl dim(t: Dimension, a: number, b: number)
+dim($Dimension(a), A, B + 2) :-
+    annotations?(a, A, B),
+    token("TOKEN_BRACKET", "[", B),
+    token("TOKEN_BRACKET", "]", B + 1).
 
 .decl type_parameter(t: Type, a: number, b: number)
 
@@ -431,11 +457,11 @@ type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, B + 3) :-
 type_declaration(e, A, B) :- class_declaration(e, A, B).
 type_declaration(e, A, B) :- interface_declaration(e, A, B).
 
-// TODO ModuleDeclaration
+.decl module_declaration(s: Declaration, a: number, b: number)
 
-// TODO ModuleDirective
+.decl module_directive(s: ModuleDirective, a: number, b: number)
 
-// TODO RequiresModifier
+.decl requires_modifier(s: Identifier, a: number, b: number)
 
 /**
  * Classes
@@ -451,14 +477,14 @@ class_declaration(e, A, B) :- enum_declaration(e, A, B).
 
 .decl normal_class_declaration(s: Declaration, a: number, b: number)
 normal_class_declaration($ClassDeclaration(modifiers, id, sup, declarations), A, E) :-
-    class_modifiers(modifiers, A, B),
+    class_modifiers?(modifiers, A, B),
     token("TOKEN_KEYWORD", "class", B),
     type_identifier(id, B + 1, C), C > B + 1,
     superclass?(sup, C, D),
     class_body(declarations, D, E).
 
-.decl class_modifiers(s: IdentifierList, a: number, b: number)
-ZERO_OR_MORE(class_modifiers, class_modifier)
+.decl class_modifiers?(s: IdentifierList, a: number, b: number)
+ZERO_OR_MORE(class_modifiers?, class_modifier)
 
 .decl class_modifier(s: Identifier, a: number, b: number)
 class_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
@@ -498,11 +524,11 @@ OPTIONAL(superclass?, superclass)
 .decl class_body(s: DeclarationList, a: number, b: number)
 class_body(declarations, A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
-    class_body_declarations(declarations, A + 1, B),
+    class_body_declarations?(declarations, A + 1, B),
     token("TOKEN_BRACKET", "}", B).
 
-.decl class_body_declarations(d: DeclarationList, a: number, b: number)
-ZERO_OR_MORE(class_body_declarations, class_body_declaration)
+.decl class_body_declarations?(d: DeclarationList, a: number, b: number)
+ZERO_OR_MORE(class_body_declarations?, class_body_declaration)
 
 .decl class_body_declaration(d: Declaration, a: number, b: number)
 class_body_declaration(e, A, B) :- class_member_declaration(e, A, B).
@@ -519,11 +545,11 @@ class_member_declaration($EmptyDeclaration, A, A + 1)
 
 .decl field_declaration(s: Declaration, a: number, b: number)
 
-// TODO FieldModifier
+.decl field_modifier(s: Identifier, a: number, b: number)
 
-// TODO VariableDeclaratorList
+.decl variable_declarator_list(s: VariableDeclarationList, a: number, b: number)
 
-// TODO VariableDeclarator
+.decl variable_declarator(s: VariableDeclaration, a: number, b: number)
 
 // TODO VariableDeclaratorId
 
@@ -559,12 +585,12 @@ unann_class_or_interface_type(t, A, B) :- unann_interface_type(t, A, B).
 
 .decl method_declaration(s: Declaration, a: number, b: number)
 method_declaration($MethodDeclaration(modifiers, header, body), A, D) :-
-    method_modifiers(modifiers, A, B),
+    method_modifiers?(modifiers, A, B),
     method_header(header, B, C),
     method_body(body, C, D).
 
-.decl method_modifiers(s: IdentifierList, a: number, b: number)
-ZERO_OR_MORE(method_modifiers, method_modifier)
+.decl method_modifiers?(s: IdentifierList, a: number, b: number)
+ZERO_OR_MORE(method_modifiers?, method_modifier)
 
 .decl method_modifier(s: Identifier, a: number, b: number)
 method_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
@@ -668,6 +694,9 @@ interface_declaration(e, A, B) :- annotation_type_declaration(e, A, B).
 .decl annotation(e: Annotation, a: number, b: number)
 annotation(e, A, B) :- normal_annotation(e, A, B).
 
+.decl annotations?(e: AnnotationList, a: number, b: number)
+ZERO_OR_MORE(annotations?, annotation)
+
 .decl normal_annotation(e: Annotation, a: number, b: number)
 normal_annotation([name, nil], A, B + 2) :-
     token("TOKEN_SEPARATOR", "@", A),
@@ -723,11 +752,11 @@ variable_initializer_list([e, tail], A, C) :-
 .decl block(s: Statement, a: number, b: number)
 block($Block(s), A, B + 1) :-
     token("TOKEN_BRACKET", "{", A),
-    block_statements(s, A + 1, B),
+    block_statements?(s, A + 1, B),
     token("TOKEN_BRACKET", "}", B).
 
-.decl block_statements(s: StatementList, a: number, b: number)
-ZERO_OR_MORE(block_statements, block_statement)
+.decl block_statements?(s: StatementList, a: number, b: number)
+ZERO_OR_MORE(block_statements?, block_statement)
 
 .decl block_statement(s: Statement, a: number, b: number)
 block_statement(e, A, B) :- statement(e, A, B).
@@ -843,13 +872,14 @@ switch_statement($Switch(e, rules), A, C) :-
     switch_block(rules, B + 1, C), C > B + 1.
 
 .decl switch_block(s: SwitchRuleList, a: number, b: number)
-switch_block(rules, A, A + 2) :-
+switch_block([rule, rules], A, C + 1) :-
     token("TOKEN_BRACKET", "{", A),
-    switch_rules(rules, A + 1, B),
-    token("TOKEN_BRACKET", "}", A + 1).
+    switch_rule(rule, A + 1, B),
+    switch_rules?(rules, B, C),
+    token("TOKEN_BRACKET", "}", C).
 
-.decl switch_rules(e: SwitchRuleList, a: number, b: number)
-ONE_OR_MORE(switch_rules, switch_rule)
+.decl switch_rules?(e: SwitchRuleList, a: number, b: number)
+ZERO_OR_MORE(switch_rules?, switch_rule)
 
 .decl switch_rule(e: SwitchRule, a: number, b: number)
 switch_rule($SwitchRuleExpression(label, expr), A, C + 1) :-
@@ -914,8 +944,11 @@ do_statement($Do(cond, do), A, C + 2) :-
 .decl basic_for_statement_no_short_if(s: Statement, a: number, b: number)
 
 .decl for_init(s: Statement, a: number, b: number)
+for_init(e, A, B) :- statement_expression_list(e, A, B).
+for_init(e, A, B) :- local_variable_declaration(e, A, B).
 
 .decl for_update(s: Statement, a: number, b: number)
+for_update(e, A, B) :- statement_expression_list(e, A, B).
 
 .decl statement_expression_list(s: Statement, a: number, b: number)
 
@@ -1192,7 +1225,7 @@ root(s) :-
 .output expression
 .output return_statement
 .output statement
-.output class_modifiers
+.output class_modifiers?
 .output type_identifier
 .output class_body
 .output continue_statement
