@@ -145,6 +145,10 @@
     | Float {}
     | Double {}
     | ClassType {}
+
+.type TypeOptional = [
+    t: Type
+]
          
 .type TypeList = [
     head: Type,
@@ -159,9 +163,18 @@
       Import                {s: IdentifierList}
     | ImportOnDemandFrom    {s: IdentifierList}
 
+/**
+ * These are constructs that may occur inside a ClassBody
+ */
 .type Declaration =
-      Class                 {modifiers: IdentifierList, id: Identifier, l: DeclarationList}
+      ClassDeclaration {
+        modifiers: IdentifierList,
+        id: Identifier,
+        superclass: TypeOptional,
+        body: DeclarationList
+      }
     | Interface             {modifiers: IdentifierList, id: Identifier}
+    | InstanceInitializerDeclaration {e: Statement}
     | Method                {modifiers: IdentifierList, id: Identifier}
     | EmptyDeclaration      {}
 
@@ -413,19 +426,24 @@ class_declaration(e, A, B) :- normal_class_declaration(e, A, B).
 class_declaration(e, A, B) :- enum_declaration(e, A, B).
 
 .decl normal_class_declaration(s: Declaration, a: number, b: number)
-normal_class_declaration($Class(modifiers, id, declarations), A, D) :-
+normal_class_declaration($ClassDeclaration(modifiers, id, sup, declarations), A, E) :-
     class_modifiers(modifiers, A, B),
     token("TOKEN_KEYWORD", "class", B),
     type_identifier(id, B + 1, C), C > B + 1,
-    class_body(declarations, C, D).
+    superclass?(sup, C, D),
+    class_body(declarations, D, E).
 
 .decl class_modifiers(s: IdentifierList, a: number, b: number)
 ZERO_OR_MORE(class_modifiers, class_modifier)
 
 .decl class_modifier(s: Identifier, a: number, b: number)
 class_modifier("public", A, A + 1) :- token("TOKEN_KEYWORD", "public", A).
-class_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
 class_modifier("protected", A, A + 1) :- token("TOKEN_KEYWORD", "protected", A).
+class_modifier("private", A, A + 1) :- token("TOKEN_KEYWORD", "private", A).
+class_modifier("abstract", A, A + 1) :- token("TOKEN_KEYWORD", "abstract", A).
+class_modifier("static", A, A + 1) :- token("TOKEN_KEYWORD", "static", A).
+class_modifier("final", A, A + 1) :- token("TOKEN_KEYWORD", "final", A).
+class_modifier("strictfp", A, A + 1) :- token("TOKEN_KEYWORD", "strictfp", A).
 
 .decl type_parameters(s: TypeList, a: number, b: number)
 type_parameters(nil, A, A) :- any_position(A).
@@ -441,9 +459,15 @@ type_parameter_list([e, tail], A, C) :-
     token("TOKEN_SEPARATOR", ",", B),
     type_parameter_list(tail, B+1, C).
 
-// TODO Superclass
+.decl superclass(t: Type, a: number, b: number)
+superclass(t, A, B) :-
+    token("TOKEN_KEYWORD", "extends", A),
+    class_type(t, A + 1, B).
 
-// TODO Superinterfaces
+.decl superclass?(t: TypeOptional, a: number, b: number)
+OPTIONAL(superclass?, superclass)
+
+.decl superinterfaces(t: Type, a: number, b: number)
 
 // TODO InterfaceTypeList
 
@@ -458,6 +482,7 @@ ZERO_OR_MORE(class_body_declarations, class_body_declaration)
 
 .decl class_body_declaration(d: Declaration, a: number, b: number)
 class_body_declaration(e, A, B) :- class_member_declaration(e, A, B).
+class_body_declaration(e, A, B) :- instance_initializer(e, A, B).
 // ... TODO
 
 .decl class_member_declaration(s: Declaration, a: number, b: number)
@@ -541,8 +566,8 @@ method_body(e, A, B + 1) :-
     block(e, A, B),
     token("TOKEN_SEPARATOR", ";", B).
 
-.decl instance_initializer(s: Statement, a: number, b: number)
-instance_initializer(e, A, B) :- block(e, A, B).
+.decl instance_initializer(s: Declaration, a: number, b: number)
+instance_initializer($InstanceInitializerDeclaration(e), A, B) :- block(e, A, B).
 
 .decl static_initializer(s: Statement, a: number, b: number)
 static_initializer(e, A, B) :-
@@ -583,6 +608,22 @@ simple_type_name(e, A, B) :- type_identifier(e, A, B).
  **************************************************************************/
 
 .decl interface_declaration(s: Declaration, a: number, b: number)
+interface_declaration(e, A, B) :- normal_interface_declaration(e, A, B).
+interface_declaration(e, A, B) :- annotation_type_declaration(e, A, B).
+
+.decl normal_interface_declaration(s: Declaration, a: number, b: number)
+
+.decl annotation_type_declaration(s: Declaration, a: number, b: number)
+
+.decl annotation_type_body(a: number, b: number)
+
+.decl annotation_type_member_declaration(a: number, b: number)
+
+.decl annotation_type_element_declaration(a: number, b: number)
+
+.decl annotation_type_element_modifier(a: number, b: number)
+
+.decl default_value(a: number, b: number)
 
 .decl annotation(e: Annotation, a: number, b: number)
 annotation(e, A, B) :- normal_annotation(e, A, B).
