@@ -71,7 +71,7 @@
     | ShiftRight            {e1: Expression, e2: Expression}
     | ShiftRightUnsigned    {e1: Expression, e2: Expression}
     | Sub                   {e1: Expression, e2: Expression}
-    | SwitchExpr            {e: Expression}
+    | SwitchExpr            {e: Expression, s: SwitchRuleList}
 
 .type ExpressionOptional = [
     expr: Expression
@@ -99,11 +99,20 @@
     | Break                 {e: IdentifierOptional}
     | Return                {e: ExpressionOptional}
     | Throw                 {e: Expression}
-    | Switch                {e: Expression, s: Statement}
+    | Switch                {e: Expression, s: SwitchRuleList}
     | Synchronized          {e: Expression, s: Statement}
     | While                 {e: Expression, s: Statement}
     | ExpressionStatement   {e: Expression}
     | Yield                 {e: Expression}
+
+.type StatementList = [
+    head: Statement,
+    tail: StatementList
+]
+
+.type SwitchLabel =
+      SwitchCase {e: ExpressionList}
+    | SwitchDefault {}
 
 .type SwitchRule =
       SwitchRuleExpression {label: SwitchLabel, s: Expression}
@@ -113,15 +122,6 @@
 .type SwitchRuleList = [
     head: SwitchRule,
     tail: SwitchRuleList
-]
-
-.type SwitchLabel =
-      SwitchCase {e: ExpressionList}
-    | SwitchDefault {}
-
-.type StatementList = [
-    head: Statement,
-    tail: StatementList
 ]
 
 /**
@@ -651,20 +651,33 @@ local_variable_type(t, A, B) :- unann_type(t, A, B).
 
 .decl statement(s: Statement, a: number, b: number)
 statement(e, A, B) :- statement_without_trailing_substatement(e, A, B).
+statement(e, A, B) :- labeled_statement(e, A, B).
 statement(e, A, B) :- if_then_statement(e, A, B).
 statement(e, A, B) :- if_then_else_statement(e, A, B).
 statement(e, A, B) :- while_statement(e, A, B).
-// ... TODO
+statement(e, A, B) :- for_statement(e, A, B).
 
 .decl statement_no_short_if(s: Statement, a: number, b: number)
-statement_no_short_if(e, A, B) :- statement(e, A, B).
-// ... TODO
+statement_no_short_if(e, A, B) :- statement_without_trailing_substatement(e, A, B).
+statement_no_short_if(e, A, B) :- labeled_statement_no_short_if(e, A, B).
+statement_no_short_if(e, A, B) :- if_then_else_statement_no_short_if(e, A, B).
+statement_no_short_if(e, A, B) :- while_statement_no_short_if(e, A, B).
+statement_no_short_if(e, A, B) :- for_statement_no_short_if(e, A, B).
 
 .decl statement_without_trailing_substatement(s: Statement, a: number, b: number)
 statement_without_trailing_substatement(e, A, B) :- block(e, A, B).
 statement_without_trailing_substatement(e, A, B) :- empty_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- expression_statement(e, A, B).
 statement_without_trailing_substatement(e, A, B) :- assert_statement(e, A, B).
-// ... TODO
+statement_without_trailing_substatement(e, A, B) :- switch_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- do_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- break_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- continue_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- return_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- synchronized_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- throw_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- try_statement(e, A, B).
+statement_without_trailing_substatement(e, A, B) :- yield_statement(e, A, B).
 
 .decl empty_statement(s: Statement, a: number, b: number)
 empty_statement($Empty, A, A + 1) :-
@@ -688,11 +701,13 @@ expression_statement($ExpressionStatement(e), A, B + 1) :-
     token("TOKEN_SEPARATOR", ";", B).
 
 .decl statement_expression(e: Expression, a: number, b: number)
+statement_expression(e, A, B) :- assignment(e, A, B).
 statement_expression(e, A, B) :- pre_increment_expression(e, A, B).
 statement_expression(e, A, B) :- pre_decrement_expression(e, A, B).
 statement_expression(e, A, B) :- post_increment_expression(e, A, B).
 statement_expression(e, A, B) :- post_decrement_expression(e, A, B).
-// ... TODO
+statement_expression(e, A, B) :- method_invocation(e, A, B).
+statement_expression(e, A, B) :- class_instance_creation_expression(e, A, B).
 
 .decl if_then_statement(s: Statement, a: number, b: number)
 if_then_statement($IfThen(e, s), A, C) :-
@@ -727,17 +742,17 @@ assert_statement($AssertDetailed(e1, e2), A, C + 1) :-
     token("TOKEN_SEPARATOR", ";", C).
 
 .decl switch_statement(s: Statement, a: number, b: number)
-switch_statement($Switch(e, $Empty), A, C) :-
+switch_statement($Switch(e, rules), A, C) :-
     token("TOKEN_KEYWORD", "switch", A),
     token("TOKEN_BRACKET", "(", A + 1),
     expression(e, A + 2, B), B > A + 2,
     token("TOKEN_BRACKET", ")", B),
-    switch_block($Empty, B + 1, C), C > B + 1.
+    switch_block(rules, B + 1, C), C > B + 1.
 
-.decl switch_block(s: Statement, a: number, b: number)
-switch_block($Empty, A, A + 2) :-
+.decl switch_block(s: SwitchRuleList, a: number, b: number)
+switch_block(rules, A, A + 2) :-
     token("TOKEN_BRACKET", "{", A),
-    switch_rules(_, A + 1, B),
+    switch_rules(rules, A + 1, B),
     token("TOKEN_BRACKET", "}", A + 1).
 
 .decl switch_rules(e: SwitchRuleList, a: number, b: number)
@@ -889,11 +904,48 @@ synchronized_statement($Synchronized(e, s), A, C) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
+.decl primary(e: Expression, a: number, b: number)
+
+.decl primary_no_new_array(e: Expression, a: number, b: number)
+
+.decl class_literal(e: Expression, a: number, b: number)
+
+.decl class_instance_creation_expression(e: Expression, a: number, b: number)
+
+.decl unqualified_class_instance_creation_expression(e: Expression, a: number, b: number)
+
+.decl class_or_interface_type_to_instantiate(e: Expression, a: number, b: number)
+
+.decl type_arguments_or_diamond(e: Expression, a: number, b: number)
+
+.decl field_access(e: Expression, a: number, b: number)
+
+.decl array_access(e: Expression, a: number, b: number)
+
+.decl method_invocation(e: Expression, a: number, b: number)
+
+.decl argument_list(e: ExpressionList, a: number, b: number)
+
+.decl method_reference(a: number, b: number)
+
+.decl array_creation_expression(e: Expression, a: number, b: number)
+
+.decl dim_exprs(a: number, b: number)
+.decl dim_expr(a: number, b: number)
+
 .decl expression(e: Expression, a: number, b: number)
 expression(e, A, B) :- conditional_expression(e, A, B).
 expression(e, A, B) :- lambda_expression(e, A, B).
 
 .decl lambda_expression(e: Expression, a: number, b: number)
+
+.decl lambda_parameters(a: number, b: number)
+
+.decl lambda_parameter_list(a: number, b: number)
+
+.decl lambda_parameter(a: number, b: number)
+
+.decl lambda_parameter_type(a: number, b: number)
 
 .decl lambda_body(e: LambdaBody, a: number, b: number)
 
@@ -1006,12 +1058,12 @@ POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
 POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
 .decl switch_expression(e: Expression, a: number, b: number)
-switch_expression($SwitchExpr(e1), A, C) :-
+switch_expression($SwitchExpr(e1, rules), A, C) :-
     token("TOKEN_KEYWORD", "switch", A),
     token("TOKEN_BRACKET", "(", A + 1),
     expression(e1, A + 2, B),
     token("TOKEN_BRACKET", ")", B),
-    switch_block($Empty, B + 1, C).
+    switch_block(rules, B + 1, C).
 
 /**
  * Root
