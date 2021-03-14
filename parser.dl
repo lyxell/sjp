@@ -44,6 +44,8 @@
       LambdaBodyExpression {e: Expression}
     | LambdaBodyBlock      {e: Statement}
 
+.type LambdaParameters = symbol
+
 .type Expression =
       Add                   {e1: Expression, e2: Expression}
     | And                   {e1: Expression, e2: Expression}
@@ -56,6 +58,7 @@
     | Div                   {e1: Expression, e2: Expression}
     | Equal                 {e1: Expression, e2: Expression}
     | Identifier            {id: Identifier}
+    | Lambda                {p: LambdaParameters, b: LambdaBody}
     | LessThan              {e1: Expression, e2: Expression}
     | MethodInvocation      {id: Identifier, e: ExpressionList}
     | Mod                   {e1: Expression, e2: Expression}
@@ -136,6 +139,7 @@
     | Short {}
     | Int {}
     | Long {}
+    | Var {}
     | Void {}
     | Char {}
     | Float {}
@@ -957,16 +961,25 @@ expression(e, A, B) :- lambda_expression(e, A, B).
 OPTIONAL(expression?, expression)
 
 .decl lambda_expression(e: Expression, a: number, b: number)
+lambda_expression($Lambda(params, body), A, C) :-
+    lambda_parameters(params, A, B),
+    token("TOKEN_SEPARATOR", "->", B),
+    lambda_body(body, B + 1, C).
 
-.decl lambda_parameters(a: number, b: number)
+
+.decl lambda_parameters(p: LambdaParameters, a: number, b: number)
 
 .decl lambda_parameter_list(a: number, b: number)
 
 .decl lambda_parameter(a: number, b: number)
 
-.decl lambda_parameter_type(a: number, b: number)
+.decl lambda_parameter_type(t: Type, a: number, b: number)
+lambda_parameter_type(t, A, B) :- unann_type(t, A, B).
+lambda_parameter_type($Var, A, A + 1) :- token("TOKEN_KEYWORD", "var", A).
 
 .decl lambda_body(e: LambdaBody, a: number, b: number)
+lambda_body($LambdaBodyExpression(e), A, B) :- expression(e, A, B).
+lambda_body($LambdaBodyBlock(e), A, B) :- block(e, A, B).
 
 .decl assignment_expression(e: Expression, a: number, b: number)
 assignment_expression(e, A, B) :- conditional_expression(e, A, B).

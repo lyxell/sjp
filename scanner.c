@@ -66,7 +66,7 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main() {
-    lex("return 2 + 2; return;");
+    lex("public class Main {}");
     report("TOKEN_EOF", 0, 0);
     return 0;
 }
