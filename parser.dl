@@ -20,6 +20,10 @@
  * SOFTWARE.
  */
 
+/**
+ * Types
+ **************************************************************************/
+
 /* Identifiers */
 
 .type Identifier <: symbol
@@ -286,15 +290,11 @@
 .type VariableArityParameter = VariableArityParameter {}
 
 /**
- * Inputs
+ * Tokens
  **************************************************************************/
 
 .input token
 .decl token(s: symbol, c: Identifier, n: number)
-
-/**
- * Tokens
- **************************************************************************/
 
 .decl token_ampersand(a: number, b: number)
       token_ampersand(A, A + 1) :- token("TOKEN_SEPARATOR", "&", A).
@@ -458,9 +458,7 @@ any_position(n) :- token(_, _, n).
 
 /**
  * Lexical structure
- *
- * Adapted from §3 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §3 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl type_identifier(s: Identifier, a: number, b: number)
@@ -477,9 +475,7 @@ OPTIONAL(identifier?, identifier)
 
 /**
  * Types, Values and Variables
- *
- * Adapted from §4 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §4 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl type(s: Type, a: number, b: number)
@@ -589,9 +585,7 @@ type_argument(e, A, B) :- reference_type(e, A, B).
 
 /**
  * Names
- *
- * Adapted from §6 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §6 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl module_name(s: IdentifierList, a: number, b: number)
@@ -636,9 +630,7 @@ ambiguous_name([x, xs], A, D) :-
 
 /**
  * Packages and Modules
- *
- * Adapted from §7 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §7 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl compilation_unit(e: CompilationUnit, a: number, b: number)
@@ -705,9 +697,7 @@ type_declaration(e, A, B) :- interface_declaration(e, A, B).
 
 /**
  * Classes
- *
- * Adapted from §8 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §8 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .output class_declaration
@@ -950,9 +940,7 @@ enum_body_declarations(e, A, C) :-
 
 /**
  * Interfaces
- *
- * Adapted from §9 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §9 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl interface_declaration(s: Declaration, a: number, b: number)
@@ -1069,9 +1057,7 @@ marker_annotation(e, A, C) :-
 
 /**
  * Arrays
- *
- * Adapted from §10 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §10 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl array_initializer(e: Expr, a: number, b: number)
@@ -1094,9 +1080,7 @@ variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
 
 /**
  * Blocks and Statements
- *
- * Adapted from §14 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * See §14 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl block(s: Statement, a: number, b: number)
@@ -1441,10 +1425,8 @@ resource($ResourceAccess(e), A, B) :-
 .decl variable_access(e: Expr, a: number, b: number)
 
 /**
- * Exprs
- *
- * Adapted from §15 of
- * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
+ * Expressions
+ * See §15 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
 .decl primary(e: Expr, a: number, b: number)
@@ -1661,7 +1643,7 @@ switch_expression($SwitchExpr(e1, rules), A, F) :-
 constant_expression(e, A, B) :- expression(e, A, B).
 
 /**
- * Root
+ * Output
  **************************************************************************/
 
 .decl root(s: Statement)
