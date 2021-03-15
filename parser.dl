@@ -163,6 +163,10 @@
     | Block                 {s: StatementList}
     | Do                    {e: Expression, s: Statement}
     | Empty                 {}
+    | For                   {init: ForInitOptional,
+                             cond: ExpressionOptional,
+                             upd: ForUpdateOptional,
+                             s: Statement}
     | Label                 {id: Identifier, s: Statement}
     | IfThen                {e: Expression, s: Statement}
     | IfThenElse            {e: Expression, s1: Statement, s2: Statement}
@@ -179,6 +183,19 @@
 .type StatementList = [
     head: Statement,
     tail: StatementList
+]
+
+.type ForInit = ForInit {}
+.type ForInitOptional = [
+    e: ForInit
+]
+
+.type CatchFormalParameter = CatchFormalParameter {}
+.type CatchClause = CatchClause { param: CatchFormalParameter, b: Statement }
+
+.type ForUpdate = ForUpdate {}
+.type ForUpdateOptional = [
+    e: ForUpdate
 ]
 
 .type SwitchLabel =
@@ -268,8 +285,14 @@
  * Tokens
  **************************************************************************/
 
+.decl token_catch(a: number, b: number)
+      token_catch(A, A + 1) :- token("TOKEN_KEYWORD", "catch", A).
+.decl token_for(a: number, b: number)
+      token_for(A, A + 1) :- token("TOKEN_KEYWORD", "for", A).
 .decl token_semicolon(a: number, b: number)
       token_semicolon(A, A + 1) :- token("TOKEN_SEPARATOR", ";", A).
+.decl token_finally(a: number, b: number)
+      token_finally(A, A + 1) :- token("TOKEN_KEYWORD", "finally", A).
 .decl token_byte(a: number, b: number)
       token_byte(A, A + 1) :- token("TOKEN_KEYWORD", "byte", A).
 .decl token_long(a: number, b: number)
@@ -1079,6 +1102,12 @@ while_statement($While(e, s), A, F) :-
     statement(s, E, F).
 
 .decl while_statement_no_short_if(s: Statement, a: number, b: number)
+while_statement_no_short_if($While(e, s), A, F) :-
+    token_while(A, B),
+    token_left_paren(B, C),
+    expression(e, C, D),
+    token_right_paren(D, E),
+    statement_no_short_if(s, E, F).
 
 .decl do_statement(s: Statement, a: number, b: number)
 do_statement($Do(e, s), A, H) :-
@@ -1091,21 +1120,54 @@ do_statement($Do(e, s), A, H) :-
     token_semicolon(G, H).
 
 .decl for_statement(s: Statement, a: number, b: number)
+for_statement(e, A, B) :- for_statement_no_short_if(e, A, B).
+for_statement(e, A, B) :- enhanced_for_statement(e, A, B).
 
 .decl for_statement_no_short_if(s: Statement, a: number, b: number)
+for_statement_no_short_if(e, A, B) :- basic_for_statement_no_short_if(e, A, B).
+for_statement_no_short_if(e, A, B) :- enhanced_for_statement_no_short_if(e, A, B).
 
 .decl basic_for_statement(s: Statement, a: number, b: number)
+basic_for_statement($For(init, expr, upd, stat), A, J) :-
+    token_for(A, B),
+    token_left_paren(B, C),
+    for_init?(init, C, D),
+    token_semicolon(D, E),
+    expression?(expr, E, F),
+    token_semicolon(F, G),
+    for_update?(upd, G, H),
+    token_right_paren(H, I),
+    statement(stat, I, J).
 
 .decl basic_for_statement_no_short_if(s: Statement, a: number, b: number)
+basic_for_statement($For(init, expr, upd, stat), A, J) :-
+    token_for(A, B),
+    token_left_paren(B, C),
+    for_init?(init, C, D),
+    token_semicolon(D, E),
+    expression?(expr, E, F),
+    token_semicolon(F, G),
+    for_update?(upd, G, H),
+    token_right_paren(H, I),
+    statement_no_short_if(stat, I, J).
 
-.decl for_init(s: Statement, a: number, b: number)
-for_init(e, A, B) :- statement_expression_list(e, A, B).
-for_init(e, A, B) :- local_variable_declaration(e, A, B).
+.decl for_init(s: ForInit, a: number, b: number)
+for_init($ForInit, A, B) :- statement_expression_list(_, A, B).
+for_init($ForInit, A, B) :- local_variable_declaration(_, A, B).
+.decl for_init?(s: ForInitOptional, a: number, b: number)
+OPTIONAL(for_init?, for_init)
 
-.decl for_update(s: Statement, a: number, b: number)
-for_update(e, A, B) :- statement_expression_list(e, A, B).
+.decl for_update(s: ForUpdate, a: number, b: number)
+for_update($ForUpdate, A, B) :- statement_expression_list(e, A, B).
+.decl for_update?(s: ForUpdateOptional, a: number, b: number)
+OPTIONAL(for_update?, for_update)
 
-.decl statement_expression_list(s: Statement, a: number, b: number)
+.decl statement_expression_list(s: ExpressionList, a: number, b: number)
+statement_expression_list([x, nil], A, B) :- statement_expression(x, A, B).
+statement_expression_list([x, xs], A, D) :-
+    statement_expression(x, A, B),
+    token_comma(B, C),
+    statement_expression_list(xs, C, D).
 
 .decl enhanced_for_statement(s: Statement, a: number, b: number)
 
@@ -1153,13 +1215,22 @@ synchronized_statement($SynchronizedStatement(e, s), A, F) :-
 
 // TODO Catches
 
-// TODO CatchClause
+.decl catch_clause(e: CatchClause, a: number, b: number)
+catch_clause($CatchClause(param, b), A, B) :-
+    token_catch(A, B),
+    token_left_paren(B, C),
+    catch_formal_parameter(param, C, D),
+    token_right_paren(D, E),
+    block(b, E, F).
 
-// TODO CatchFormalParameter
+.decl catch_formal_parameter(e: CatchFormalParameter, a: number, b: number)
 
 // TODO CatchType
 
-// TODO Finally
+.decl finally(e: Statement, a: number, b: number)
+finally(b, A, B) :-
+    token_finally(A, B),
+    block(b, B, C).
 
 // TODO TryWithResourcesStatement
 
