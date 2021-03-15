@@ -184,11 +184,22 @@
     | While                 {e: Expression, s: Statement}
     | ExpressionStatement   {e: Expression}
     | Yield                 {e: Expression}
-
 .type StatementList = [
     head: Statement,
     tail: StatementList
 ]
+
+.type Resource = ResourceInitialization { mods: ModifierList,
+                                          type: Type,
+                                          id: Identifier,
+                                          expr: Expression }
+               | ResourceAccess { e: Expression }
+
+.type ResourceList = [
+    head: Resource,
+    tail: ResourceList
+]
+
 
 .type ForInit = ForInit {}
 .type ForInitOptional = [
@@ -304,6 +315,9 @@
       token_for(A, A + 1) :- token("TOKEN_KEYWORD", "for", A).
 .decl token_semicolon(a: number, b: number)
       token_semicolon(A, A + 1) :- token("TOKEN_SEPARATOR", ";", A).
+.decl token_semicolon?(a: number, b: number)
+      token_semicolon?(A, A) :- any_position(A).
+      token_semicolon?(A, B) :- token_semicolon(A, B).
 .decl token_finally(a: number, b: number)
       token_finally(A, A + 1) :- token("TOKEN_KEYWORD", "finally", A).
 .decl token_byte(a: number, b: number)
@@ -854,7 +868,11 @@ result($Void, A, B) :- token_void(A, B).
 
 // TODO VariableArityParameter
 
-// TODO VariableModifier
+.decl variable_modifier(e: Modifier, a: number, b: number)
+variable_modifier($Final, A, B) :- token_final(A, B).
+
+.decl variable_modifiers?(e: ModifierList, a: number, b: number)
+ZERO_OR_MORE(variable_modifiers?, variable_modifier)
 
 // TODO Throws
 
@@ -1028,14 +1046,10 @@ marker_annotation(e, A, C) :-
  **************************************************************************/
 
 .decl array_initializer(e: Expression, a: number, b: number)
-array_initializer($ArrayInitializer(e), A, D) :- 
-    token_left_curly_bracket(A, B),
-    variable_initializer_list?(e, B, C),
-    token_right_curly_bracket(C, D).
 array_initializer($ArrayInitializer(e), A, E) :- 
     token_left_curly_bracket(A, B),
     variable_initializer_list?(e, B, C),
-    token_semicolon(C, D),
+    token_comma?(C, D),
     token_right_curly_bracket(D, E).
 
 .decl variable_initializer_list(s: ExpressionList, a: number, b: number)
@@ -1371,10 +1385,31 @@ finally(b, A, B) :-
 // TODO TryWithResourcesStatement
 
 // TODO ResourceSpecification
+.decl resource_specification(e: ResourceList, a: number, b: number)
+resource_specification(e, A, E) :-
+    token_left_paren(A, B),
+    resource_list(e, B, C),
+    token_semicolon?(C, D),
+    token_right_paren(D, E).
 
-// TODO ResourceList
+.decl resource_list(e: ResourceList, a: number, b: number)
+resource_list([x, nil], A, B) :- resource(x, A, B).
+resource_list([x, xs], A, D) :-
+    resource(x, A, B),
+    token_semicolon(B, C),
+    resource_list(xs, C, D).
 
-// TODO Resource
+.decl resource(e: Resource, a: number, b: number)
+resource($ResourceInitialization(mods, type, id, expr), A, F) :-
+    variable_modifiers?(mods, A, B),
+    local_variable_type(type, B, C),
+    identifier(id, C, D),
+    token_equal_sign(D, E),
+    expression(expr, E, F).
+resource($ResourceAccess(e), A, B) :-
+    variable_access(e, A, B).
+
+.decl variable_access(e: Expression, a: number, b: number)
 
 /**
  * Expressions
