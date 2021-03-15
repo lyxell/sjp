@@ -173,7 +173,6 @@
                 | AssertDetailed        {e1: Expr, e2: Expr}
                 | Block                 {s: StatementList}
                 | Do                    {e: Expr, s: Statement}
-                | Empty                 {}
                 | For                   {init: ForInitOptional,
                                          cond: ExprOptional,
                                          upd: ForUpdateOptional,
@@ -190,6 +189,7 @@
                 | While                 {e: Expr, s: Statement}
                 | ExprStatement         {e: Expr}
                 | Yield                 {e: Expr}
+                | EmptyStatement        {}
 
 .type StatementList = [head: Statement, tail: StatementList]
 
@@ -213,9 +213,9 @@
 .type SwitchLabel = SwitchCase {e: ExprList}
                   | SwitchDefault {}
 
-.type SwitchRule = SwitchRuleExpr   {label: SwitchLabel, s: Expr}
-                 | SwitchRuleBlock  {label: SwitchLabel, s: Statement}
-                 | SwitchRuleThrow  {label: SwitchLabel, s: Statement}
+.type SwitchRule = SwitchRuleExpr  {label: SwitchLabel, s: Expr}
+                 | SwitchRuleBlock {label: SwitchLabel, s: Statement}
+                 | SwitchRuleThrow {label: SwitchLabel, s: Statement}
 
 .type SwitchRuleList = [
     head: SwitchRule,
@@ -250,28 +250,32 @@
 
 /* Declarations */
 
-.type Declaration = ClassDeclaration     {modifiers:  ModifierList,
+.type Declaration = Class                {modifiers: ModifierList,
                                           id: Identifier,
                                           superclass: TypeOptional,
                                           body: DeclarationList}
-                  | FieldDeclaration     {modifiers:  ModifierList,
+                  | Field                {modifiers: ModifierList,
                                           type: Type,
                                           vars: VariableDeclaratorList}
-                  | InterfaceDeclaration {modifiers:  ModifierList,
+                  | Interface            {modifiers: ModifierList,
                                           id: Identifier}
-                  | InstanceInitializerDeclaration {statement:  Statement}
-                  | StaticInitializer {statement: Statement}
-                  | MethodDeclaration {modifiers: ModifierList,
-                                       header: MethodHeader,
-                                       body: Statement}
-                  | EmptyDeclaration {}
+                  | InstanceInitializer  {statement: Statement}
+                  | StaticInitializer    {statement: Statement}
+                  | Method               {modifiers: ModifierList,
+                                          header: MethodHeader,
+                                          body: Statement}
+                  | EmptyDeclaration     {}
 
 .type DeclarationList = [head: Declaration, tail: DeclarationList]
 
 /* Enums */
 
-.type EnumBody = EnumBody {}
-.type EnumConstant = EnumConstant {}
+.type EnumBody = EnumBody {constants: EnumConstantList,
+                           declarations: DeclarationList}
+.type EnumConstant = EnumConstant {modifiers: ModifierList,
+                                   id: Identifier,
+                                   args: ExprList,
+                                   body: DeclarationList}
 .type EnumConstantList = [head: EnumConstant, tail: EnumConstantList]
 
 /* Constructors */
@@ -700,13 +704,12 @@ type_declaration(e, A, B) :- interface_declaration(e, A, B).
  * See §8 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.output class_declaration
 .decl class_declaration(s: Declaration, a: number, b: number)
 class_declaration(e, A, B) :- normal_class_declaration(e, A, B).
 class_declaration(e, A, B) :- enum_declaration(e, A, B).
 
 .decl normal_class_declaration(s: Declaration, a: number, b: number)
-normal_class_declaration($ClassDeclaration(modifiers, id, sup, declarations), A, F) :-
+normal_class_declaration($Class(modifiers, id, sup, declarations), A, F) :-
     class_modifiers?(modifiers, A, B),
     token_class(B, C),
     type_identifier(id, C, D),
@@ -758,6 +761,10 @@ class_body(declarations, A, D) :-
     class_body_declarations?(declarations, B, C),
     token_right_curly_bracket(C, D).
 
+.decl class_body?(s: DeclarationList, a: number, b: number)
+class_body?(nil, A, A) :- any_position(A).
+class_body?(x, A, B) :- class_body(x, A, B).
+
 .decl class_body_declarations?(d: DeclarationList, a: number, b: number)
 ZERO_OR_MORE(class_body_declarations?, class_body_declaration)
 
@@ -775,7 +782,7 @@ class_member_declaration(e, A, B) :- interface_declaration(e, A, B).
 class_member_declaration($EmptyDeclaration, A, B) :- token_semicolon(A, B).
 
 .decl field_declaration(s: Declaration, a: number, b: number)
-field_declaration($FieldDeclaration(mods, type, vars), A, D) :-
+field_declaration($Field(mods, type, vars), A, D) :-
     field_modifiers?(mods, A, B),
     unann_type(type, B, C),
     variable_declarator_list(vars, C, D).
@@ -850,7 +857,7 @@ unann_array_type($Array(t, d), A, C) :-
 // ...
 
 .decl method_declaration(s: Declaration, a: number, b: number)
-method_declaration($MethodDeclaration(modifiers, header, body), A, D) :-
+method_declaration($Method(modifiers, header, body), A, D) :-
     method_modifiers?(modifiers, A, B),
     method_header(header, B, C),
     method_body(body, C, D).
@@ -903,7 +910,7 @@ method_body(e, A, C) :-
     token_semicolon(B, C).
 
 .decl instance_initializer(s: Declaration, a: number, b: number)
-instance_initializer($InstanceInitializerDeclaration(e), A, B) :- block(e, A, B).
+instance_initializer($InstanceInitializer(e), A, B) :- block(e, A, B).
 
 .decl static_initializer(s: Declaration, a: number, b: number)
 static_initializer($StaticInitializer(e), A, C) :-
@@ -926,17 +933,51 @@ simple_type_name(e, A, B) :- type_identifier(e, A, B).
 .decl enum_declaration(s: Declaration, a: number, b: number)
 
 .decl enum_body(s: EnumBody, a: number, b: number)
+enum_body($EnumBody(con, decl), A, F) :-
+    token_left_curly_bracket(A, B),
+    enum_constant_list?(con, B, C),
+    token_comma?(C, D),
+    enum_body_declarations?(decl, D, E),
+    token_right_curly_bracket(E, F).
 
 .decl enum_constant_list(e: EnumConstantList, a: number, b: number)
+enum_constant_list([x, nil], A, B) :- enum_constant(x, A, B).
+enum_constant_list([x, xs], A, D) :-
+    enum_constant(x, A, B),
+    token_comma(B, C),
+    enum_constant_list(xs, C, D).
+
+.decl enum_constant_list?(e: EnumConstantList, a: number, b: number)
+enum_constant_list?(nil, A, A) :- any_position(A).
+enum_constant_list?(x, A, B) :- enum_constant_list(x, A, B).
 
 .decl enum_constant(e: EnumConstant, a: number, b: number)
+enum_constant($EnumConstant(mods, id, nil, body), A, D) :-
+    enum_constant_modifiers?(mods, A, B),
+    identifier(id, B, C),
+    class_body?(body, C, D).
+enum_constant($EnumConstant(mods, id, args, body), A, F) :-
+    enum_constant_modifiers?(mods, A, B),
+    identifier(id, B, C),
+    token_left_paren(C, D),
+    argument_list?(args, D, E),
+    token_right_paren(E, F),
+    class_body?(body, F, G).
 
 .decl enum_constant_modifier(e: Modifier, a: number, b: number)
+enum_constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
+
+.decl enum_constant_modifiers?(e: ModifierList, a: number, b: number)
+ZERO_OR_MORE(enum_constant_modifiers?, enum_constant_modifier)
 
 .decl enum_body_declarations(e: DeclarationList, a: number, b: number)
 enum_body_declarations(e, A, C) :-
     token_semicolon(A, B),
     class_body_declarations?(e, B, C).
+
+.decl enum_body_declarations?(e: DeclarationList, a: number, b: number)
+enum_body_declarations?(nil, A, A) :- any_position(A).
+enum_body_declarations?(x, A, B) :- enum_body_declarations(x, A, B).
 
 /**
  * Interfaces
@@ -1137,7 +1178,7 @@ statement_without_trailing_substatement(e, A, B) :- try_statement(e, A, B).
 statement_without_trailing_substatement(e, A, B) :- yield_statement(e, A, B).
 
 .decl empty_statement(s: Statement, a: number, b: number)
-empty_statement($Empty, A, B) :- token_semicolon(A, B).
+empty_statement($EmptyStatement, A, B) :- token_semicolon(A, B).
 
 .decl labeled_statement(s: Statement, a: number, b: number)
 labeled_statement($Label(id, st), A, D) :-
@@ -1661,3 +1702,4 @@ root(s) :-
 .output method_invocation
 .output normal_class_declaration
 .output argument_list?
+.output class_declaration
