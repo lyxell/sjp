@@ -306,6 +306,20 @@
     tail: DeclarationList
 ]
 
+.type EnumBody = EnumBody {}
+.type EnumConstant = EnumConstant {}
+
+.type EnumConstantList = [
+    head: EnumConstant,
+    tail: EnumConstantList
+]
+
+.type ExplicitConstructorInvocation = ExplicitConstructorInvocation {}
+.type ConstructorBody = ConstructorBody {}
+.type ConstructorDeclarator = ConstructorDeclarator {}
+
+.type MethodDeclarator = MethodDeclarator {}
+
 /**
  * Inputs
  **************************************************************************/
@@ -905,7 +919,7 @@ method_modifier($Strictfp,      A, B) :- token_strictfp(A, B).
 result(t, A, B) :- unann_type(t, A, B).
 result($Void, A, B) :- token_void(A, B).
 
-// TODO MethodDeclarator
+.decl method_declarator(s: MethodDeclarator, a: number, b: number)
 
 // TODO ReceiverParameter
 
@@ -944,26 +958,29 @@ static_initializer($StaticInitializer(e), A, C) :-
 
 .decl constructor_modifier(s: Modifier, a: number, b: number)
 
-// TODO ConstructorDeclarator
+.decl constructor_declarator(e: ConstructorDeclarator, a: number, b: number)
 
 .decl simple_type_name(s: symbol, l: number, n: number)
 simple_type_name(e, A, B) :- type_identifier(e, A, B).
 
-// TODO ConstructorBody
+.decl constructor_body(e: ConstructorBody, a: number, b: number)
 
-// TODO ExplicitConstructorInvocation
+.decl explicit_constructor_invocation(e: ExplicitConstructorInvocation, a: number, b: number)
 
 .decl enum_declaration(s: Declaration, a: number, b: number)
 
-// TODO EnumBody
+.decl enum_body(s: EnumBody, a: number, b: number)
 
-// TODO EnumConstantList
+.decl enum_constant_list(e: EnumConstantList, a: number, b: number)
 
-// TODO EnumConstant
+.decl enum_constant(e: EnumConstant, a: number, b: number)
 
-// TODO EnumConstantModifier
+.decl enum_constant_modifier(e: Modifier, a: number, b: number)
 
-// TODO EnumBodyDeclaration
+.decl enum_body_declarations(e: DeclarationList, a: number, b: number)
+enum_body_declarations(e, A, C) :-
+    token_semicolon(A, B),
+    class_body_declarations?(e, B, C).
 
 /**
  * Interfaces
