@@ -13,30 +13,33 @@
     id: Identifier
 ]
 
-/**
- * Compilation unit
- */
+/* Compilation unit */
 
+.type CompilationUnit = OrdinaryCompilationUnit { package: PackageDeclaration,
+                                                  imports: ImportDeclarationList,
+                                                  declarations: DeclarationList}
+                      | ModularCompilationUnit {}
+
+/* Variable declarations */
 .type VariableDeclarator = VariableDeclarator { decl: VariableDeclaratorId,
                                                 init: ExpressionOptional }
-
 .type VariableDeclaratorId = VariableDeclaratorId { id: Identifier }
-                           | VariableDeclaratorArray { id: Identifier, dims: DimensionList }
-
+                           | VariableDeclaratorArray { id: Identifier,
+                                                       dims: DimensionList }
 .type Dimension = Dimension { annotations: AnnotationList }
-
 .type DimensionList = [
     key: Dimension,
     value: DimensionList
 ]
-
 .type VariableDeclaratorList = [
     key: VariableDeclarator,
     value: VariableDeclaratorList
 ]
 
-.type PackageDeclaration =
-    PackageDeclaration { modifiers: AnnotationList, ids: IdentifierList }
+/* Packages and modules */
+
+.type PackageDeclaration = PackageDeclaration { modifiers: ModifierList,
+                                                ids: IdentifierList }
 
 .type ModuleDirective = ModuleDirective {}
 
@@ -48,14 +51,6 @@
     key: ImportDeclaration,
     value: ImportDeclarationList
 ]
-
-.type CompilationUnit =
-    OrdinaryCompilationUnit {
-        package: PackageDeclaration,
-        imports: ImportDeclarationList,
-        declarations: DeclarationList
-    }
-    | ModularCompilationUnit {}
 
 /**
  * Annotations
@@ -100,6 +95,7 @@
     | Protected {}
     | Static {}
     | Native {}
+    | AnnotationModifier { a: Annotation }
     | Synchronized {}
     | Transient {}
     | Volatile {}
@@ -297,28 +293,34 @@
       }
     | EmptyDeclaration {}
 
-.type MethodHeader = MethodHeader {
-    result: Type
-}
-
 .type DeclarationList = [
     head: Declaration,
     tail: DeclarationList
 ]
 
+/* Enums */
 .type EnumBody = EnumBody {}
 .type EnumConstant = EnumConstant {}
-
 .type EnumConstantList = [
     head: EnumConstant,
     tail: EnumConstantList
 ]
 
+/* Constructors */
 .type ExplicitConstructorInvocation = ExplicitConstructorInvocation {}
 .type ConstructorBody = ConstructorBody {}
 .type ConstructorDeclarator = ConstructorDeclarator {}
 
+/* Methods */
+.type MethodHeader = MethodHeader {result: Type}
 .type MethodDeclarator = MethodDeclarator {}
+.type ReceiverParameter = ReceiverParameter {}
+.type FormalParameter = FormalParameter {}
+.type FormalParameterList = [
+    head: FormalParameter,
+    tail: FormalParameterList
+]
+.type VariableArityParameter = VariableArityParameter {}
 
 /**
  * Inputs
@@ -698,10 +700,10 @@ package_declaration_identifiers([x, xs], A, D) :-
     token_dot(B, C),
     package_declaration_identifiers(xs, C, D).
 
-.decl package_modifier(e: Annotation, a: number, b: number)
-package_modifier(e, A, B) :- annotation(e, A, B).
+.decl package_modifier(e: Modifier, a: number, b: number)
+package_modifier($AnnotationModifier(e), A, B) :- annotation(e, A, B).
 
-.decl package_modifiers?(e: AnnotationList, a: number, b: number)
+.decl package_modifiers?(e: ModifierList, a: number, b: number)
 ZERO_OR_MORE(package_modifiers?, package_modifier)
 
 .decl import_declaration(s: ImportDeclaration, a: number, b: number)
@@ -762,13 +764,14 @@ normal_class_declaration($ClassDeclaration(modifiers, id, sup, declarations), A,
 ZERO_OR_MORE(class_modifiers?, class_modifier)
 
 .decl class_modifier(s: Modifier, a: number, b: number)
-class_modifier($Public,     A, B) :- token_public(A, B).
-class_modifier($Protected,  A, B) :- token_protected(A, B).
-class_modifier($Private,    A, B) :- token_private(A, B).
-class_modifier($Abstract,   A, B) :- token_abstract(A, B).
-class_modifier($Static,     A, B) :- token_static(A, B).
-class_modifier($Final,      A, B) :- token_final(A, B).
-class_modifier($Strictfp,   A, B) :- token_strictfp(A, B).
+class_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
+class_modifier($Public,                 A, B) :- token_public(A, B).
+class_modifier($Protected,              A, B) :- token_protected(A, B).
+class_modifier($Private,                A, B) :- token_private(A, B).
+class_modifier($Abstract,               A, B) :- token_abstract(A, B).
+class_modifier($Static,                 A, B) :- token_static(A, B).
+class_modifier($Final,                  A, B) :- token_final(A, B).
+class_modifier($Strictfp,               A, B) :- token_strictfp(A, B).
 
 .decl type_parameters(s: TypeList, a: number, b: number)
 type_parameters(nil, A, A) :- any_position(A).
@@ -825,13 +828,14 @@ field_declaration($FieldDeclaration(mods, type, vars), A, D) :-
     variable_declarator_list(vars, C, D).
 
 .decl field_modifier(s: Modifier, a: number, b: number)
-field_modifier($Public, A, B) :- token_public(A, B).
-field_modifier($Protected, A, B) :- token_protected(A, B).
-field_modifier($Private, A, B) :- token_private(A, B).
-field_modifier($Static, A, B) :- token_static(A, B).
-field_modifier($Final, A, B) :- token_final(A, B).
-field_modifier($Transient, A, B) :- token_transient(A, B).
-field_modifier($Volatile, A, B) :- token_volatile(A, B).
+field_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
+field_modifier($Public,                 A, B) :- token_public(A, B).
+field_modifier($Protected,              A, B) :- token_protected(A, B).
+field_modifier($Private,                A, B) :- token_private(A, B).
+field_modifier($Static,                 A, B) :- token_static(A, B).
+field_modifier($Final,                  A, B) :- token_final(A, B).
+field_modifier($Transient,              A, B) :- token_transient(A, B).
+field_modifier($Volatile,               A, B) :- token_volatile(A, B).
 
 .decl field_modifiers?(s: ModifierList, a: number, b: number)
 ZERO_OR_MORE(field_modifiers?, field_modifier)
@@ -850,7 +854,6 @@ variable_declarator($VariableDeclarator(id, [init]), A, D) :-
     variable_declarator_id(id, A, B),
     token_equal_sign(B, C),
     variable_initializer(init, C, D).
-
 
 .decl variable_declarator_id(s: VariableDeclaratorId, a: number, b: number)
 variable_declarator_id($VariableDeclaratorId(id), A, B) :- identifier(id, A, B).
@@ -921,13 +924,13 @@ result($Void, A, B) :- token_void(A, B).
 
 .decl method_declarator(s: MethodDeclarator, a: number, b: number)
 
-// TODO ReceiverParameter
+.decl receiver_parameter(s: ReceiverParameter, a: number, b: number)
 
-// TODO FormalParameterList
+.decl formal_parameter_list(s: FormalParameterList, a: number, b: number)
 
-// TODO FormalParameter
+.decl formal_parameter(s: FormalParameter, a: number, b: number)
 
-// TODO VariableArityParameter
+.decl variable_arity_parameter(s: VariableArityParameter, a: number, b: number)
 
 .decl variable_modifier(e: Modifier, a: number, b: number)
 variable_modifier($Final, A, B) :- token_final(A, B).
