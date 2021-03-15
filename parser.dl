@@ -1,36 +1,47 @@
 /**
- * Identifiers
+ * Copyright (c) 2021 Anton Lyxell
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
+/* Identifiers */
+
 .type Identifier <: symbol
-
-.type IdentifierList = [
-    head: Identifier,
-    tail: IdentifierList
-]
-
-.type IdentifierOptional = [
-    id: Identifier
-]
+.type IdentifierList = [head: Identifier, tail: IdentifierList]
+.type IdentifierOptional = [id: Identifier]
 
 /* Compilation unit */
 
-.type CompilationUnit = OrdinaryCompilationUnit { package: PackageDeclaration,
-                                                  imports: ImportDeclarationList,
-                                                  declarations: DeclarationList}
-                      | ModularCompilationUnit {}
+.type CompilationUnit = OrdinaryCompilationUnit {pkgs: PackageDeclaration,
+                                                 imps: ImportDeclarationList,
+                                                 decls: DeclarationList}
+                      | ModularCompilationUnit  {}
 
 /* Variable declarations */
-.type VariableDeclarator = VariableDeclarator { decl: VariableDeclaratorId,
-                                                init: ExpressionOptional }
-.type VariableDeclaratorId = VariableDeclaratorId { id: Identifier }
-                           | VariableDeclaratorArray { id: Identifier,
-                                                       dims: DimensionList }
-.type Dimension = Dimension { annotations: AnnotationList }
-.type DimensionList = [
-    key: Dimension,
-    value: DimensionList
-]
+
+.type VariableDeclarator = VariableDeclarator {decl: VariableDeclaratorId,
+                                               init: ExprOptional}
+.type VariableDeclaratorId = VariableDeclaratorId       {id: Identifier}
+                           | VariableDeclaratorArray    {id: Identifier,
+                                                         dims: DimensionList}
+.type Dimension = Dimension {annotations: AnnotationList}
+.type DimensionList = [key: Dimension, value: DimensionList]
 .type VariableDeclaratorList = [
     key: VariableDeclarator,
     value: VariableDeclaratorList
@@ -38,14 +49,13 @@
 
 /* Packages and modules */
 
-.type PackageDeclaration = PackageDeclaration { modifiers: ModifierList,
-                                                ids: IdentifierList }
+.type PackageDeclaration = PackageDeclaration {modifiers: ModifierList,
+                                               ids: IdentifierList}
 
 .type ModuleDirective = ModuleDirective {}
 
-.type ImportDeclaration =
-      Import { s: IdentifierList }
-    | ImportOnDemandFrom { s: IdentifierList }
+.type ImportDeclaration = Import                {ids: IdentifierList}
+                        | ImportOnDemandFrom    {ids: IdentifierList}
 
 .type ImportDeclarationList = [
     key: ImportDeclaration,
@@ -56,29 +66,25 @@
  * Annotations
  */
 
-.type ElementValue = ElementValueExpression {e: Expression}
-                   | ElementValueAnnotation {a: Annotation}
-                   | ElementValueArrayInitializer {e: ElementValueList}
+.type ElementValue = ElementValueExpr               {e: Expr}
+                   | ElementValueAnnotation         {a: Annotation}
+                   | ElementValueArrayInitializer   {e: ElementValueList}
 
 .type ElementValueList = [
     head: ElementValue,
     tail: ElementValueList
 ]
 
-.type ElementValuePair = ElementValuePair {
-    key: Identifier,
-    value: ElementValue
-}
+.type ElementValuePair = ElementValuePair {key: Identifier,
+                                           value: ElementValue}
 
 .type ElementValuePairList = [
     head: ElementValuePair,
     tail: ElementValuePairList
 ]
 
-.type Annotation = Annotation {
-    name: IdentifierList,
-    pairs: ElementValuePairList
-}
+.type Annotation = Annotation {name: IdentifierList,
+                               pairs: ElementValuePairList}
 
 .type AnnotationList = [
     name: Annotation,
@@ -89,141 +95,123 @@
  * Modifiers
  */
 
-.type Modifier =
-      Public {}
-    | Private {}
-    | Protected {}
-    | Static {}
-    | Native {}
-    | AnnotationModifier { a: Annotation }
-    | Synchronized {}
-    | Transient {}
-    | Volatile {}
-    | Abstract {}
-    | Strictfp {}
-    | Final {}
+.type Modifier = Public {}
+               | Private {}
+               | Protected {}
+               | Static {}
+               | Native {}
+               | AnnotationModifier {annotation: Annotation}
+               | Synchronized {}
+               | Transient {}
+               | Volatile {}
+               | Abstract {}
+               | Strictfp {}
+               | Final {}
 
 .type ModifierList = [
     key: Modifier,
     value: ModifierList
 ]
 
-/**
- * Expressions
- */
+/* Expressions */
 
-.type Expression =
-      Add                   {e1: Expression, e2: Expression}
-    | And                   {e1: Expression, e2: Expression}
-    | ArrayInitializer      {e: ExpressionList}
-    | Assign                {e1: Expression, s: symbol, e2: Expression}
-    | BitwiseAnd            {e1: Expression, e2: Expression}
-    | BitwiseExclOr         {e1: Expression, e2: Expression}
-    | BitwiseInclOr         {e1: Expression, e2: Expression}
-    | BitwiseNot            {e: Expression}
-    | Div                   {e1: Expression, e2: Expression}
-    | Equal                 {e1: Expression, e2: Expression}
-    | Identifier            {id: Identifier}
-    | Lambda                {p: LambdaParameters, b: LambdaBody}
-    | LessThan              {e1: Expression, e2: Expression}
-    | Literal               {}
-    | MethodInvocation      {id: Identifier, e: ExpressionList}
-    | Mod                   {e1: Expression, e2: Expression}
-    | Mul                   {e1: Expression, e2: Expression}
-    | Not                   {e: Expression}
-    | NotEqual              {e1: Expression, e2: Expression}
-    | Number                {n: number}
-    | Or                    {e1: Expression, e2: Expression}
-    | PostDecrement         {e: Expression}
-    | PostIncrement         {e: Expression}
-    | PreDecrement          {e: Expression}
-    | PreIncrement          {e: Expression}
-    | ShiftLeft             {e1: Expression, e2: Expression}
-    | ShiftRight            {e1: Expression, e2: Expression}
-    | ShiftRightUnsigned    {e1: Expression, e2: Expression}
-    | Sub                   {e1: Expression, e2: Expression}
-    | SwitchExpr            {e: Expression, s: SwitchRuleList}
-    | This                  {}
+.type Expr = Add                    {e1: Expr, e2: Expr}
+           | And                    {e1: Expr, e2: Expr}
+           | ArrayInitializer       {e: ExprList}
+           | Assign                 {e1: Expr, s: symbol, e2: Expr}
+           | BitwiseAnd             {e1: Expr, e2: Expr}
+           | BitwiseExclOr          {e1: Expr, e2: Expr}
+           | BitwiseInclOr          {e1: Expr, e2: Expr}
+           | BitwiseNot             {e: Expr}
+           | Div                    {e1: Expr, e2: Expr}
+           | Equal                  {e1: Expr, e2: Expr}
+           | Identifier             {id: Identifier}
+           | Lambda                 {params: LambdaParameters, body: LambdaBody}
+           | LessThan               {e1: Expr, e2: Expr}
+           | Literal                {}
+           | MethodInvocation       {id: Identifier, e: ExprList}
+           | Mod                    {e1: Expr, e2: Expr}
+           | Mul                    {e1: Expr, e2: Expr}
+           | Not                    {e: Expr}
+           | NotEqual               {e1: Expr, e2: Expr}
+           | Number                 {n: number}
+           | Or                     {e1: Expr, e2: Expr}
+           | PostDecrement          {e: Expr}
+           | PostIncrement          {e: Expr}
+           | PreDecrement           {e: Expr}
+           | PreIncrement           {e: Expr}
+           | ShiftLeft              {e1: Expr, e2: Expr}
+           | ShiftRight             {e1: Expr, e2: Expr}
+           | ShiftRightUnsigned     {e1: Expr, e2: Expr}
+           | Sub                    {e1: Expr, e2: Expr}
+           | SwitchExpr             {e: Expr, s: SwitchRuleList}
+           | This                   {}
 
-.type ExpressionOptional = [
-    expr: Expression
+.type ExprOptional = [
+    expr: Expr
 ]
 
-.type ExpressionList = [
-    head: Expression,
-    tail: ExpressionList
+.type ExprList = [
+    head: Expr,
+    tail: ExprList
 ]
 
-.type LambdaBody =
-      LambdaBodyExpression {e: Expression}
-    | LambdaBodyBlock      {e: Statement}
+.type LambdaBody = LambdaBodyExpr   {e: Expr}
+                 | LambdaBodyBlock  {e: Statement}
 
-.type LambdaParameters = symbol
+.type LambdaParameters = LambdaParameters {}
 
 /**
  * Statements
  */
 
-.type Statement =
-      Assert                {e: Expression}
-    | AssertDetailed        {e1: Expression, e2: Expression}
-    | Block                 {s: StatementList}
-    | Do                    {e: Expression, s: Statement}
-    | Empty                 {}
-    | For                   {init: ForInitOptional,
-                             cond: ExpressionOptional,
-                             upd: ForUpdateOptional,
-                             s: Statement}
-    | Label                 {id: Identifier, s: Statement}
-    | IfThen                {e: Expression, s: Statement}
-    | IfThenElse            {e: Expression, s1: Statement, s2: Statement}
-    | Continue              {e: IdentifierOptional}
-    | Break                 {e: IdentifierOptional}
-    | Return                {e: ExpressionOptional}
-    | Throw                 {e: Expression}
-    | Switch                {e: Expression, s: SwitchRuleList}
-    | SynchronizedStatement {e: Expression, s: Statement}
-    | While                 {e: Expression, s: Statement}
-    | ExpressionStatement   {e: Expression}
-    | Yield                 {e: Expression}
-.type StatementList = [
-    head: Statement,
-    tail: StatementList
-]
+.type Statement = Assert                {e: Expr}
+                | AssertDetailed        {e1: Expr, e2: Expr}
+                | Block                 {s: StatementList}
+                | Do                    {e: Expr, s: Statement}
+                | Empty                 {}
+                | For                   {init: ForInitOptional,
+                                         cond: ExprOptional,
+                                         upd: ForUpdateOptional,
+                                         stmt: Statement}
+                | Label                 {id: Identifier, s: Statement}
+                | IfThen                {e: Expr, s: Statement}
+                | IfThenElse            {e: Expr, s1: Statement, s2: Statement}
+                | Continue              {e: IdentifierOptional}
+                | Break                 {e: IdentifierOptional}
+                | Return                {e: ExprOptional}
+                | Throw                 {e: Expr}
+                | Switch                {e: Expr, s: SwitchRuleList}
+                | SynchronizedStatement {e: Expr, s: Statement}
+                | While                 {e: Expr, s: Statement}
+                | ExprStatement         {e: Expr}
+                | Yield                 {e: Expr}
 
-.type Resource = ResourceInitialization { mods: ModifierList,
-                                          type: Type,
-                                          id: Identifier,
-                                          expr: Expression }
-               | ResourceAccess { e: Expression }
+.type StatementList = [head: Statement, tail: StatementList]
 
-.type ResourceList = [
-    head: Resource,
-    tail: ResourceList
-]
+.type Resource = ResourceInitialization {mods: ModifierList,
+                                         type: Type,
+                                         id: Identifier,
+                                         expr: Expr}
+               | ResourceAccess         {e: Expr}
 
+.type ResourceList = [head: Resource, tail: ResourceList]
 
 .type ForInit = ForInit {}
-.type ForInitOptional = [
-    e: ForInit
-]
+.type ForInitOptional = [e: ForInit]
 
 .type CatchFormalParameter = CatchFormalParameter {}
-.type CatchClause = CatchClause { param: CatchFormalParameter, b: Statement }
+.type CatchClause = CatchClause {param: CatchFormalParameter, b: Statement}
 
 .type ForUpdate = ForUpdate {}
-.type ForUpdateOptional = [
-    e: ForUpdate
-]
+.type ForUpdateOptional = [e: ForUpdate]
 
-.type SwitchLabel =
-      SwitchCase {e: ExpressionList}
-    | SwitchDefault {}
+.type SwitchLabel = SwitchCase {e: ExprList}
+                  | SwitchDefault {}
 
-.type SwitchRule =
-      SwitchRuleExpression {label: SwitchLabel, s: Expression}
-    | SwitchRuleBlock      {label: SwitchLabel, s: Statement}
-    | SwitchRuleThrow      {label: SwitchLabel, s: Statement}
+.type SwitchRule = SwitchRuleExpr   {label: SwitchLabel, s: Expr}
+                 | SwitchRuleBlock  {label: SwitchLabel, s: Statement}
+                 | SwitchRuleThrow  {label: SwitchLabel, s: Statement}
 
 .type SwitchRuleList = [
     head: SwitchRule,
@@ -234,92 +222,67 @@
  * Types
  */
 
-.type Type =
-      TypeParameter { mods: AnnotationList, id: Identifier, bound: TypeBoundOptional }
-    | Boolean {}
-    | Byte {}
-    | Short {}
-    | Int {}
-    | Long {}
-    | Var {}
-    | Void {}
-    | Variable { id: Identifier }
-    | TypeVariable { id: Identifier, annotations: AnnotationList }
-    | Char {}
-    | Float {}
-    | Array { type: Type, dims: DimensionList }
-    | Double {}
-    | ClassType {}
-.type TypeList = [
-    head: Type,
-    tail: TypeList
-]
-.type TypeOptional = [
-    t: Type
-]
+.type Type = TypeParameter  {modifiers: ModifierList,
+                             id: Identifier,
+                             bound: TypeBoundOptional}
+           | Boolean        {}
+           | Byte           {}
+           | Short          {}
+           | Int            {}
+           | Long           {}
+           | Var            {}
+           | Void           {}
+           | Variable       {id: Identifier}
+           | TypeVariable   {id: Identifier, annotations: AnnotationList}
+           | Char           {}
+           | Float          {}
+           | Array          {type: Type, dims: DimensionList}
+           | Double         {}
+           | ClassType      {}
+.type TypeList = [head: Type, tail: TypeList]
+.type TypeOptional = [t: Type]
+.type TypeBound = TypeBound {t: Type, additional: TypeList}
+.type TypeBoundOptional = [t: TypeBound]
 
-.type TypeBound = TypeBound { t: Type, additional: TypeList }
-.type TypeBoundOptional = [
-    t: TypeBound
-]
+/* Declarations */
 
-/**
- * These are constructs that may occur inside a ClassBody
- */
-.type Declaration =
-      ClassDeclaration {
-        modifiers:  ModifierList,
-        id:         Identifier,
-        superclass: TypeOptional,
-        body:       DeclarationList
-      }
-    | FieldDeclaration {
-        modifiers:  ModifierList,
-        type:       Type,
-        vars:       VariableDeclaratorList
-      }
-    | InterfaceDeclaration {
-        modifiers:  ModifierList,
-        id:         Identifier
-      }
-    | InstanceInitializerDeclaration {
-        statement:  Statement
-      }
-    | StaticInitializer { statement: Statement }
-    | MethodDeclaration {
-        modifiers:  ModifierList,
-        header:     MethodHeader,
-        body:       Statement
-      }
-    | EmptyDeclaration {}
+.type Declaration = ClassDeclaration     {modifiers:  ModifierList,
+                                          id: Identifier,
+                                          superclass: TypeOptional,
+                                          body: DeclarationList}
+                  | FieldDeclaration     {modifiers:  ModifierList,
+                                          type: Type,
+                                          vars: VariableDeclaratorList}
+                  | InterfaceDeclaration {modifiers:  ModifierList,
+                                          id: Identifier}
+                  | InstanceInitializerDeclaration {statement:  Statement}
+                  | StaticInitializer {statement: Statement}
+                  | MethodDeclaration {modifiers: ModifierList,
+                                       header: MethodHeader,
+                                       body: Statement}
+                  | EmptyDeclaration {}
 
-.type DeclarationList = [
-    head: Declaration,
-    tail: DeclarationList
-]
+.type DeclarationList = [head: Declaration, tail: DeclarationList]
 
 /* Enums */
+
 .type EnumBody = EnumBody {}
 .type EnumConstant = EnumConstant {}
-.type EnumConstantList = [
-    head: EnumConstant,
-    tail: EnumConstantList
-]
+.type EnumConstantList = [head: EnumConstant, tail: EnumConstantList]
 
 /* Constructors */
+
 .type ExplicitConstructorInvocation = ExplicitConstructorInvocation {}
 .type ConstructorBody = ConstructorBody {}
 .type ConstructorDeclarator = ConstructorDeclarator {}
 
 /* Methods */
+
 .type MethodHeader = MethodHeader {result: Type}
 .type MethodDeclarator = MethodDeclarator {}
 .type ReceiverParameter = ReceiverParameter {}
 .type FormalParameter = FormalParameter {}
-.type FormalParameterList = [
-    head: FormalParameter,
-    tail: FormalParameterList
-]
+.type FormalParameterList = [head: FormalParameter, tail: FormalParameterList]
 .type VariableArityParameter = VariableArityParameter {}
 
 /**
@@ -585,10 +548,10 @@ type_parameter($TypeParameter(mods, id, bound), A, B) :-
     type_identifier(id, B, C),
     type_bound?(bound, C, D).
 
-.decl type_parameter_modifier(t: Annotation, a: number, b: number)
-type_parameter_modifier(t, A, B) :- annotation(t, A, B).
+.decl type_parameter_modifier(t: Modifier, a: number, b: number)
+type_parameter_modifier($AnnotationModifier(t), A, B) :- annotation(t, A, B).
 
-.decl type_parameter_modifiers?(t: AnnotationList, a: number, b: number)
+.decl type_parameter_modifiers?(t: ModifierList, a: number, b: number)
 ZERO_OR_MORE(type_parameter_modifiers?, type_parameter_modifier)
 
 .decl type_bound(t: TypeBound, a: number, b: number)
@@ -861,7 +824,7 @@ variable_declarator_id($VariableDeclaratorArray(id, d), A, C) :-
     identifier(id, A, B),
     dims(d, B, C).
 
-.decl variable_initializer(s: Expression, a: number, b: number)
+.decl variable_initializer(s: Expr, a: number, b: number)
 variable_initializer(e, A, B) :- expression(e, A, B).
 variable_initializer(e, A, B) :- array_initializer(e, A, B).
 
@@ -1075,7 +1038,7 @@ element_value_pair($ElementValuePair(id, val), A, B) :-
     element_value(val, C, D).
 
 .decl element_value(e: ElementValue, a: number, b: number)
-element_value($ElementValueExpression(e), A, B) :- conditional_expression(e, A, B).
+element_value($ElementValueExpr(e), A, B) :- conditional_expression(e, A, B).
 element_value($ElementValueArrayInitializer(e), A, B) :- element_value_array_initializer(e, A, B).
 element_value($ElementValueAnnotation(e), A, B) :- annotation(e, A, B).
 
@@ -1111,21 +1074,21 @@ marker_annotation(e, A, C) :-
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl array_initializer(e: Expression, a: number, b: number)
+.decl array_initializer(e: Expr, a: number, b: number)
 array_initializer($ArrayInitializer(e), A, E) :- 
     token_left_curly_bracket(A, B),
     variable_initializer_list?(e, B, C),
     token_comma?(C, D),
     token_right_curly_bracket(D, E).
 
-.decl variable_initializer_list(s: ExpressionList, a: number, b: number)
+.decl variable_initializer_list(s: ExprList, a: number, b: number)
 variable_initializer_list([x, nil], A, A) :- variable_initializer(x, A, B).
 variable_initializer_list([x, xs], A, D) :-
     variable_initializer(x, A, B),
     token_comma(B, C),
     variable_initializer_list(xs, C, D).
 
-.decl variable_initializer_list?(s: ExpressionList, a: number, b: number)
+.decl variable_initializer_list?(s: ExprList, a: number, b: number)
 variable_initializer_list?(nil, A, A) :- any_position(A).
 variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
 
@@ -1205,11 +1168,11 @@ labeled_statement_no_short_if($Label(id, st), A, B) :-
     statement_no_short_if(st, C, D).
 
 .decl expression_statement(e: Statement, a: number, b: number)
-expression_statement($ExpressionStatement(e), A, C) :-
+expression_statement($ExprStatement(e), A, C) :-
     statement_expression(e, A, B),
     token_semicolon(B, C).
 
-.decl statement_expression(e: Expression, a: number, b: number)
+.decl statement_expression(e: Expr, a: number, b: number)
 statement_expression(e, A, B) :- assignment(e, A, B).
 statement_expression(e, A, B) :- pre_increment_expression(e, A, B).
 statement_expression(e, A, B) :- pre_decrement_expression(e, A, B).
@@ -1277,7 +1240,7 @@ switch_block([rule, rules], A, E) :-
 ZERO_OR_MORE(switch_rules?, switch_rule)
 
 .decl switch_rule(e: SwitchRule, a: number, b: number)
-switch_rule($SwitchRuleExpression(label, expr), A, E) :-
+switch_rule($SwitchRuleExpr(label, expr), A, E) :-
     switch_label(label, A, B),
     token_arrow(B, C),
     expression(expr, C, D),
@@ -1299,14 +1262,14 @@ switch_label($SwitchCase(exprs), A, C) :-
     token_case(A, B),
     case_constants(exprs, B, C).
 
-.decl case_constants(e: ExpressionList, a: number, b: number)
+.decl case_constants(e: ExprList, a: number, b: number)
 case_constants([x, nil], A, B) :- case_constant(x, A, B).
 case_constants([x, xs], A, D) :-
     case_constant(x, A, B),
     token_comma(B, C),
     case_constants(xs, C, D).
 
-.decl case_constant(e: Expression, a: number, b: number)
+.decl case_constant(e: Expr, a: number, b: number)
 case_constant(e, A, B) :- conditional_expression(e, A, B).
 
 .decl while_statement(s: Statement, a: number, b: number)
@@ -1378,7 +1341,7 @@ for_update($ForUpdate, A, B) :- statement_expression_list(e, A, B).
 .decl for_update?(s: ForUpdateOptional, a: number, b: number)
 OPTIONAL(for_update?, for_update)
 
-.decl statement_expression_list(s: ExpressionList, a: number, b: number)
+.decl statement_expression_list(s: ExprList, a: number, b: number)
 statement_expression_list([x, nil], A, B) :- statement_expression(x, A, B).
 statement_expression_list([x, xs], A, D) :-
     statement_expression(x, A, B),
@@ -1475,20 +1438,20 @@ resource($ResourceInitialization(mods, type, id, expr), A, F) :-
 resource($ResourceAccess(e), A, B) :-
     variable_access(e, A, B).
 
-.decl variable_access(e: Expression, a: number, b: number)
+.decl variable_access(e: Expr, a: number, b: number)
 
 /**
- * Expressions
+ * Exprs
  *
  * Adapted from §15 of
  * https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl primary(e: Expression, a: number, b: number)
+.decl primary(e: Expr, a: number, b: number)
 primary(e, A, B) :- primary_no_new_array(e, A, B).
 primary(e, A, B) :- array_creation_expression(e, A, B).
 
-.decl primary_no_new_array(e: Expression, a: number, b: number)
+.decl primary_no_new_array(e: Expr, a: number, b: number)
 primary_no_new_array($Literal, A, B) :- literal(A, B).
 primary_no_new_array(e, A, B) :- class_literal(e, A, B).
 primary_no_new_array($This, A, B) :- token_this(A, B).
@@ -1502,56 +1465,56 @@ primary_no_new_array(e, A, B) :- array_access(e, A, B).
 primary_no_new_array(e, A, B) :- method_invocation(e, A, B).
 primary_no_new_array(e, A, B) :- method_reference(e, A, B).
 
-.decl class_literal(e: Expression, a: number, b: number)
+.decl class_literal(e: Expr, a: number, b: number)
 
-.decl class_instance_creation_expression(e: Expression, a: number, b: number)
+.decl class_instance_creation_expression(e: Expr, a: number, b: number)
 
-.decl unqualified_class_instance_creation_expression(e: Expression, a: number, b: number)
+.decl unqualified_class_instance_creation_expression(e: Expr, a: number, b: number)
 
-.decl class_or_interface_type_to_instantiate(e: Expression, a: number, b: number)
+.decl class_or_interface_type_to_instantiate(e: Expr, a: number, b: number)
 
-.decl type_arguments_or_diamond(e: Expression, a: number, b: number)
+.decl type_arguments_or_diamond(e: Expr, a: number, b: number)
 
-.decl field_access(e: Expression, a: number, b: number)
+.decl field_access(e: Expr, a: number, b: number)
 
-.decl array_access(e: Expression, a: number, b: number)
+.decl array_access(e: Expr, a: number, b: number)
 
-.decl method_invocation(e: Expression, a: number, b: number)
+.decl method_invocation(e: Expr, a: number, b: number)
 method_invocation(e, A, B) :- method_invocation_with_method_name(e, A, B).
 
-.decl method_invocation_with_method_name(e: Expression, a: number, b: number)
+.decl method_invocation_with_method_name(e: Expr, a: number, b: number)
 method_invocation_with_method_name($MethodInvocation(id, e), A, E) :-
     method_name(id, A, B),
     token_left_paren(B, C),
     argument_list?(e, C, D),
     token_right_paren(D, E).
 
-.decl argument_list?(e: ExpressionList, a: number, b: number)
+.decl argument_list?(e: ExprList, a: number, b: number)
 argument_list?(nil, A, A) :- any_position(A).
 argument_list?(e, A, B) :- argument_list(e, A, B).
 
-.decl argument_list(e: ExpressionList, a: number, b: number)
+.decl argument_list(e: ExprList, a: number, b: number)
 argument_list([x, nil], A, B) :- expression(x, A, B).
 argument_list([x, xs], A, D) :-
     expression(x, A, B),
     token_comma(B, C),
     argument_list(xs, C, D).
 
-.decl method_reference(e: Expression, a: number, b: number)
+.decl method_reference(e: Expr, a: number, b: number)
 
-.decl array_creation_expression(e: Expression, a: number, b: number)
+.decl array_creation_expression(e: Expr, a: number, b: number)
 
 .decl dim_exprs(a: number, b: number)
 .decl dim_expr(a: number, b: number)
 
-.decl expression(e: Expression, a: number, b: number)
+.decl expression(e: Expr, a: number, b: number)
 expression(e, A, B) :- conditional_expression(e, A, B).
 expression(e, A, B) :- lambda_expression(e, A, B).
 
-.decl expression?(e: ExpressionOptional, a: number, b: number)
+.decl expression?(e: ExprOptional, a: number, b: number)
 OPTIONAL(expression?, expression)
 
-.decl lambda_expression(e: Expression, a: number, b: number)
+.decl lambda_expression(e: Expr, a: number, b: number)
 lambda_expression($Lambda(params, body), A, D) :-
     lambda_parameters(params, A, B),
     token_arrow(B, C),
@@ -1568,20 +1531,20 @@ lambda_parameter_type(t, A, B) :- unann_type(t, A, B).
 lambda_parameter_type($Var, A, A + 1) :- token_var(A, B).
 
 .decl lambda_body(e: LambdaBody, a: number, b: number)
-lambda_body($LambdaBodyExpression(e), A, B) :- expression(e, A, B).
+lambda_body($LambdaBodyExpr(e), A, B) :- expression(e, A, B).
 lambda_body($LambdaBodyBlock(e), A, B) :- block(e, A, B).
 
-.decl assignment_expression(e: Expression, a: number, b: number)
+.decl assignment_expression(e: Expr, a: number, b: number)
 assignment_expression(e, A, B) :- conditional_expression(e, A, B).
 assignment_expression(e, A, B) :- assignment(e, A, B).
 
-.decl assignment(e: Expression, a: number, b: number)
+.decl assignment(e: Expr, a: number, b: number)
 assignment($Assign(e1, s, e2), A, D) :-
     left_hand_side(e1, A, B),
     assignment_operator(s, B, C),
     expression(e2, C, D).
 
-.decl left_hand_side(e: Expression, a: number, b: number)
+.decl left_hand_side(e: Expr, a: number, b: number)
 
 .decl assignment_operator(s: symbol, a: number, b: number)
 assignment_operator(s, A, A + 1) :- token(_, s, A), s = "==".
@@ -1597,7 +1560,7 @@ assignment_operator(s, A, A + 1) :- token(_, s, A), s = "&=".
 assignment_operator(s, A, A + 1) :- token(_, s, A), s = "^=".
 assignment_operator(s, A, A + 1) :- token(_, s, A), s = "|=".
 
-.decl conditional_expression(e: Expression, a: number, b: number)
+.decl conditional_expression(e: Expr, a: number, b: number)
 conditional_expression(e, A, B) :- conditional_or_expression(e, A, B).
 conditional_expression(e, A, D) :-
     conditional_or_expression(e, A, B),
@@ -1612,81 +1575,81 @@ conditional_expression(e, A, F) :-
     token_colon(D, E),
     lambda_expression(e, E, F).
 
-.decl conditional_or_expression(e: Expression, a: number, b: number)
+.decl conditional_or_expression(e: Expr, a: number, b: number)
 conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
 INFIX($Or, conditional_or_expression, conditional_and_expression, "||")
 
-.decl conditional_and_expression(e: Expression, a: number, b: number)
+.decl conditional_and_expression(e: Expr, a: number, b: number)
 conditional_and_expression(e, A, B) :- inclusive_or_expression(e, A, B).
 INFIX($And, conditional_and_expression, inclusive_or_expression, "&&")
 
-.decl inclusive_or_expression(e: Expression, a: number, b: number)
+.decl inclusive_or_expression(e: Expr, a: number, b: number)
 inclusive_or_expression(e, A, B) :- exclusive_or_expression(e, A, B).
 INFIX($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
 
-.decl exclusive_or_expression(e: Expression, a: number, b: number)
+.decl exclusive_or_expression(e: Expr, a: number, b: number)
 exclusive_or_expression(e, A, B) :- and_expression(e, A, B).
 INFIX($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
 
-.decl and_expression(e: Expression, a: number, b: number)
+.decl and_expression(e: Expr, a: number, b: number)
 and_expression(e, A, B) :- equality_expression(e, A, B).
 INFIX($BitwiseAnd, and_expression, equality_expression, "&")
 
-.decl equality_expression(e: Expression, a: number, b: number)
+.decl equality_expression(e: Expr, a: number, b: number)
 equality_expression(e, A, B) :-       relational_expression(e, A, B).
 INFIX($Equal,    equality_expression, relational_expression, "==")
 INFIX($NotEqual, equality_expression, relational_expression, "!=")
 
-.decl relational_expression(e: Expression, a: number, b: number)
+.decl relational_expression(e: Expr, a: number, b: number)
 relational_expression(e, A, B) :- shift_expression(e, A, B).
 
-.decl shift_expression(e: Expression, a: number, b: number)
+.decl shift_expression(e: Expr, a: number, b: number)
 shift_expression(e, A, B) :- additive_expression(e, A, B).
 INFIX($ShiftLeft,          shift_expression, additive_expression, "<<")
 INFIX($ShiftRight,         shift_expression, additive_expression, ">>")
 INFIX($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
 
-.decl additive_expression(e: Expression, a: number, b: number)
+.decl additive_expression(e: Expr, a: number, b: number)
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
 INFIX($Add, additive_expression, multiplicative_expression, "+")
 INFIX($Sub, additive_expression, multiplicative_expression, "-")
 
-.decl multiplicative_expression(e: Expression, a: number, b: number)
+.decl multiplicative_expression(e: Expr, a: number, b: number)
 multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
 INFIX($Mul, multiplicative_expression, unary_expression, "*")
 INFIX($Div, multiplicative_expression, unary_expression, "/")
 INFIX($Mod, multiplicative_expression, unary_expression, "%")
 
-.decl unary_expression(e: Expression, a: number, b: number)
+.decl unary_expression(e: Expr, a: number, b: number)
 unary_expression(e, A, B) :- postfix_expression(e, A, B).
 unary_expression(e, A, B) :- pre_increment_expression(e, A, B).
 unary_expression(e, A, B) :- pre_decrement_expression(e, A, B).
 
-.decl pre_increment_expression(e: Expression, a: number, b: number)
+.decl pre_increment_expression(e: Expr, a: number, b: number)
 PREFIX($PreIncrement, pre_increment_expression, unary_expression, "++")
 
-.decl pre_decrement_expression(e: Expression, a: number, b: number)
+.decl pre_decrement_expression(e: Expr, a: number, b: number)
 PREFIX($PreDecrement, pre_decrement_expression, unary_expression, "--")
 
-.decl unary_expression_not_plus_minus(e: Expression, a: number, b: number)
+.decl unary_expression_not_plus_minus(e: Expr, a: number, b: number)
 unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
 PREFIX($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
 PREFIX($Not, unary_expression_not_plus_minus, unary_expression, "!")
 
-.decl postfix_expression(e: Expression, a: number, b: number)
+.decl postfix_expression(e: Expr, a: number, b: number)
 postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
 postfix_expression($Identifier(id), A, B) :- token_identifier(id, A, B).
 postfix_expression($Number(to_number(n)), A, A + 1) :- token("TOKEN_NUMBER", n, A).
 
-.decl post_increment_expression(e: Expression, a: number, b: number)
+.decl post_increment_expression(e: Expr, a: number, b: number)
 POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
-.decl post_decrement_expression(e: Expression, a: number, b: number)
+.decl post_decrement_expression(e: Expr, a: number, b: number)
 POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
-.decl cast_expression(e: Expression, a: number, b: number)
+.decl cast_expression(e: Expr, a: number, b: number)
 
-.decl switch_expression(e: Expression, a: number, b: number)
+.decl switch_expression(e: Expr, a: number, b: number)
 switch_expression($SwitchExpr(e1, rules), A, F) :-
     token_switch(A, B),
     token_left_paren(B, C),
@@ -1694,7 +1657,7 @@ switch_expression($SwitchExpr(e1, rules), A, F) :-
     token_right_paren(D, E),
     switch_block(rules, E, F).
 
-.decl constant_expression(e: Expression, a: number, b: number)
+.decl constant_expression(e: Expr, a: number, b: number)
 constant_expression(e, A, B) :- expression(e, A, B).
 
 /**
