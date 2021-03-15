@@ -59,22 +59,27 @@
 
 .type ElementValue = ElementValueExpression {e: Expression}
                    | ElementValueAnnotation {a: Annotation}
-// TODO ElementValueArrayInitializer                   
+                   | ElementValueArrayInitializer {e: ElementValueList}
 
-.type ElementValuePair = [
+.type ElementValueList = [
+    head: ElementValue,
+    tail: ElementValueList
+]
+
+.type ElementValuePair = ElementValuePair {
     key: Identifier,
     value: ElementValue
-]
+}
 
 .type ElementValuePairList = [
     head: ElementValuePair,
     tail: ElementValuePairList
 ]
 
-.type Annotation = [
+.type Annotation = Annotation {
     name: IdentifierList,
     pairs: ElementValuePairList
-]
+}
 
 .type AnnotationList = [
     name: Annotation,
@@ -285,6 +290,8 @@
  * Tokens
  **************************************************************************/
 
+.decl token_equal_sign(a: number, b: number)
+      token_equal_sign(A, A + 1) :- token("TOKEN_OPERATOR", "=", A).
 .decl token_catch(a: number, b: number)
       token_catch(A, A + 1) :- token("TOKEN_KEYWORD", "catch", A).
 .decl token_for(a: number, b: number)
@@ -331,6 +338,9 @@
       token_import(A, A + 1) :- token("TOKEN_KEYWORD", "import", A).
 .decl token_comma(a: number, b: number)
       token_comma(A, A + 1) :- token("TOKEN_SEPARATOR", ",", A).
+.decl token_comma?(a: number, b: number)
+      token_comma?(A, A) :- any_position(A).
+      token_comma?(A, B) :- token_comma(A, B).
 .decl token_class(a: number, b: number)
       token_class(A, A + 1) :- token("TOKEN_KEYWORD", "class", A).
 .decl token_extends(a: number, b: number)
@@ -859,6 +869,31 @@ interface_declaration(e, A, B) :- annotation_type_declaration(e, A, B).
 
 .decl normal_interface_declaration(s: Declaration, a: number, b: number)
 
+.decl interface_modifier(m: Modifier, a: number, b: number)
+interface_modifier($Public, A, B) :- token_public(A, B).
+interface_modifier($Protected, A, B) :- token_protected(A, B).
+interface_modifier($Private, A, B) :- token_private(A, B).
+interface_modifier($Abstract, A, B) :- token_abstract(A, B).
+interface_modifier($Static, A, B) :- token_static(A, B).
+interface_modifier($Strictfp, A, B) :- token_strictfp(A, B).
+
+.decl interface_modifiers?(m: ModifierList, a: number, b: number)
+ZERO_OR_MORE(interface_modifiers?, interface_modifier)
+
+.decl extends_interfaces(a: number, b: number)
+
+.decl interface_body(a: number, b: number)
+
+.decl interface_member_declaration(a: number, b: number)
+
+.decl constant_declaration(a: number, b: number)
+
+.decl constant_modifier(a: number, b: number)
+
+.decl interface_method_declaration(a: number, b: number)
+
+.decl interface_method_modifier(a: number, b: number)
+
 .decl annotation_type_declaration(s: Declaration, a: number, b: number)
 
 .decl annotation_type_body(a: number, b: number)
@@ -867,9 +902,17 @@ interface_declaration(e, A, B) :- annotation_type_declaration(e, A, B).
 
 .decl annotation_type_element_declaration(a: number, b: number)
 
-.decl annotation_type_element_modifier(a: number, b: number)
+.decl annotation_type_element_modifier(m: Modifier, a: number, b: number)
+annotation_type_element_modifier($Public, A, B) :- token_public(A, B).
+annotation_type_element_modifier($Abstract, A, B) :- token_abstract(A, B).
 
-.decl default_value(a: number, b: number)
+.decl annotation_type_element_modifiers?(m: ModifierList, a: number, b: number)
+ZERO_OR_MORE(annotation_type_element_modifiers?, annotation_type_element_modifier)
+
+.decl default_value(e: ElementValue, a: number, b: number)
+default_value(e, A, C) :-
+    token_default(A, B),
+    element_value(e, B, C).
 
 .decl annotation(e: Annotation, a: number, b: number)
 annotation(e, A, B) :- normal_annotation(e, A, B).
@@ -878,23 +921,59 @@ annotation(e, A, B) :- normal_annotation(e, A, B).
 ZERO_OR_MORE(annotations?, annotation)
 
 .decl normal_annotation(e: Annotation, a: number, b: number)
-normal_annotation([name, nil], A, E) :-
+normal_annotation($Annotation(name, pairs), A, F) :-
     token_at(A, B),
     type_name(name, B, C),
     token_left_paren(C, D),
-    token_right_paren(D, E).
-normal_annotation([name, pairs], A, F) :-
-    token_at(A, B),
-    type_name(name, B, C),
-    token_left_paren(C, D),
-    element_value_pair_list(pairs, D, E),
+    element_value_pair_list?(pairs, D, E),
     token_right_paren(E, F).
 
 .decl element_value_pair_list(e: ElementValuePairList, a: number, b: number)
+element_value_pair_list([x, nil], A, B) :- element_value_pair(x, A, B).
+element_value_pair_list([x, xs], A, B) :-
+    element_value_pair(x, A, B),
+    token_comma(B, C),
+    element_value_pair_list(xs, C, D).
+
+.decl element_value_pair_list?(e: ElementValuePairList, a: number, b: number)
+element_value_pair_list?(nil, A, A) :- any_position(A).
+element_value_pair_list?(x, A, B) :- element_value_pair_list(x, A, B).
 
 .decl element_value_pair(e: ElementValuePair, a: number, b: number)
+element_value_pair($ElementValuePair(id, val), A, B) :-
+    identifier(id, A, B),
+    token_equal_sign(B, C),
+    element_value(val, C, D).
 
 .decl element_value(e: ElementValue, a: number, b: number)
+element_value($ElementValueExpression(e), A, B) :- conditional_expression(e, A, B).
+element_value($ElementValueArrayInitializer(e), A, B) :- element_value_array_initializer(e, A, B).
+element_value($ElementValueAnnotation(e), A, B) :- annotation(e, A, B).
+
+.decl element_value_array_initializer(e: ElementValueList, a: number, b: number)
+element_value_array_initializer(e, A, E) :-
+    token_left_curly_bracket(A, B),
+    element_value_list?(e, B, C),
+    token_comma?(C, D),
+    token_right_curly_bracket(D, E).
+
+.decl element_value_list(e: ElementValueList, a: number, b: number)
+element_value_list([x, nil], A, B) :- element_value(x, A, B).
+element_value_list([x, xs], A, D) :-
+    element_value(x, A, B),
+    token_comma(B, C),
+    element_value_list(xs, C, D).
+
+.decl element_value_list?(e: ElementValueList, a: number, b: number)
+element_value_list?(nil, A, A) :- any_position(A).
+element_value_list?(x, A, B) :- element_value_list(x, A, B).
+
+.decl marker_annotation(e: IdentifierList, a: number, b: number)
+marker_annotation(e, A, C) :-
+    token_at(A, B),
+    type_name(e, B, C).
+
+// TODO SingleElementAnnotation
 
 /**
  * Arrays
@@ -953,6 +1032,7 @@ local_variable_declaration_statement(e, A, C) :-
 
 .decl local_variable_type(t: Type, a: number, b: number)
 local_variable_type(t, A, B) :- unann_type(t, A, B).
+local_variable_type($Var, A, B) :- token_var(A, B).
 
 .decl statement(s: Statement, a: number, b: number)
 statement(e, A, B) :- statement_without_trailing_substatement(e, A, B).
