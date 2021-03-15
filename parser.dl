@@ -906,21 +906,24 @@ normal_annotation([name, pairs], A, F) :-
 .decl array_initializer(e: Expression, a: number, b: number)
 array_initializer($ArrayInitializer(e), A, D) :- 
     token_left_curly_bracket(A, B),
-    variable_initializer_list(e, B, C),
+    variable_initializer_list?(e, B, C),
     token_right_curly_bracket(C, D).
 array_initializer($ArrayInitializer(e), A, E) :- 
     token_left_curly_bracket(A, B),
-    variable_initializer_list(e, B, C),
+    variable_initializer_list?(e, B, C),
     token_semicolon(C, D),
     token_right_curly_bracket(D, E).
 
 .decl variable_initializer_list(s: ExpressionList, a: number, b: number)
-variable_initializer_list(nil, A, A) :- any_position(A).
-variable_initializer_list([e, tail], A, D) :-
-    variable_initializer(e, A, B),
+variable_initializer_list([x, nil], A, A) :- variable_initializer(x, A, B).
+variable_initializer_list([x, xs], A, D) :-
+    variable_initializer(x, A, B),
     token_comma(B, C),
-    variable_initializer_list(tail, C, D).
-    // TODO, logic here is broken
+    variable_initializer_list(xs, C, D).
+
+.decl variable_initializer_list?(s: ExpressionList, a: number, b: number)
+variable_initializer_list?(nil, A, A) :- any_position(A).
+variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
 
 /**
  * Blocks and Statements
@@ -1029,6 +1032,14 @@ if_then_else_statement($IfThenElse(e, s1, s2), A, H) :-
     statement(s2, G, H).
 
 .decl if_then_else_statement_no_short_if(s: Statement, a: number, b: number)
+if_then_else_statement_no_short_if($IfThenElse(e, s1, s2), A, H) :-
+    token_if(A, B),
+    token_left_paren(B, C),
+    expression(e, C, D),
+    token_right_paren(D, E),
+    statement_no_short_if(s1, E, F),
+    token_else(F, G),
+    statement_no_short_if(s2, G, H).
 
 .decl assert_statement(s: Statement, a: number, b: number)
 assert_statement($Assert(e), A, D) :-
