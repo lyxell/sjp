@@ -17,7 +17,11 @@
  * Compilation unit
  */
 
-.type VariableDeclaration = VariableDeclaration {}
+.type VariableDeclarator = VariableDeclarator { decl: VariableDeclaratorId,
+                                                init: ExpressionOptional }
+
+.type VariableDeclaratorId = VariableDeclaratorId { id: Identifier }
+                           | VariableDeclaratorArray { id: Identifier, dims: DimensionList }
 
 .type Dimension = Dimension { annotations: AnnotationList }
 
@@ -26,9 +30,9 @@
     value: DimensionList
 ]
 
-.type VariableDeclarationList = [
-    key: VariableDeclaration,
-    value: VariableDeclarationList
+.type VariableDeclaratorList = [
+    key: VariableDeclarator,
+    value: VariableDeclaratorList
 ]
 
 .type PackageDeclaration =
@@ -97,6 +101,8 @@
     | Static {}
     | Native {}
     | Synchronized {}
+    | Transient {}
+    | Volatile {}
     | Abstract {}
     | Strictfp {}
     | Final {}
@@ -271,6 +277,11 @@
         superclass: TypeOptional,
         body:       DeclarationList
       }
+    | FieldDeclaration {
+        modifiers:  ModifierList,
+        type:       Type,
+        vars:       VariableDeclaratorList
+      }
     | InterfaceDeclaration {
         modifiers:  ModifierList,
         id:         Identifier
@@ -278,6 +289,7 @@
     | InstanceInitializerDeclaration {
         statement:  Statement
       }
+    | StaticInitializer { statement: Statement }
     | MethodDeclaration {
         modifiers:  ModifierList,
         header:     MethodHeader,
@@ -407,6 +419,10 @@
       token_assert(A, A + 1) :- token("TOKEN_KEYWORD", "assert", A).
 .decl token_static(a: number, b: number)
       token_static(A, A + 1) :- token("TOKEN_KEYWORD", "static", A).
+.decl token_transient(a: number, b: number)
+      token_transient(A, A + 1) :- token("TOKEN_KEYWORD", "transient", A).
+.decl token_volatile(a: number, b: number)
+      token_volatile(A, A + 1) :- token("TOKEN_KEYWORD", "volatile", A).
 .decl token_question_mark(a: number, b: number)
       token_question_mark(A, A + 1) :- token("TOKEN_SEPARATOR", "?", A).
 .decl token_at(a: number, b: number)
@@ -778,7 +794,8 @@ ZERO_OR_MORE(class_body_declarations?, class_body_declaration)
 .decl class_body_declaration(d: Declaration, a: number, b: number)
 class_body_declaration(e, A, B) :- class_member_declaration(e, A, B).
 class_body_declaration(e, A, B) :- instance_initializer(e, A, B).
-// ... TODO
+class_body_declaration(e, A, B) :- static_initializer(e, A, B).
+class_body_declaration(e, A, B) :- constructor_declaration(e, A, B).
 
 .decl class_member_declaration(s: Declaration, a: number, b: number)
 class_member_declaration(e, A, B) :- field_declaration(e, A, B).
@@ -788,14 +805,44 @@ class_member_declaration(e, A, B) :- interface_declaration(e, A, B).
 class_member_declaration($EmptyDeclaration, A, B) :- token_semicolon(A, B).
 
 .decl field_declaration(s: Declaration, a: number, b: number)
+field_declaration($FieldDeclaration(mods, type, vars), A, D) :-
+    field_modifiers?(mods, A, B),
+    unann_type(type, B, C),
+    variable_declarator_list(vars, C, D).
 
-.decl field_modifier(s: Identifier, a: number, b: number)
+.decl field_modifier(s: Modifier, a: number, b: number)
+field_modifier($Public, A, B) :- token_public(A, B).
+field_modifier($Protected, A, B) :- token_protected(A, B).
+field_modifier($Private, A, B) :- token_private(A, B).
+field_modifier($Static, A, B) :- token_static(A, B).
+field_modifier($Final, A, B) :- token_final(A, B).
+field_modifier($Transient, A, B) :- token_transient(A, B).
+field_modifier($Volatile, A, B) :- token_volatile(A, B).
 
-.decl variable_declarator_list(s: VariableDeclarationList, a: number, b: number)
+.decl field_modifiers?(s: ModifierList, a: number, b: number)
+ZERO_OR_MORE(field_modifiers?, field_modifier)
 
-.decl variable_declarator(s: VariableDeclaration, a: number, b: number)
+.decl variable_declarator_list(s: VariableDeclaratorList, a: number, b: number)
+variable_declarator_list([x, nil], A, B) :- variable_declarator(x, A, B).
+variable_declarator_list([x, xs], A, D) :-
+    variable_declarator(x, A, B),
+    token_comma(B, C),
+    variable_declarator_list(xs, C, D).
 
-// TODO VariableDeclaratorId
+.decl variable_declarator(s: VariableDeclarator, a: number, b: number)
+variable_declarator($VariableDeclarator(id, nil), A, B) :-
+    variable_declarator_id(id, A, B).
+variable_declarator($VariableDeclarator(id, [init]), A, D) :-
+    variable_declarator_id(id, A, B),
+    token_equal_sign(B, C),
+    variable_initializer(init, C, D).
+
+
+.decl variable_declarator_id(s: VariableDeclaratorId, a: number, b: number)
+variable_declarator_id($VariableDeclaratorId(id), A, B) :- identifier(id, A, B).
+variable_declarator_id($VariableDeclaratorArray(id, d), A, C) :-
+    identifier(id, A, B),
+    dims(d, B, C).
 
 .decl variable_initializer(s: Expression, a: number, b: number)
 variable_initializer(e, A, B) :- expression(e, A, B).
@@ -888,15 +935,14 @@ method_body(e, A, C) :-
 .decl instance_initializer(s: Declaration, a: number, b: number)
 instance_initializer($InstanceInitializerDeclaration(e), A, B) :- block(e, A, B).
 
-.decl static_initializer(s: Statement, a: number, b: number)
-static_initializer(e, A, C) :-
+.decl static_initializer(s: Declaration, a: number, b: number)
+static_initializer($StaticInitializer(e), A, C) :-
     token_static(A, B),
     block(e, B, C).
-// ... TODO - looses static information
 
-// TODO ConstructorDeclaration
+.decl constructor_declaration(s: Declaration, a: number, b: number)
 
-// TODO ConstructorModifier
+.decl constructor_modifier(s: Modifier, a: number, b: number)
 
 // TODO ConstructorDeclarator
 
