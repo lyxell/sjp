@@ -222,7 +222,7 @@
  */
 
 .type Type =
-      TypeParameter {}
+      TypeParameter { mods: AnnotationList, id: Identifier, bound: TypeBoundOptional }
     | Boolean {}
     | Byte {}
     | Short {}
@@ -231,19 +231,23 @@
     | Var {}
     | Void {}
     | Variable { id: Identifier }
+    | TypeVariable { id: Identifier, annotations: AnnotationList }
     | Char {}
     | Float {}
     | Array { type: Type, dims: DimensionList }
     | Double {}
     | ClassType {}
-
-.type TypeOptional = [
-    t: Type
-]
-         
 .type TypeList = [
     head: Type,
     tail: TypeList
+]
+.type TypeOptional = [
+    t: Type
+]
+
+.type TypeBound = TypeBound { t: Type, additional: TypeList }
+.type TypeBoundOptional = [
+    t: TypeBound
 ]
 
 /**
@@ -290,6 +294,8 @@
  * Tokens
  **************************************************************************/
 
+.decl token_ampersand(a: number, b: number)
+      token_ampersand(A, A + 1) :- token("TOKEN_SEPARATOR", "&", A).
 .decl token_equal_sign(a: number, b: number)
       token_equal_sign(A, A + 1) :- token("TOKEN_OPERATOR", "=", A).
 .decl token_catch(a: number, b: number)
@@ -468,8 +474,13 @@ OPTIONAL(identifier?, identifier)
  **************************************************************************/
 
 .decl type(s: Type, a: number, b: number)
+type(e, A, B) :- primitive_type(e, A, B).
+type(e, A, B) :- reference_type(e, A, B).
 
 .decl primitive_type(s: Type, a: number, b: number)
+primitive_type(e, A, B) :- numeric_type(e, A, B).
+primitive_type($Boolean, A, B) :- token_boolean(A, B).
+// TODO annotations
 
 .decl numeric_type(s: Type, a: number, b: number)
 numeric_type(e, A, B) :- integral_type(e, A, B).
@@ -501,8 +512,16 @@ class_or_interface_type(t, A, B) :- interface_type(t, A, B).
 interface_type(t, A, B) :- class_type(t, A, B).
 
 .decl type_variable(t: Type, a: number, b: number)
+type_variable($TypeVariable(id, a), A, B) :-
+    annotations?(a, A, B),
+    type_identifier(id, A, B).
 
 .decl array_type(t: Type, a: number, b: number)
+array_type($Array(b, d), A, C) :- primitive_type(b, A, B), dims(d, B, C).
+array_type($Array(b, d), A, C) :-
+    class_or_interface_type(b, A, B),
+    dims(d, B, C).
+array_type($Array(b, d), A, C) :- type_variable(b, A, B), dims(d, B, C).
 
 .decl dims(e: DimensionList, a: number, b: number)
 dims([x, nil], A, B) :- dim(x, A, B).
@@ -515,19 +534,45 @@ dim($Dimension(a), A, D) :-
     token_right_square_bracket(C, D).
 
 .decl type_parameter(t: Type, a: number, b: number)
+type_parameter($TypeParameter(mods, id, bound), A, B) :-
+    type_parameter_modifiers?(mods, A, B),
+    type_identifier(id, B, C),
+    type_bound?(bound, C, D).
 
 .decl type_parameter_modifier(t: Annotation, a: number, b: number)
 type_parameter_modifier(t, A, B) :- annotation(t, A, B).
 
-.decl type_bound(a: number, b: number)
+.decl type_parameter_modifiers?(t: AnnotationList, a: number, b: number)
+ZERO_OR_MORE(type_parameter_modifiers?, type_parameter_modifier)
 
-.decl additional_bound(a: number, b: number)
+.decl type_bound(t: TypeBound, a: number, b: number)
+type_bound($TypeBound(t, nil), A, B) :- token_extends(A, B), type_variable(t, A, B).
+type_bound($TypeBound(t, a), A, D) :-
+    token_extends(A, B),
+    class_or_interface_type(t, B, C),
+    additional_bounds?(a, C, D).
 
-.decl type_arguments(a: number, b: number)
+.decl type_bound?(t: TypeBoundOptional, a: number, b: number)
+OPTIONAL(type_bound?, type_bound)
 
-.decl type_argument_list(a: number, b: number)
+.decl additional_bound(t: Type, a: number, b: number)
+additional_bound(t, A, C) :-
+    token_ampersand(A, B),
+    interface_type(t, B, C).
 
-.decl type_argument(a: number, b: number)
+.decl additional_bounds?(t: TypeList, a: number, b: number)
+ZERO_OR_MORE(additional_bounds?, additional_bound)
+
+.decl type_arguments(e: TypeList, a: number, b: number)
+type_arguments(e, A, D) :-
+    token_less_than(A, B),
+    type_argument_list(e, B, C),
+    token_greater_than(C, D).
+
+.decl type_argument_list(e: TypeList, a: number, b: number)
+
+.decl type_argument(e: Type, a: number, b: number)
+type_argument(e, A, B) :- reference_type(e, A, B).
 
 .decl wildcard(a: number, b: number)
 
