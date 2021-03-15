@@ -1529,7 +1529,7 @@ assignment($Assign(e1, s, e2), A, D) :-
 .decl left_hand_side(e: Expr, a: number, b: number)
 
 .decl assignment_operator(s: symbol, a: number, b: number)
-assignment_operator(s, A, A + 1) :- token(_, s, A), s = "==".
+assignment_operator(s, A, A + 1) :- token(_, s, A), s = "=".
 assignment_operator(s, A, A + 1) :- token(_, s, A), s = "*=".
 assignment_operator(s, A, A + 1) :- token(_, s, A), s = "/=".
 assignment_operator(s, A, A + 1) :- token(_, s, A), s = "%=".
