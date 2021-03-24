@@ -1,9 +1,9 @@
 .PHONY: run
 
-run: build/class_declaration.csv
-	@cat build/class_declaration.csv
+run: build/root.csv
+	@cat build/root.csv | python3 pretty_print.py
 
-build/class_declaration.csv: build/token.facts parser.dl
+build/root.csv: build/token.facts parser.dl
 	souffle --fact-dir=build --output-dir=build parser.dl
 
 build/token.facts: build/scanner Example.java

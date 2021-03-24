@@ -32,9 +32,13 @@
 .type IdentifierList = [head: Identifier, tail: IdentifierList]
 .type IdentifierOptional = [id: Identifier]
 
+/* Literals */
+
+.type Literal = IntegerLiteral {s: symbol}
+
 /* Compilation unit */
 
-.type CompilationUnit = OrdinaryCompilationUnit {pkgs: PackageDeclaration,
+.type CompilationUnit = OrdinaryCompilationUnit {pkgs: PackageDeclarationOptional,
                                                  imps: ImportDeclarationList,
                                                  decls: DeclarationList}
                       | ModularCompilationUnit  {}
@@ -57,6 +61,10 @@
 
 .type PackageDeclaration = PackageDeclaration {modifiers: ModifierList,
                                                ids: IdentifierList}
+
+.type PackageDeclarationOptional = [
+    pdecl: PackageDeclaration
+]
 
 .type ModuleDirective = ModuleDirective {}
 
@@ -135,10 +143,10 @@
            | Div                    {e1: Expr, e2: Expr}
            | DimensionExpr          {a: AnnotationList, e: Expr}
            | Equal                  {e1: Expr, e2: Expr}
-           | Identifier             {id: Identifier}
+           | IdentifierExpr         {ids: IdentifierList}
            | Lambda                 {params: LambdaParameters, body: LambdaBody}
            | LessThan               {e1: Expr, e2: Expr}
-           | Literal                {}
+           | LiteralExpr            {l: Literal}
            | MethodInvocation       {id: Identifier, e: ExprList}
            | Mod                    {e1: Expr, e2: Expr}
            | Mul                    {e1: Expr, e2: Expr}
@@ -342,6 +350,8 @@
       token_finally(A, A + 1) :- token("TOKEN_KEYWORD", "finally", A).
 .decl token_byte(a: number, b: number)
       token_byte(A, A + 1) :- token("TOKEN_KEYWORD", "byte", A).
+.decl token_eof(a: number, b: number)
+      token_eof(A, A + 1) :- token("TOKEN_EOF", "", A).
 .decl token_long(a: number, b: number)
       token_long(A, A + 1) :- token("TOKEN_KEYWORD", "long", A).
 .decl token_short(a: number, b: number)
@@ -354,6 +364,8 @@
       token_dot(A, A + 1) :- token("TOKEN_SEPARATOR", ".", A).
 .decl token_package(a: number, b: number)
       token_package(A, A + 1) :- token("TOKEN_KEYWORD", "package", A).
+.decl token_literal_integer(s: symbol, a: number, b: number)
+      token_literal_integer(s, A, A + 1) :- token("TOKEN_LITERAL_INTEGER", s, A).
 .decl token_identifier(id: Identifier, a: number, b: number)
       token_identifier(id, A, A + 1) :- token("TOKEN_IDENTIFIER", id, A).
 .decl token_left_paren(a: number, b: number)
@@ -500,7 +512,8 @@ identifier(t, A, B) :- token_identifier(t, A, B).
 .decl identifier?(s: IdentifierOptional, a: number, b: number)
 OPTIONAL(identifier?, identifier)
 
-.decl literal(a: number, b: number)
+.decl literal(l: Literal, a: number, b: number)
+literal($IntegerLiteral(l), A, B) :- token_literal_integer(l, A, B).
 
 /**
  * Types, Values and Variables
@@ -671,6 +684,10 @@ compilation_unit(e, A, B) :- ordinary_compilation_unit(e, A, B).
 compilation_unit(e, A, B) :- modular_compilation_unit(e, A, B).
 
 .decl ordinary_compilation_unit(e: CompilationUnit, a: number, b: number)
+ordinary_compilation_unit($OrdinaryCompilationUnit(pdecl, impdecl, tdecl), A, D) :-
+    package_declaration?(pdecl, A, B),
+    import_declarations?(impdecl, B, C),
+    type_declarations?(tdecl, C, D).
 
 .decl modular_compilation_unit(e: CompilationUnit, a: number, b: number)
 
@@ -680,6 +697,9 @@ package_declaration($PackageDeclaration(mods, ids), A, E) :-
     token_package(B, C),
     package_declaration_identifiers(ids, C, D),
     token_semicolon(D, E).
+
+.decl package_declaration?(e: PackageDeclarationOptional, a: number, b: number)
+OPTIONAL(package_declaration?, package_declaration)
 
 .decl package_declaration_identifiers(e: IdentifierList, a: number, b: number)
 package_declaration_identifiers([x, nil], A, B) :- identifier(x, A, B).
@@ -699,6 +719,9 @@ import_declaration(e, A, B) :- single_type_import_declaration(e, A, B).
 import_declaration(e, A, B) :- type_import_on_demand_declaration(e, A, B).
 import_declaration(e, A, B) :- single_static_import_declaration(e, A, B).
 import_declaration(e, A, B) :- static_import_on_demand_declaration(e, A, B).
+
+.decl import_declarations?(s: ImportDeclarationList, a: number, b: number)
+ZERO_OR_MORE(import_declarations?, import_declaration)
 
 .decl single_type_import_declaration(s: ImportDeclaration, a: number, b: number)
 single_type_import_declaration($Import(syms), A, D) :-
@@ -721,6 +744,9 @@ type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, F) :-
 .decl type_declaration(s: Declaration, a: number, b: number)
 type_declaration(e, A, B) :- class_declaration(e, A, B).
 type_declaration(e, A, B) :- interface_declaration(e, A, B).
+
+.decl type_declarations?(s: DeclarationList, a: number, b: number)
+ZERO_OR_MORE(type_declarations?, type_declaration)
 
 .decl module_declaration(s: Declaration, a: number, b: number)
 
@@ -1504,7 +1530,7 @@ primary(e, A, B) :- primary_no_new_array(e, A, B).
 primary(e, A, B) :- array_creation_expression(e, A, B).
 
 .decl primary_no_new_array(e: Expr, a: number, b: number)
-primary_no_new_array($Literal, A, B) :- literal(A, B).
+primary_no_new_array($LiteralExpr(l), A, B) :- literal(l, A, B).
 primary_no_new_array(e, A, B) :- class_literal(e, A, B).
 primary_no_new_array($This, A, B) :- token_this(A, B).
 primary_no_new_array(e, A, B + 1) :-
@@ -1530,12 +1556,12 @@ primary_no_new_array(e, A, B) :- method_reference(e, A, B).
 .decl field_access(e: Expr, a: number, b: number)
 
 .decl array_access(e: Expr, a: number, b: number)
-array_access($ArrayAccessIdentifier(id, expr), A, D) :-
+array_access($ArrayAccessIdentifier(id, expr), A, E) :-
     expression_name(id, A, B),
     token_left_square_bracket(B, C),
     expression(expr, C, D),
     token_right_square_bracket(D, E).
-array_access($ArrayAccessExpr(e1, e2), A, D) :-
+array_access($ArrayAccessExpr(e1, e2), A, E) :-
     primary_no_new_array(e1, A, B),
     token_left_square_bracket(B, C),
     expression(e2, C, D),
@@ -1763,10 +1789,10 @@ PREFIX($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
 PREFIX($Not, unary_expression_not_plus_minus, unary_expression, "!")
 
 .decl postfix_expression(e: Expr, a: number, b: number)
+postfix_expression(e, A, B) :- primary(e, A, B).
+postfix_expression($IdentifierExpr(ids), A, B) :- expression_name(ids, A, B).
 postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
-postfix_expression($Identifier(id), A, B) :- token_identifier(id, A, B).
-postfix_expression($Number(to_number(n)), A, A + 1) :- token("TOKEN_NUMBER", n, A).
 
 .decl post_increment_expression(e: Expr, a: number, b: number)
 POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
@@ -1807,19 +1833,9 @@ constant_expression(e, A, B) :- expression(e, A, B).
  * Output
  **************************************************************************/
 
-.decl root(s: Statement)
+.decl root(s: CompilationUnit)
 root(s) :-
-    statement(s, 1, N),
-    token("TOKEN_EOF", _, N + 1).
+    compilation_unit(s, 1, A),
+    token_eof(A, A + 1).
 
-.output expression
-.output return_statement
-.output statement
-.output class_modifiers?
-.output type_identifier
-.output class_body
-.output continue_statement
-.output method_invocation
-.output normal_class_declaration
-.output argument_list?
-.output class_declaration
+.output root
