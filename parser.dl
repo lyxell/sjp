@@ -141,13 +141,13 @@
            | BitwiseNot             {e: Expr}
            | Cast                   {t: Type, bounds: TypeList, e: Expr}
            | Div                    {e1: Expr, e2: Expr}
-           | DimensionExpr          {a: AnnotationList, e: Expr}
+           | DimensionExpression          {a: AnnotationList, e: Expr}
            | Equal                  {e1: Expr, e2: Expr}
-           | IdentifierExpr         {ids: IdentifierList}
+           | IdentifierExpression         {ids: IdentifierList}
            | Lambda                 {params: LambdaParameters, body: LambdaBody}
            | LessThan               {e1: Expr, e2: Expr}
            | LiteralExpr            {l: Literal}
-           | MethodInvocation       {id: Identifier, e: ExprList}
+           | MethodInvocationExpression       {c: MethodInvocationCallee, e: ExprList}
            | Mod                    {e1: Expr, e2: Expr}
            | Mul                    {e1: Expr, e2: Expr}
            | Not                    {e: Expr}
@@ -196,13 +196,20 @@
                    | LeftHandSideFieldAccess { e: Expr }
                    | LeftHandSideArrayAccess { e: Expr }
 
+.type MethodInvocationCallee =
+      MethodInvocationCalleeIdentifier { id: Identifier }
+    | MethodInvocationCalleeIdentifierList { ids: IdentifierList, args: TypeList, id: Identifier}
+    | MethodInvocationCalleeExpr { expr: Expr, args: TypeList, id: Identifier }
+    | MethodInvocationCalleeSuper { args: TypeList, id: Identifier }
+    | MethodInvocationCalleeIdentifierListSuper { ids: IdentifierList, args: TypeList, id: Identifier }
+
 /**
  * Statements
  */
 
 .type Statement = Assert                {e: Expr}
                 | AssertDetailed        {e1: Expr, e2: Expr}
-                | Block                 {s: StatementList}
+                | BlockStatement                 {s: StatementList}
                 | Do                    {e: Expr, s: Statement}
                 | For                   {init: ForInitOptional,
                                          cond: ExprOptional,
@@ -218,7 +225,7 @@
                 | Switch                {e: Expr, s: SwitchRuleList}
                 | SynchronizedStatement {e: Expr, s: Statement}
                 | While                 {e: Expr, s: Statement}
-                | ExprStatement         {e: Expr}
+                | ExpressionStatement         {e: Expr}
                 | Yield                 {e: Expr}
                 | EmptyStatement        {}
 
@@ -281,7 +288,7 @@
 
 /* Declarations */
 
-.type Declaration = Class                {modifiers: ModifierList,
+.type Declaration = ClassDeclaration     {modifiers: ModifierList,
                                           id: Identifier,
                                           superclass: TypeOptional,
                                           body: DeclarationList}
@@ -318,7 +325,7 @@
 /* Methods */
 
 .type MethodHeader = MethodHeader {result: Type, decl: MethodDeclarator, throws: TypeList}
-.type MethodDeclarator = MethodDeclarator { id: Identifier, rp: ReceiverParameterOptional, params: FormalParameterList, dims: DimensionList}
+.type MethodDeclarator = MethodDeclarator {id: Identifier, rp: ReceiverParameterOptional, params: FormalParameterList, dims: DimensionList}
 .type ReceiverParameter = ReceiverParameter {}
 .type ReceiverParameterOptional = [rp: ReceiverParameter]
 .type FormalParameter = FormalParameter {mods: ModifierList, type: Type, decl: VariableDeclaratorId}
@@ -334,6 +341,8 @@
 
 .decl token_new(a: number, b: number)
       token_new(A, A + 1) :- token("TOKEN_IDENTIFIER", "new", A).
+.decl token_super(a: number, b: number)
+      token_super(A, A + 1) :- token("TOKEN_IDENTIFIER", "super", A).
 .decl token_ampersand(a: number, b: number)
       token_ampersand(A, A + 1) :- token("TOKEN_SEPARATOR", "&", A).
 .decl token_equal_sign(a: number, b: number)
@@ -787,7 +796,7 @@ class_declaration(e, A, B) :- normal_class_declaration(e, A, B).
 class_declaration(e, A, B) :- enum_declaration(e, A, B).
 
 .decl normal_class_declaration(s: Declaration, a: number, b: number)
-normal_class_declaration($Class(modifiers, id, sup, declarations), A, F) :-
+normal_class_declaration($ClassDeclaration(modifiers, id, sup, declarations), A, F) :-
     class_modifiers?(modifiers, A, B),
     token_class(B, C),
     type_identifier(id, C, D),
@@ -1267,7 +1276,7 @@ variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
  **************************************************************************/
 
 .decl block(s: Statement, a: number, b: number)
-block($Block(s), A, D) :-
+block($BlockStatement(s), A, D) :-
     token_left_curly_bracket(A, B),
     block_statements?(s, B, C),
     token_right_curly_bracket(C, D).
@@ -1335,7 +1344,7 @@ labeled_statement_no_short_if($Label(id, st), A, D) :-
     statement_no_short_if(st, C, D).
 
 .decl expression_statement(e: Statement, a: number, b: number)
-expression_statement($ExprStatement(e), A, C) :-
+expression_statement($ExpressionStatement(e), A, C) :-
     statement_expression(e, A, B),
     token_semicolon(B, C).
 
@@ -1655,14 +1664,53 @@ array_access($ArrayAccessExpr(e1, e2), A, E) :-
     token_right_square_bracket(D, E).
 
 .decl method_invocation(e: Expr, a: number, b: number)
-method_invocation(e, A, B) :- method_invocation_with_method_name(e, A, B).
-
-.decl method_invocation_with_method_name(e: Expr, a: number, b: number)
-method_invocation_with_method_name($MethodInvocation(id, e), A, E) :-
+method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifier(id), args), A, E) :-
     method_name(id, A, B),
     token_left_paren(B, C),
-    argument_list?(e, C, D),
+    argument_list?(args, C, D),
     token_right_paren(D, E).
+method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierList(ids, targs, id), args), A, H) :-
+    type_name(ids, A, B),
+    token_dot(B, C),
+    type_arguments?(targs, C, D),
+    identifier(id, D, E),
+    token_left_paren(E, F),
+    argument_list?(args, F, G),
+    token_right_paren(G, H).
+method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierList(ids, targs, id), args), A, H) :-
+    expression_name(ids, A, B),
+    token_dot(B, C),
+    type_arguments?(targs, C, D),
+    identifier(id, D, E),
+    token_left_paren(E, F),
+    argument_list?(args, F, G),
+    token_right_paren(G, H).
+method_invocation($MethodInvocationExpression($MethodInvocationCalleeExpr(expr, targs, id), args), A, H) :-
+    primary(expr, A, B),
+    token_dot(B, C),
+    type_arguments?(targs, C, D),
+    identifier(id, D, E),
+    token_left_paren(E, F),
+    argument_list?(args, F, G),
+    token_right_paren(G, H).
+method_invocation($MethodInvocationExpression($MethodInvocationCalleeSuper(targs, id), args), A, H) :-
+    token_super(A, B),
+    token_dot(B, C),
+    type_arguments?(targs, C, D),
+    identifier(id, D, E),
+    token_left_paren(E, F),
+    argument_list?(args, F, G),
+    token_right_paren(G, H).
+method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierListSuper(ids, targs, id), args), A, J) :-
+    type_name(ids, A, B),
+    token_dot(B, C),
+    token_super(C, D),
+    token_dot(D, E),
+    type_arguments?(targs, E, F),
+    identifier(id, F, G),
+    token_left_paren(G, H),
+    argument_list?(args, H, I),
+    token_right_paren(I, J).
 
 .decl argument_list?(e: ExprList, a: number, b: number)
 argument_list?(nil, A, A) :- any_position(A).
@@ -1706,7 +1754,7 @@ dim_exprs([x, xs], A, C) :-
     dim_exprs(xs, B, C).
 
 .decl dim_expr(e: Expr, a: number, b: number)
-dim_expr($DimensionExpr(a, e), A, E) :-
+dim_expr($DimensionExpression(a, e), A, E) :-
     annotations?(a, A, B),
     token_left_square_bracket(B, C),
     expression(e, C, D),
@@ -1877,7 +1925,7 @@ PREFIX($Not, unary_expression_not_plus_minus, unary_expression, "!")
 
 .decl postfix_expression(e: Expr, a: number, b: number)
 postfix_expression(e, A, B) :- primary(e, A, B).
-postfix_expression($IdentifierExpr(ids), A, B) :- expression_name(ids, A, B).
+postfix_expression($IdentifierExpression(ids), A, B) :- expression_name(ids, A, B).
 postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
 
