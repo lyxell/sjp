@@ -317,10 +317,11 @@
 
 /* Methods */
 
-.type MethodHeader = MethodHeader {result: Type}
-.type MethodDeclarator = MethodDeclarator {}
+.type MethodHeader = MethodHeader {result: Type, decl: MethodDeclarator, throws: TypeList}
+.type MethodDeclarator = MethodDeclarator { id: Identifier, rp: ReceiverParameterOptional, params: FormalParameterList, dims: DimensionList}
 .type ReceiverParameter = ReceiverParameter {}
-.type FormalParameter = FormalParameter {}
+.type ReceiverParameterOptional = [rp: ReceiverParameter]
+.type FormalParameter = FormalParameter {mods: ModifierList, type: Type, decl: VariableDeclaratorId}
 .type FormalParameterList = [head: FormalParameter, tail: FormalParameterList]
 .type VariableArityParameter = VariableArityParameter {}
 
@@ -369,9 +370,9 @@
 .decl token_identifier(id: Identifier, a: number, b: number)
       token_identifier(id, A, A + 1) :- token("TOKEN_IDENTIFIER", id, A).
 .decl token_left_paren(a: number, b: number)
-      token_left_paren(A, A + 1) :- token("TOKEN_LEFT_PAREN", "(", A).
+      token_left_paren(A, A + 1) :- token("TOKEN_BRACKET", "(", A).
 .decl token_right_paren(a: number, b: number)
-      token_right_paren(A, A + 1) :- token("TOKEN_RIGHT_PAREN", ")", A).
+      token_right_paren(A, A + 1) :- token("TOKEN_BRACKET", ")", A).
 .decl token_left_square_bracket(a: number, b: number)
       token_left_square_bracket(A, A + 1) :- token("TOKEN_BRACKET", "[", A).
 .decl token_right_square_bracket(a: number, b: number)
@@ -427,6 +428,8 @@
       token_case(A, A + 1) :- token("TOKEN_KEYWORD", "case", A).
 .decl token_yield(a: number, b: number)
       token_yield(A, A + 1) :- token("TOKEN_KEYWORD", "yield", A).
+.decl token_throws(a: number, b: number)
+      token_throws(A, A + 1) :- token("TOKEN_KEYWORD", "throws", A).
 .decl token_throw(a: number, b: number)
       token_throw(A, A + 1) :- token("TOKEN_KEYWORD", "throw", A).
 .decl token_arrow(a: number, b: number)
@@ -554,6 +557,22 @@ class_or_interface_type(t, A, B) :- class_type(t, A, B).
 class_or_interface_type(t, A, B) :- interface_type(t, A, B).
 
 .decl class_type(t: Type, a: number, b: number)
+class_type($ClassType, A, D) :-
+    annotations?(anns, A, B),
+    type_identifier(id, B, C),
+    type_arguments?(args, C, D).
+class_type($ClassType, A, D) :-
+    package_name(pn, A, B),
+    token_dot(B, C),
+    annotations?(anns, C, D),
+    type_identifier(id, D, E),
+    type_arguments?(args, E, F).
+class_type($ClassType, A, D) :-
+    class_or_interface_type(pn, A, B),
+    token_dot(B, C),
+    annotations?(anns, C, D),
+    type_identifier(id, D, E),
+    type_arguments?(args, E, F).
 
 .decl interface_type(t: Type, a: number, b: number)
 interface_type(t, A, B) :- class_type(t, A, B).
@@ -619,6 +638,10 @@ type_arguments(e, A, D) :-
     token_less_than(A, B),
     type_argument_list(e, B, C),
     token_greater_than(C, D).
+
+.decl type_arguments?(e: TypeList, a: number, b: number)
+type_arguments?(nil, A, A) :- any_position(A).
+type_arguments?(x, A, B) :- type_arguments(x, A, B).
 
 .decl type_argument_list(e: TypeList, a: number, b: number)
 
@@ -910,7 +933,12 @@ unann_type_variable($Variable(e), A, B) :- type_identifier(e, A, B).
 unann_array_type($Array(t, d), A, C) :-
     primitive_type(t, A, B),
     dims(d, B, C).
-// ...
+unann_array_type($Array(t, d), A, C) :-
+    unann_class_or_interface_type(t, A, B),
+    dims(d, B, C).
+unann_array_type($Array(t, d), A, C) :-
+    unann_type_variable(t, A, B),
+    dims(d, B, C).
 
 .decl method_declaration(s: Declaration, a: number, b: number)
 method_declaration($Method(modifiers, header, body), A, D) :-
@@ -933,18 +961,61 @@ method_modifier($Native,        A, B) :- token_native(A, B).
 method_modifier($Strictfp,      A, B) :- token_strictfp(A, B).
 
 .decl method_header(s: MethodHeader, a: number, b: number)
+method_header($MethodHeader(t, decl, th), A, D) :-
+    result(t, A, B),
+    method_declarator(decl, B, C),
+    throws?(th, C, D).
 
 .decl result(t: Type, a: number, b: number)
 result(t, A, B) :- unann_type(t, A, B).
 result($Void, A, B) :- token_void(A, B).
 
 .decl method_declarator(s: MethodDeclarator, a: number, b: number)
+method_declarator($MethodDeclarator(id, [rp], params, dims), A, H) :-
+    identifier(id, A, B),
+    token_left_paren(B, C),
+    receiver_parameter(rp, C, D),
+    token_comma(D, E),
+    formal_parameter_list?(params, E, F),
+    token_right_paren(F, G),
+    dims?(dims, G, H).
+method_declarator($MethodDeclarator(id, nil, params, dims), A, F) :-
+    identifier(id, A, B),
+    token_left_paren(B, C),
+    formal_parameter_list?(params, C, D),
+    token_right_paren(D, E),
+    dims?(dims, E, F).
 
 .decl receiver_parameter(s: ReceiverParameter, a: number, b: number)
+receiver_parameter($ReceiverParameter, A, F) :-
+    annotations?(anns, A, B),
+    unann_type(t, B, C),
+    identifier(id, C, D),
+    token_dot(D, E),
+    token_this(E, F).
+receiver_parameter($ReceiverParameter, A, D) :-
+    annotations?(anns, A, B),
+    unann_type(t, B, C),
+    token_this(C, D).
+// TODO, fill $ReceiverParameter
 
 .decl formal_parameter_list(s: FormalParameterList, a: number, b: number)
+formal_parameter_list([x, nil], A, B) :- formal_parameter(x, A, B).
+formal_parameter_list([x, xs], A, D) :-
+    formal_parameter(x, A, B),
+    token_comma(B, C),
+    formal_parameter_list(xs, C, D).
+
+.decl formal_parameter_list?(s: FormalParameterList, a: number, b: number)
+formal_parameter_list?(nil, A, A) :- any_position(A).
+formal_parameter_list?(x, A, B) :- formal_parameter_list(x, A, B).
 
 .decl formal_parameter(s: FormalParameter, a: number, b: number)
+formal_parameter($FormalParameter(mods,t,id), A, D) :-
+    variable_modifiers?(mods, A, B),
+    unann_type(t, B, C),
+    variable_declarator_id(id, C, D).
+// TODO: Variable arity parameter
 
 .decl variable_arity_parameter(s: VariableArityParameter, a: number, b: number)
 
@@ -954,16 +1025,31 @@ variable_modifier($Final, A, B) :- token_final(A, B).
 .decl variable_modifiers?(e: ModifierList, a: number, b: number)
 ZERO_OR_MORE(variable_modifiers?, variable_modifier)
 
-// TODO Throws
+.decl throws(e: TypeList, a: number, b: number)
+throws(e, A, C) :-
+    token_throws(A, B),
+    exception_type_list(e, B, C).
 
-// TODO ExceptionTypeList
+.decl throws?(e: TypeList, a: number, b: number)
+throws?(nil, A, A) :- any_position(A).
+throws?(x,   A, B) :- throws(x, A, B).
 
-// TODO ExceptionType
+.decl exception_type_list(e: TypeList, a: number, b: number)
+exception_type_list([x, nil], A, B) :- exception_type(x, A, B).
+exception_type_list([x, xs], A, D) :-
+    exception_type(x, A, B),
+    token_comma(B, C),
+    exception_type_list(xs, C, D).
+
+.decl exception_type(t: Type, a: number, b: number)
+exception_type(t, A, B) :- class_type(t, A, B).
+exception_type(t, A, B) :- type_variable(t, A, B).
 
 .decl method_body(s: Statement, a: number, b: number)
-method_body(e, A, C) :-
-    block(e, A, B),
-    token_semicolon(B, C).
+method_body(s, A, B) :-
+    block(s, A, B).
+method_body($EmptyStatement, A, B) :-
+    token_semicolon(A, B).
 
 .decl instance_initializer(s: Declaration, a: number, b: number)
 instance_initializer($InstanceInitializer(e), A, B) :- block(e, A, B).
@@ -1012,7 +1098,7 @@ enum_constant($EnumConstant(mods, id, nil, body), A, D) :-
     enum_constant_modifiers?(mods, A, B),
     identifier(id, B, C),
     class_body?(body, C, D).
-enum_constant($EnumConstant(mods, id, args, body), A, F) :-
+enum_constant($EnumConstant(mods, id, args, body), A, G) :-
     enum_constant_modifiers?(mods, A, B),
     identifier(id, B, C),
     token_left_paren(C, D),
@@ -1107,7 +1193,7 @@ normal_annotation($Annotation(name, pairs), A, F) :-
 
 .decl element_value_pair_list(e: ElementValuePairList, a: number, b: number)
 element_value_pair_list([x, nil], A, B) :- element_value_pair(x, A, B).
-element_value_pair_list([x, xs], A, B) :-
+element_value_pair_list([x, xs], A, D) :-
     element_value_pair(x, A, B),
     token_comma(B, C),
     element_value_pair_list(xs, C, D).
@@ -1117,7 +1203,7 @@ element_value_pair_list?(nil, A, A) :- any_position(A).
 element_value_pair_list?(x, A, B) :- element_value_pair_list(x, A, B).
 
 .decl element_value_pair(e: ElementValuePair, a: number, b: number)
-element_value_pair($ElementValuePair(id, val), A, B) :-
+element_value_pair($ElementValuePair(id, val), A, D) :-
     identifier(id, A, B),
     token_equal_sign(B, C),
     element_value(val, C, D).
@@ -1165,7 +1251,7 @@ array_initializer($ArrayInitializer(e), A, E) :-
     token_right_curly_bracket(D, E).
 
 .decl variable_initializer_list(s: ExprList, a: number, b: number)
-variable_initializer_list([x, nil], A, A) :- variable_initializer(x, A, B).
+variable_initializer_list([x, nil], A, B) :- variable_initializer(x, A, B).
 variable_initializer_list([x, xs], A, D) :-
     variable_initializer(x, A, B),
     token_comma(B, C),
@@ -1184,7 +1270,7 @@ variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
 block($Block(s), A, D) :-
     token_left_curly_bracket(A, B),
     block_statements?(s, B, C),
-    token_left_curly_bracket(C, D).
+    token_right_curly_bracket(C, D).
 
 .decl block_statements?(s: StatementList, a: number, b: number)
 ZERO_OR_MORE(block_statements?, block_statement)
@@ -1243,7 +1329,7 @@ labeled_statement($Label(id, st), A, D) :-
     statement(st, C, D).
 
 .decl labeled_statement_no_short_if(s: Statement, a: number, b: number)
-labeled_statement_no_short_if($Label(id, st), A, B) :-
+labeled_statement_no_short_if($Label(id, st), A, D) :-
     token_identifier(id, A, B),
     token_colon(B, C),
     statement_no_short_if(st, C, D).
@@ -1330,7 +1416,7 @@ switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
     switch_label(label, A, B),
     token_arrow(B, C),
     block(stmt, C, D).
-switch_rule($SwitchRuleBlock(label, stmt), A, C) :-
+switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
     switch_label(label, A, B),
     token_arrow(B, C),
     throw_statement(stmt, C, D).
@@ -1476,7 +1562,7 @@ synchronized_statement($SynchronizedStatement(e, s), A, F) :-
 // TODO Catches
 
 .decl catch_clause(e: CatchClause, a: number, b: number)
-catch_clause($CatchClause(param, b), A, B) :-
+catch_clause($CatchClause(param, b), A, F) :-
     token_catch(A, B),
     token_left_paren(B, C),
     catch_formal_parameter(param, C, D),
@@ -1488,7 +1574,7 @@ catch_clause($CatchClause(param, b), A, B) :-
 // TODO CatchType
 
 .decl finally(e: Statement, a: number, b: number)
-finally(b, A, B) :-
+finally(b, A, C) :-
     token_finally(A, B),
     block(b, B, C).
 
@@ -1534,7 +1620,7 @@ primary(e, A, B) :- array_creation_expression(e, A, B).
 primary_no_new_array($LiteralExpr(l), A, B) :- literal(l, A, B).
 primary_no_new_array(e, A, B) :- class_literal(e, A, B).
 primary_no_new_array($This, A, B) :- token_this(A, B).
-primary_no_new_array(e, A, B + 1) :-
+primary_no_new_array(e, A, D) :-
     token_left_paren(A, B),
     expression(e, B, C),
     token_right_paren(C, D).

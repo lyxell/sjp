@@ -1,7 +1,7 @@
 .PHONY: run
 
 run: build/root.csv
-	@cat build/root.csv | python3 pretty_print.py
+	@cat build/root.csv | prettier --parser json
 
 build/root.csv: build/token.facts parser.dl
 	souffle --fact-dir=build --output-dir=build parser.dl
