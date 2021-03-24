@@ -1,4 +1,6 @@
 /**
+ * MIT License
+ *
  * Copyright (c) 2021 Anton Lyxell
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
