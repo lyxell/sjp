@@ -124,6 +124,8 @@
 .type Expr = Add                    {e1: Expr, e2: Expr}
            | And                    {e1: Expr, e2: Expr}
            | ArrayInitializer       {e: ExprList}
+           | ArrayCreation          {t: Type, dim_exprs: ExprList, dims: DimensionList}
+           | ArrayCreationWithInitializer {t:Type, dims: DimensionList, init: Expr}
            | Assign                 {e1: LeftHandSide, s: symbol, e2: Expr}
            | BitwiseAnd             {e1: Expr, e2: Expr}
            | BitwiseExclOr          {e1: Expr, e2: Expr}
@@ -319,6 +321,8 @@
 .input token
 .decl token(s: symbol, c: Identifier, n: number)
 
+.decl token_new(a: number, b: number)
+      token_new(A, A + 1) :- token("TOKEN_IDENTIFIER", "new", A).
 .decl token_ampersand(a: number, b: number)
       token_ampersand(A, A + 1) :- token("TOKEN_SEPARATOR", "&", A).
 .decl token_equal_sign(a: number, b: number)
@@ -554,6 +558,10 @@ array_type($Array(b, d), A, C) :- type_variable(b, A, B), dims(d, B, C).
 .decl dims(e: DimensionList, a: number, b: number)
 dims([x, nil], A, B) :- dim(x, A, B).
 dims([x, xs],  A, C) :- dim(x, A, B), dims(xs, B, C).
+
+.decl dims?(e: DimensionList, a: number, b: number)
+dims?(nil, A, A) :- any_position(A).
+dims?(x,   A, B) :- dims(x, A, B).
 
 .decl dim(t: Dimension, a: number, b: number)
 dim($Dimension(a), A, D) :-
@@ -1545,6 +1553,26 @@ argument_list([x, xs], A, D) :-
 .decl method_reference(e: Expr, a: number, b: number)
 
 .decl array_creation_expression(e: Expr, a: number, b: number)
+array_creation_expression($ArrayCreation(t, de, d), A, E) :-
+    token_new(A, B),
+    primitive_type(t, B, C),
+    dim_exprs(de, C, D),
+    dims?(d, D, E).
+array_creation_expression($ArrayCreation(t, de, d), A, E) :-
+    token_new(A, B),
+    class_or_interface_type(t, B, C),
+    dim_exprs(de, C, D),
+    dims?(d, D, E).
+array_creation_expression($ArrayCreationWithInitializer(t,d,init), A, E) :-
+    token_new(A, B),
+    primitive_type(t, B, C),
+    dims(d, C, D),
+    array_initializer(init, D, E).
+array_creation_expression($ArrayCreationWithInitializer(t,d,init), A, E) :-
+    token_new(A, B),
+    class_or_interface_type(t, B, C),
+    dims(d, C, D),
+    array_initializer(init, D, E).
 
 .decl dim_exprs(e: ExprList, a: number, b: number)
 dim_exprs([x, nil], A, B) :- dim_expr(x, A, B).
