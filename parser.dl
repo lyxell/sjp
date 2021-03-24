@@ -124,7 +124,7 @@
 .type Expr = Add                    {e1: Expr, e2: Expr}
            | And                    {e1: Expr, e2: Expr}
            | ArrayInitializer       {e: ExprList}
-           | Assign                 {e1: Expr, s: symbol, e2: Expr}
+           | Assign                 {e1: LeftHandSide, s: symbol, e2: Expr}
            | BitwiseAnd             {e1: Expr, e2: Expr}
            | BitwiseExclOr          {e1: Expr, e2: Expr}
            | BitwiseInclOr          {e1: Expr, e2: Expr}
@@ -167,6 +167,10 @@
                  | LambdaBodyBlock  {e: Statement}
 
 .type LambdaParameters = LambdaParameters {}
+
+.type LeftHandSide = LeftHandSideName { e: IdentifierList }
+                   | LeftHandSideFieldAccess { e: Expr }
+                   | LeftHandSideArrayAccess { e: Expr }
 
 /**
  * Statements
@@ -1570,7 +1574,13 @@ assignment($Assign(e1, s, e2), A, D) :-
     assignment_operator(s, B, C),
     expression(e2, C, D).
 
-.decl left_hand_side(e: Expr, a: number, b: number)
+.decl left_hand_side(e: LeftHandSide, a: number, b: number)
+left_hand_side($LeftHandSideName(n), A, B) :-
+    expression_name(n, A, B).
+left_hand_side($LeftHandSideFieldAccess(e), A, B) :-
+    field_access(e, A, B).
+left_hand_side($LeftHandSideArrayAccess(e), A, B) :-
+    array_access(e, A, B).
 
 .decl assignment_operator(s: symbol, a: number, b: number)
 assignment_operator(s, A, A + 1) :- token(_, s, A), s = "=".
@@ -1674,7 +1684,7 @@ POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
 POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
 .decl cast_expression(e: Expr, a: number, b: number)
-cast_expression($Cast(t, nil, e), A, C) :-
+cast_expression($Cast(t, nil, e), A, E) :-
     token_left_paren(A, B),
     primitive_type(t, B, C),
     token_right_paren(C, D),
