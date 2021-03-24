@@ -167,10 +167,17 @@
       LambdaParameter {m: ModifierList, t: Type, decl: VariableDeclaratorId}
     | LambdaParameterVariableArity {m: VariableArityParameter}
 
+.type LambdaParameterList = [
+    head: LambdaParameter,
+    tail: LambdaParameterList
+]
+
 .type LambdaBody = LambdaBodyExpr   {e: Expr}
                  | LambdaBodyBlock  {e: Statement}
 
-.type LambdaParameters = LambdaParameters {}
+.type LambdaParameters = LambdaParametersIdentifier {id: Identifier}
+                       | LambdaParametersIdentifierList {ids: IdentifierList}
+                       | LambdaParametersLambdaParameterList {params: LambdaParameterList}
 
 .type LeftHandSide = LeftHandSideName { e: IdentifierList }
                    | LeftHandSideFieldAccess { e: Expr }
@@ -1554,9 +1561,31 @@ lambda_expression($Lambda(params, body), A, D) :-
     token_arrow(B, C),
     lambda_body(body, C, D).
 
-.decl lambda_parameters(p: LambdaParameters, a: number, b: number)
+.decl lambda_parameters(e: LambdaParameters, a: number, b: number)
+lambda_parameters($LambdaParametersIdentifier(id), A, B) :-
+    identifier(id, A, B).
+lambda_parameters($LambdaParametersIdentifierList(ids), A, D) :-
+    token_left_paren(A, B),
+    lambda_parameter_list_first_option(ids, B, C),
+    token_right_paren(C, D).
+lambda_parameters($LambdaParametersLambdaParameterList(params), A, D) :-
+    token_left_paren(A, B),
+    lambda_parameter_list_second_option(params, B, C),
+    token_right_paren(C, D).
 
-.decl lambda_parameter_list(a: number, b: number)
+/* Note: Rule lambda_parameter_list is handled by the two following rules */
+.decl lambda_parameter_list_first_option(e: IdentifierList, a: number, b: number)
+lambda_parameter_list_first_option([x, nil], A, B) :- identifier(x, A, B).
+lambda_parameter_list_first_option([x, xs], A, D) :-
+    identifier(x, A, B),
+    token_comma(B, C),
+    lambda_parameter_list_first_option(xs, C, D).
+.decl lambda_parameter_list_second_option(e: LambdaParameterList, a: number, b: number)
+lambda_parameter_list_second_option([x, nil], A, B) :- lambda_parameter(x, A, B).
+lambda_parameter_list_second_option([x, xs], A, D) :-
+    lambda_parameter(x, A, B),
+    token_comma(B, C),
+    lambda_parameter_list_second_option(xs, C, D).
 
 .decl lambda_parameter(e: LambdaParameter, a: number, b: number)
 lambda_parameter($LambdaParameter(mods, t, decl), A, D) :-
