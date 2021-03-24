@@ -837,10 +837,11 @@ class_member_declaration(e, A, B) :- interface_declaration(e, A, B).
 class_member_declaration($EmptyDeclaration, A, B) :- token_semicolon(A, B).
 
 .decl field_declaration(s: Declaration, a: number, b: number)
-field_declaration($Field(mods, type, vars), A, D) :-
+field_declaration($Field(mods, type, vars), A, E) :-
     field_modifiers?(mods, A, B),
     unann_type(type, B, C),
-    variable_declarator_list(vars, C, D).
+    variable_declarator_list(vars, C, D),
+    token_semicolon(D, E).
 
 .decl field_modifier(s: Modifier, a: number, b: number)
 field_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
