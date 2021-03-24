@@ -140,18 +140,19 @@
            | BitwiseInclOr          {e1: Expr, e2: Expr}
            | BitwiseNot             {e: Expr}
            | Cast                   {t: Type, bounds: TypeList, e: Expr}
+           | ClassInstanceCreationExpression { typeargs: TypeList, class: ClassInstanceCreationType, args: ExprList, body: DeclarationList }
            | Div                    {e1: Expr, e2: Expr}
            | DimensionExpression          {a: AnnotationList, e: Expr}
-           | Equal                  {e1: Expr, e2: Expr}
+           | EqualsExpression       {e1: Expr, e2: Expr}
            | IdentifierExpression         {ids: IdentifierList}
            | Lambda                 {params: LambdaParameters, body: LambdaBody}
            | LessThan               {e1: Expr, e2: Expr}
-           | LiteralExpr            {l: Literal}
-           | MethodInvocationExpression       {c: MethodInvocationCallee, e: ExprList}
+           | LiteralExpression      {l: Literal}
+           | MethodInvocationExpression {c: MethodInvocationCallee, e: ExprList}
            | Mod                    {e1: Expr, e2: Expr}
            | Mul                    {e1: Expr, e2: Expr}
            | Not                    {e: Expr}
-           | NotEqual               {e1: Expr, e2: Expr}
+           | NotEqualsExpression    {e1: Expr, e2: Expr}
            | Number                 {n: number}
            | Or                     {e1: Expr, e2: Expr}
            | PostDecrement          {e: Expr}
@@ -162,10 +163,12 @@
            | ShiftRight             {e1: Expr, e2: Expr}
            | ShiftRightUnsigned     {e1: Expr, e2: Expr}
            | Sub                    {e1: Expr, e2: Expr}
-           | SwitchExpr             {e: Expr, s: SwitchRuleList}
+           | SwitchExpression       {e: Expr, s: SwitchRuleList}
            | ArrayAccessIdentifier  {id: IdentifierList, e: Expr}
            | ArrayAccessExpr        {e1: Expr, e2: Expr}
            | This                   {}
+
+.type ClassInstanceCreationType = ClassInstanceCreationType {}
 
 .type ExprOptional = [
     expr: Expr
@@ -216,8 +219,9 @@
                                          upd: ForUpdateOptional,
                                          stmt: Statement}
                 | Label                 {id: Identifier, s: Statement}
-                | IfThen                {e: Expr, s: Statement}
-                | IfThenElse            {e: Expr, s1: Statement, s2: Statement}
+                | LocalVariableDeclarationStatement { decl: Declaration }
+                | IfThenStatement       {e: Expr, s: Statement}
+                | IfThenElseStatement   {e: Expr, s1: Statement, s2: Statement}
                 | Continue              {e: IdentifierOptional}
                 | Break                 {e: IdentifierOptional}
                 | Return                {e: ExprOptional}
@@ -274,13 +278,12 @@
            | Long           {}
            | Var            {}
            | Void           {}
-           | Variable       {id: Identifier}
            | TypeVariable   {id: Identifier, annotations: AnnotationList}
            | Char           {}
            | Float          {}
-           | Array          {type: Type, dims: DimensionList}
+           | ArrayType      {type: Type, dims: DimensionList}
            | Double         {}
-           | ClassType      {}
+           | ClassType      {annotations: AnnotationList, id: Identifier, typeargs: TypeList}
 .type TypeList = [head: Type, tail: TypeList]
 .type TypeOptional = [t: Type]
 .type TypeBound = TypeBound {t: Type, additional: TypeList}
@@ -303,6 +306,7 @@
                                           header: MethodHeader,
                                           body: Statement}
                   | EmptyDeclaration     {}
+                  | LocalVariableDeclaration { mods: ModifierList, type: Type, decl: VariableDeclaratorList}
 
 .type DeclarationList = [head: Declaration, tail: DeclarationList]
 
@@ -340,7 +344,7 @@
 .decl token(s: symbol, c: Identifier, n: number)
 
 .decl token_new(a: number, b: number)
-      token_new(A, A + 1) :- token("TOKEN_IDENTIFIER", "new", A).
+      token_new(A, A + 1) :- token("TOKEN_KEYWORD", "new", A).
 .decl token_super(a: number, b: number)
       token_super(A, A + 1) :- token("TOKEN_IDENTIFIER", "super", A).
 .decl token_ampersand(a: number, b: number)
@@ -393,7 +397,7 @@
 .decl token_less_than(a: number, b: number)
       token_less_than(A, A + 1) :- token("TOKEN_OPERATOR", "<", A).
 .decl token_greater_than(a: number, b: number)
-      token_greater_than(A, A + 1) :- token("TOKEN_OPERATOR", "<", A).
+      token_greater_than(A, A + 1) :- token("TOKEN_OPERATOR", ">", A).
 .decl token_asterisk(a: number, b: number)
       token_asterisk(A, A + 1) :- token("TOKEN_OPERATOR", "*", A).
 .decl token_import(a: number, b: number)
@@ -566,18 +570,18 @@ class_or_interface_type(t, A, B) :- class_type(t, A, B).
 class_or_interface_type(t, A, B) :- interface_type(t, A, B).
 
 .decl class_type(t: Type, a: number, b: number)
-class_type($ClassType, A, D) :-
+class_type($ClassType(anns, id, args), A, D) :-
     annotations?(anns, A, B),
     type_identifier(id, B, C),
     type_arguments?(args, C, D).
-class_type($ClassType, A, D) :-
-    package_name(pn, A, B),
+class_type($ClassType(anns, id, args), A, D) :-
+    package_name(pn, A, B), // TODO: handle this
     token_dot(B, C),
     annotations?(anns, C, D),
     type_identifier(id, D, E),
     type_arguments?(args, E, F).
-class_type($ClassType, A, D) :-
-    class_or_interface_type(pn, A, B),
+class_type($ClassType(anns, id, args), A, D) :-
+    class_or_interface_type(pn, A, B), // TODO: handle this
     token_dot(B, C),
     annotations?(anns, C, D),
     type_identifier(id, D, E),
@@ -592,11 +596,11 @@ type_variable($TypeVariable(id, a), A, B) :-
     type_identifier(id, A, B).
 
 .decl array_type(t: Type, a: number, b: number)
-array_type($Array(b, d), A, C) :- primitive_type(b, A, B), dims(d, B, C).
-array_type($Array(b, d), A, C) :-
+array_type($ArrayType(b, d), A, C) :- primitive_type(b, A, B), dims(d, B, C).
+array_type($ArrayType(b, d), A, C) :-
     class_or_interface_type(b, A, B),
     dims(d, B, C).
-array_type($Array(b, d), A, C) :- type_variable(b, A, B), dims(d, B, C).
+array_type($ArrayType(b, d), A, C) :- type_variable(b, A, B), dims(d, B, C).
 
 .decl dims(e: DimensionList, a: number, b: number)
 dims([x, nil], A, B) :- dim(x, A, B).
@@ -653,6 +657,10 @@ type_arguments?(nil, A, A) :- any_position(A).
 type_arguments?(x, A, B) :- type_arguments(x, A, B).
 
 .decl type_argument_list(e: TypeList, a: number, b: number)
+type_argument_list([x, nil], A, B) :- type_argument(x, A, B).
+type_argument_list([x, xs], A, C) :-
+    type_argument(x, A, B),
+    type_argument_list(xs, B, C).
 
 .decl type_argument(e: Type, a: number, b: number)
 type_argument(e, A, B) :- reference_type(e, A, B).
@@ -931,21 +939,36 @@ unann_class_or_interface_type(t, A, B) :- unann_class_type(t, A, B).
 unann_class_or_interface_type(t, A, B) :- unann_interface_type(t, A, B).
 
 .decl unann_class_type(t: Type, a: number, b: number)
+unann_class_type($ClassType(nil, id, args), A, C) :-
+    type_identifier(id, A, B),
+    type_arguments?(args, B, C).
+unann_class_type($ClassType(anns, id, args), A, D) :-
+    package_name(pn, A, B), // TODO: handle this
+    token_dot(B, C),
+    annotations?(anns, C, D),
+    type_identifier(id, D, E),
+    type_arguments?(args, E, F).
+unann_class_type($ClassType(anns, id, args), A, D) :-
+    unann_class_or_interface_type(pn, A, B), // TODO: handle this
+    token_dot(B, C),
+    annotations?(anns, C, D),
+    type_identifier(id, D, E),
+    type_arguments?(args, E, F).
 
 .decl unann_interface_type(t: Type, a: number, b: number)
 unann_interface_type(t, A, B) :- unann_class_type(t, A, B).
 
 .decl unann_type_variable(t: Type, a: number, b: number)
-unann_type_variable($Variable(e), A, B) :- type_identifier(e, A, B).
+unann_type_variable($TypeVariable(id, nil), A, B) :- type_identifier(id, A, B).
 
 .decl unann_array_type(t: Type, a: number, b: number)
-unann_array_type($Array(t, d), A, C) :-
+unann_array_type($ArrayType(t, d), A, C) :-
     primitive_type(t, A, B),
     dims(d, B, C).
-unann_array_type($Array(t, d), A, C) :-
+unann_array_type($ArrayType(t, d), A, C) :-
     unann_class_or_interface_type(t, A, B),
     dims(d, B, C).
-unann_array_type($Array(t, d), A, C) :-
+unann_array_type($ArrayType(t, d), A, C) :-
     unann_type_variable(t, A, B),
     dims(d, B, C).
 
@@ -1285,14 +1308,20 @@ block($BlockStatement(s), A, D) :-
 ZERO_OR_MORE(block_statements?, block_statement)
 
 .decl block_statement(s: Statement, a: number, b: number)
+block_statement(e, A, B) :- local_variable_declaration_statement(e, A, B).
+// TODO: class declaration
 block_statement(e, A, B) :- statement(e, A, B).
 
 .decl local_variable_declaration_statement(s: Statement, a: number, b: number)
-local_variable_declaration_statement(e, A, C) :-
-    local_variable_declaration(e, A, B),
+local_variable_declaration_statement($LocalVariableDeclarationStatement(decl), A, C) :-
+    local_variable_declaration(decl, A, B),
     token_semicolon(B, C).
 
-.decl local_variable_declaration(s: Statement, a: number, b: number)
+.decl local_variable_declaration(d: Declaration, a: number, b: number)
+local_variable_declaration($LocalVariableDeclaration(mods, type, decls), A, D) :-
+    variable_modifiers?(mods, A, B),
+    local_variable_type(type, B, C),
+    variable_declarator_list(decls, C, D).
 
 .decl local_variable_type(t: Type, a: number, b: number)
 local_variable_type(t, A, B) :- unann_type(t, A, B).
@@ -1358,7 +1387,7 @@ statement_expression(e, A, B) :- method_invocation(e, A, B).
 statement_expression(e, A, B) :- class_instance_creation_expression(e, A, B).
 
 .decl if_then_statement(s: Statement, a: number, b: number)
-if_then_statement($IfThen(e, s), A, F) :-
+if_then_statement($IfThenStatement(e, s), A, F) :-
     token_if(A, B),
     token_left_paren(B, C),
     expression(e, C, D),
@@ -1366,7 +1395,7 @@ if_then_statement($IfThen(e, s), A, F) :-
     statement(s, E, F).
 
 .decl if_then_else_statement(s: Statement, a: number, b: number)
-if_then_else_statement($IfThenElse(e, s1, s2), A, H) :-
+if_then_else_statement($IfThenElseStatement(e, s1, s2), A, H) :-
     token_if(A, B),
     token_left_paren(B, C),
     expression(e, C, D),
@@ -1376,7 +1405,7 @@ if_then_else_statement($IfThenElse(e, s1, s2), A, H) :-
     statement(s2, G, H).
 
 .decl if_then_else_statement_no_short_if(s: Statement, a: number, b: number)
-if_then_else_statement_no_short_if($IfThenElse(e, s1, s2), A, H) :-
+if_then_else_statement_no_short_if($IfThenElseStatement(e, s1, s2), A, H) :-
     token_if(A, B),
     token_left_paren(B, C),
     expression(e, C, D),
@@ -1626,7 +1655,7 @@ primary(e, A, B) :- primary_no_new_array(e, A, B).
 primary(e, A, B) :- array_creation_expression(e, A, B).
 
 .decl primary_no_new_array(e: Expr, a: number, b: number)
-primary_no_new_array($LiteralExpr(l), A, B) :- literal(l, A, B).
+primary_no_new_array($LiteralExpression(l), A, B) :- literal(l, A, B).
 primary_no_new_array(e, A, B) :- class_literal(e, A, B).
 primary_no_new_array($This, A, B) :- token_this(A, B).
 primary_no_new_array(e, A, D) :-
@@ -1642,12 +1671,32 @@ primary_no_new_array(e, A, B) :- method_reference(e, A, B).
 .decl class_literal(e: Expr, a: number, b: number)
 
 .decl class_instance_creation_expression(e: Expr, a: number, b: number)
+class_instance_creation_expression(e, A, B) :-
+    unqualified_class_instance_creation_expression(e, A, B).
+// TODO ...
 
 .decl unqualified_class_instance_creation_expression(e: Expr, a: number, b: number)
+unqualified_class_instance_creation_expression($ClassInstanceCreationExpression(ta, e, args, body), A, H) :-
+    token_new(A, B),
+    type_arguments?(ta, B, C),
+    class_or_interface_type_to_instantiate(e, C, D),
+    token_left_paren(D, E),
+    argument_list?(args, E, F),
+    token_right_paren(F, G),
+    class_body?(body, G, H).
 
-.decl class_or_interface_type_to_instantiate(e: Expr, a: number, b: number)
+.decl class_or_interface_type_to_instantiate(e: ClassInstanceCreationType, a: number, b: number)
+class_or_interface_type_to_instantiate($ClassInstanceCreationType, A, D) :-
+    annotations?(anns, A, B),
+    identifier(id, B, C),
+    // TODO ...
+    type_arguments_or_diamond(ta, C, D).
 
-.decl type_arguments_or_diamond(e: Expr, a: number, b: number)
+.decl type_arguments_or_diamond(e: TypeList, a: number, b: number)
+type_arguments_or_diamond(nil, A, C) :-
+    token_less_than(A, B),
+    token_greater_than(B, C).
+type_arguments_or_diamond(t, A, B) :- type_arguments(t, A, B).
 
 .decl field_access(e: Expr, a: number, b: number)
 
@@ -1884,8 +1933,8 @@ INFIX($BitwiseAnd, and_expression, equality_expression, "&")
 
 .decl equality_expression(e: Expr, a: number, b: number)
 equality_expression(e, A, B) :-       relational_expression(e, A, B).
-INFIX($Equal,    equality_expression, relational_expression, "==")
-INFIX($NotEqual, equality_expression, relational_expression, "!=")
+INFIX($EqualsExpression,    equality_expression, relational_expression, "==")
+INFIX($NotEqualsExpression, equality_expression, relational_expression, "!=")
 
 .decl relational_expression(e: Expr, a: number, b: number)
 relational_expression(e, A, B) :- shift_expression(e, A, B).
@@ -1954,7 +2003,7 @@ cast_expression($Cast(t, b, e), A, F) :-
     lambda_expression(e, E, F).
 
 .decl switch_expression(e: Expr, a: number, b: number)
-switch_expression($SwitchExpr(e1, rules), A, F) :-
+switch_expression($SwitchExpression(e1, rules), A, F) :-
     token_switch(A, B),
     token_left_paren(B, C),
     expression(e1, C, D),
@@ -1972,5 +2021,6 @@ constant_expression(e, A, B) :- expression(e, A, B).
 root(s) :-
     compilation_unit(s, 1, A),
     token_eof(A, A + 1).
+
 
 .output root

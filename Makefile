@@ -1,7 +1,7 @@
 .PHONY: run
 
 run: build/root.csv
-	@cat build/root.csv | prettier --parser json
+	@cat build/root.csv | prettier --parser babel
 
 build/root.csv: build/token.facts parser.dl
 	souffle --fact-dir=build --output-dir=build parser.dl

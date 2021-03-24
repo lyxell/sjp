@@ -72,7 +72,7 @@ int lex(const char *YYCURSOR) {
             report("TOKEN_OPERATOR", YYSTART, YYCURSOR);
             continue;
         }
-        [1-9][0-9]* {
+        "0" | [1-9][0-9]* {
             report("TOKEN_LITERAL_INTEGER", YYSTART, YYCURSOR);
             continue;
         }
