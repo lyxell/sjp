@@ -1,16 +1,23 @@
 .PHONY: run
 
-run: class_declaration.csv
-	cat class_declaration.csv
+run: build/class_declaration.csv
+	@cat build/class_declaration.csv
 
-class_declaration.csv: token.facts parser.dl
-	souffle --no-warn parser.dl
+build/class_declaration.csv: build/token.facts parser.dl
+	souffle --fact-dir=build --output-dir=build --no-warn parser.dl
 
-token.facts: build/scanner
-	build/scanner > token.facts
+build/token.facts: build/scanner
+	build/scanner > build/token.facts
 
 build/scanner: build/scanner_re2c.c
+	@mkdir -p build
 	gcc -Wall -O2 -g -std=c99 build/scanner_re2c.c -o $@
 
 build/%_re2c.c: %.c
+	@mkdir -p build
 	re2c -W --input-encoding utf8 -i $< -o $@
+
+.PHONY: clean
+
+clean:
+	rm -rf build
