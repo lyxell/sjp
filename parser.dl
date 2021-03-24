@@ -131,6 +131,7 @@
            | BitwiseNot             {e: Expr}
            | Cast                   {t: Type, bounds: TypeList, e: Expr}
            | Div                    {e1: Expr, e2: Expr}
+           | DimensionExpr          {a: AnnotationList, e: Expr}
            | Equal                  {e1: Expr, e2: Expr}
            | Identifier             {id: Identifier}
            | Lambda                 {params: LambdaParameters, body: LambdaBody}
@@ -1545,8 +1546,18 @@ argument_list([x, xs], A, D) :-
 
 .decl array_creation_expression(e: Expr, a: number, b: number)
 
-.decl dim_exprs(a: number, b: number)
-.decl dim_expr(a: number, b: number)
+.decl dim_exprs(e: ExprList, a: number, b: number)
+dim_exprs([x, nil], A, B) :- dim_expr(x, A, B).
+dim_exprs([x, xs], A, C) :-
+    dim_expr(x, A, B),
+    dim_exprs(xs, B, C).
+
+.decl dim_expr(e: Expr, a: number, b: number)
+dim_expr($DimensionExpr(a, e), A, E) :-
+    annotations?(a, A, B),
+    token_left_square_bracket(B, C),
+    expression(e, C, D),
+    token_right_square_bracket(D, E).
 
 .decl expression(e: Expr, a: number, b: number)
 expression(e, A, B) :- conditional_expression(e, A, B).
