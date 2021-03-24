@@ -163,6 +163,10 @@
     tail: ExprList
 ]
 
+.type LambdaParameter =
+      LambdaParameter {m: ModifierList, t: Type, decl: VariableDeclaratorId}
+    | LambdaParameterVariableArity {m: VariableArityParameter}
+
 .type LambdaBody = LambdaBodyExpr   {e: Expr}
                  | LambdaBodyBlock  {e: Statement}
 
@@ -1554,11 +1558,17 @@ lambda_expression($Lambda(params, body), A, D) :-
 
 .decl lambda_parameter_list(a: number, b: number)
 
-.decl lambda_parameter(a: number, b: number)
+.decl lambda_parameter(e: LambdaParameter, a: number, b: number)
+lambda_parameter($LambdaParameter(mods, t, decl), A, D) :-
+    variable_modifiers?(mods, A, B),
+    lambda_parameter_type(t, B, C),
+    variable_declarator_id(decl, C, D).
+lambda_parameter($LambdaParameterVariableArity(p), A, B) :-
+    variable_arity_parameter(p, A, B).
 
 .decl lambda_parameter_type(t: Type, a: number, b: number)
 lambda_parameter_type(t, A, B) :- unann_type(t, A, B).
-lambda_parameter_type($Var, A, A + 1) :- token_var(A, B).
+lambda_parameter_type($Var, A, B) :- token_var(A, B).
 
 .decl lambda_body(e: LambdaBody, a: number, b: number)
 lambda_body($LambdaBodyExpr(e), A, B) :- expression(e, A, B).
