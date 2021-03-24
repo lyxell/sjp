@@ -534,7 +534,7 @@ array_type($Array(b, d), A, C) :- type_variable(b, A, B), dims(d, B, C).
 
 .decl dims(e: DimensionList, a: number, b: number)
 dims([x, nil], A, B) :- dim(x, A, B).
-dims([x, xs],  A, B) :- dim(x, A, B), dims(xs, A, B).
+dims([x, xs],  A, C) :- dim(x, A, B), dims(xs, B, C).
 
 .decl dim(t: Dimension, a: number, b: number)
 dim($Dimension(a), A, D) :-

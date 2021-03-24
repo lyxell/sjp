@@ -6,8 +6,8 @@ run: build/class_declaration.csv
 build/class_declaration.csv: build/token.facts parser.dl
 	souffle --fact-dir=build --output-dir=build --no-warn parser.dl
 
-build/token.facts: build/scanner
-	build/scanner > build/token.facts
+build/token.facts: build/scanner Example.java
+	build/scanner Example.java > build/token.facts
 
 build/scanner: build/scanner_re2c.c
 	@mkdir -p build

@@ -21,6 +21,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 int curr = 1;
@@ -87,8 +88,26 @@ int lex(const char *YYCURSOR) {
         */
     }
 }
-int main() {
-    lex("public class Main {}");
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s InputClass.Java\n", argv[0]);
+        return 1;
+    }
+    FILE* f = fopen(argv[1], "r");
+    if (!f) {
+        fprintf(stderr, "Failed to open %s\n", argv[1]);
+        return 1;
+    }
+    fseek(f, 0L, SEEK_END);
+    long size = ftell(f);
+    rewind(f);
+    char* buffer = malloc(size + 1);
+    if (!buffer) {
+        fprintf(stderr, "Failed to allocate %ld bytes of memory\n", size);
+        return 1;
+    }
+    fread(buffer, 1, size, f);
+    lex(buffer);
     report("TOKEN_EOF", 0, 0);
     return 0;
 }
