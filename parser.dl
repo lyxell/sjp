@@ -155,6 +155,8 @@
            | ShiftRightUnsigned     {e1: Expr, e2: Expr}
            | Sub                    {e1: Expr, e2: Expr}
            | SwitchExpr             {e: Expr, s: SwitchRuleList}
+           | ArrayAccessIdentifier  {id: IdentifierList, e: Expr}
+           | ArrayAccessExpr        {e1: Expr, e2: Expr}
            | This                   {}
 
 .type ExprOptional = [
@@ -1528,6 +1530,16 @@ primary_no_new_array(e, A, B) :- method_reference(e, A, B).
 .decl field_access(e: Expr, a: number, b: number)
 
 .decl array_access(e: Expr, a: number, b: number)
+array_access($ArrayAccessIdentifier(id, expr), A, D) :-
+    expression_name(id, A, B),
+    token_left_square_bracket(B, C),
+    expression(expr, C, D),
+    token_right_square_bracket(D, E).
+array_access($ArrayAccessExpr(e1, e2), A, D) :-
+    primary_no_new_array(e1, A, B),
+    token_left_square_bracket(B, C),
+    expression(e2, C, D),
+    token_right_square_bracket(D, E).
 
 .decl method_invocation(e: Expr, a: number, b: number)
 method_invocation(e, A, B) :- method_invocation_with_method_name(e, A, B).
