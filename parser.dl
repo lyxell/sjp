@@ -200,11 +200,11 @@
                    | LeftHandSideArrayAccess { e: Expr }
 
 .type MethodInvocationCallee =
-      MethodInvocationCalleeIdentifier { id: Identifier }
-    | MethodInvocationCalleeIdentifierList { ids: IdentifierList, args: TypeList, id: Identifier}
-    | MethodInvocationCalleeExpr { expr: Expr, args: TypeList, id: Identifier }
-    | MethodInvocationCalleeSuper { args: TypeList, id: Identifier }
-    | MethodInvocationCalleeIdentifierListSuper { ids: IdentifierList, args: TypeList, id: Identifier }
+      MethodInvocationIdentifier { id: Identifier }
+    | MethodInvocationIdentifiers { ids: IdentifierList, args: TypeList, id: Identifier}
+    | MethodInvocationExpr { expr: Expr, args: TypeList, id: Identifier }
+    | MethodInvocationSuper { args: TypeList, id: Identifier }
+    | MethodInvocationIdentifiersSuper { ids: IdentifierList, args: TypeList, id: Identifier }
 
 /**
  * Statements
@@ -1713,12 +1713,12 @@ array_access($ArrayAccessExpr(e1, e2), A, E) :-
     token_right_square_bracket(D, E).
 
 .decl method_invocation(e: Expr, a: number, b: number)
-method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifier(id), args), A, E) :-
+method_invocation($MethodInvocationExpression($MethodInvocationIdentifier(id), args), A, E) :-
     method_name(id, A, B),
     token_left_paren(B, C),
     argument_list?(args, C, D),
     token_right_paren(D, E).
-method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierList(ids, targs, id), args), A, H) :-
+method_invocation($MethodInvocationExpression($MethodInvocationIdentifiers(ids, targs, id), args), A, H) :-
     type_name(ids, A, B),
     token_dot(B, C),
     type_arguments?(targs, C, D),
@@ -1726,7 +1726,7 @@ method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierL
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierList(ids, targs, id), args), A, H) :-
+method_invocation($MethodInvocationExpression($MethodInvocationIdentifiers(ids, targs, id), args), A, H) :-
     expression_name(ids, A, B),
     token_dot(B, C),
     type_arguments?(targs, C, D),
@@ -1734,7 +1734,7 @@ method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierL
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationCalleeExpr(expr, targs, id), args), A, H) :-
+method_invocation($MethodInvocationExpression($MethodInvocationExpr(expr, targs, id), args), A, H) :-
     primary(expr, A, B),
     token_dot(B, C),
     type_arguments?(targs, C, D),
@@ -1742,7 +1742,7 @@ method_invocation($MethodInvocationExpression($MethodInvocationCalleeExpr(expr, 
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationCalleeSuper(targs, id), args), A, H) :-
+method_invocation($MethodInvocationExpression($MethodInvocationSuper(targs, id), args), A, H) :-
     token_super(A, B),
     token_dot(B, C),
     type_arguments?(targs, C, D),
@@ -1750,7 +1750,7 @@ method_invocation($MethodInvocationExpression($MethodInvocationCalleeSuper(targs
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationCalleeIdentifierListSuper(ids, targs, id), args), A, J) :-
+method_invocation($MethodInvocationExpression($MethodInvocationIdentifiersSuper(ids, targs, id), args), A, J) :-
     type_name(ids, A, B),
     token_dot(B, C),
     token_super(C, D),
