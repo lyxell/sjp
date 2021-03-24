@@ -129,6 +129,7 @@
            | BitwiseExclOr          {e1: Expr, e2: Expr}
            | BitwiseInclOr          {e1: Expr, e2: Expr}
            | BitwiseNot             {e: Expr}
+           | Cast                   {t: Type, bounds: TypeList, e: Expr}
            | Div                    {e1: Expr, e2: Expr}
            | Equal                  {e1: Expr, e2: Expr}
            | Identifier             {id: Identifier}
@@ -1587,7 +1588,7 @@ assignment_operator(s, A, A + 1) :- token(_, s, A), s = "|=".
 
 .decl conditional_expression(e: Expr, a: number, b: number)
 conditional_expression(e, A, B) :- conditional_or_expression(e, A, B).
-conditional_expression(e, A, D) :-
+conditional_expression(e, A, F) :-
     conditional_or_expression(e, A, B),
     token_question_mark(B, C),
     expression(e, C, D),
@@ -1673,6 +1674,23 @@ POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
 POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
 
 .decl cast_expression(e: Expr, a: number, b: number)
+cast_expression($Cast(t, nil, e), A, C) :-
+    token_left_paren(A, B),
+    primitive_type(t, B, C),
+    token_right_paren(C, D),
+    unary_expression(e, D, E).
+cast_expression($Cast(t, b, e), A, F) :-
+    token_left_paren(A, B),
+    reference_type(t, B, C),
+    additional_bounds?(b, C, D),
+    token_right_paren(D, E),
+    unary_expression_not_plus_minus(e, E, F).
+cast_expression($Cast(t, b, e), A, F) :-
+    token_left_paren(A, B),
+    reference_type(t, B, C),
+    additional_bounds?(b, C, D),
+    token_right_paren(D, E),
+    lambda_expression(e, E, F).
 
 .decl switch_expression(e: Expr, a: number, b: number)
 switch_expression($SwitchExpr(e1, rules), A, F) :-
