@@ -80,7 +80,7 @@
  * Annotations
  */
 
-.type ElementValue = ElementValueExpr               {e: Expr}
+.type ElementValue = ElementValueExpression         {e: Expr}
                    | ElementValueAnnotation         {a: Annotation}
                    | ElementValueArrayInitializer   {e: ElementValueList}
 
@@ -98,7 +98,7 @@
 ]
 
 .type Annotation = Annotation {name: IdentifierList,
-                               pairs: ElementValuePairList}
+                               values: ElementValuePairList}
 
 .type AnnotationList = [
     name: Annotation,
@@ -109,66 +109,76 @@
  * Modifiers
  */
 
-.type Modifier = Public {}
-               | Private {}
-               | Protected {}
-               | Static {}
-               | Native {}
-               | AnnotationModifier {annotation: Annotation}
-               | Synchronized {}
-               | Transient {}
-               | Volatile {}
-               | Abstract {}
-               | Strictfp {}
-               | Final {}
+.type Modifier = PublicModifier         {}
+               | PrivateModifier        {}
+               | ProtectedModifier      {}
+               | StaticModifier         {}
+               | NativeModifier         {}
+               | AnnotationModifier     {annotation: Annotation}
+               | SynchronizedModifier   {}
+               | TransientModifier      {}
+               | VolatileModifier       {}
+               | AbstractModifier       {}
+               | StrictfpModifier       {}
+               | FinalModifier          {}
 
 .type ModifierList = [
     key: Modifier,
     value: ModifierList
 ]
 
-/* Expressions */
+/**
+ * Expressions
+ */
 
-.type Expr = Add                    {e1: Expr, e2: Expr}
-           | And                    {e1: Expr, e2: Expr}
-           | ArrayInitializer       {e: ExprList}
-           | ArrayCreation          {t: Type, dim_exprs: ExprList, dims: DimensionList}
-           | ArrayCreationWithInitializer {t:Type, dims: DimensionList, init: Expr}
-           | Assign                 {e1: LeftHandSide, s: symbol, e2: Expr}
-           | BitwiseAnd             {e1: Expr, e2: Expr}
-           | BitwiseExclOr          {e1: Expr, e2: Expr}
-           | BitwiseInclOr          {e1: Expr, e2: Expr}
-           | BitwiseNot             {e: Expr}
-           | Cast                   {t: Type, bounds: TypeList, e: Expr}
-           | ClassInstanceCreationExpression { typeargs: TypeList, class: ClassInstanceCreationType, args: ExprList, body: DeclarationList }
-           | Div                    {e1: Expr, e2: Expr}
-           | DimensionExpression          {a: AnnotationList, e: Expr}
+.type Expr = AdditionExpression     {e1: Expr, e2: Expr}
+           | AndExpression          {e1: Expr, e2: Expr}
+           | ArrayInitializerExpression {e: ExprList}
+           | ArrayCreationExpression
+                {type: Type,
+                 dimension_expressions: ExprList,
+                 dimensions: DimensionList,
+                 initializer: ExprOptional}
+           | AssignmentExpression   {e1: LeftHandSide, s: symbol, e2: Expr}
+           | BitwiseAndExpression   {e1: Expr, e2: Expr}
+           | BitwiseExclusiveOrExpression          {e1: Expr, e2: Expr}
+           | BitwiseInclusiveOrExpression          {e1: Expr, e2: Expr}
+           | BitwiseNotExpression   {e: Expr}
+           | CastExpression         {t: Type, bounds: TypeList, e: Expr}
+           | ClassInstanceCreationExpression
+                {typeargs: TypeList, class: ClassInstanceCreationType,
+                 args: ExprList, body: DeclarationList}
+           | DivisionExpression     {e1: Expr, e2: Expr}
+           | DimensionExpression    {a: AnnotationList, e: Expr}
            | EqualsExpression       {e1: Expr, e2: Expr}
-           | IdentifierExpression         {ids: IdentifierList}
-           | Lambda                 {params: LambdaParameters, body: LambdaBody}
-           | LessThan               {e1: Expr, e2: Expr}
-           | LiteralExpression      {l: Literal}
-           | MethodInvocationExpression {c: MethodInvocationCallee, e: ExprList}
-           | Mod                    {e1: Expr, e2: Expr}
-           | Mul                    {e1: Expr, e2: Expr}
-           | Not                    {e: Expr}
+           | IdentifierExpression   {identifiers: IdentifierList}
+           | LambdaExpression       {parameters: LambdaParameters,
+                                     body: LambdaBody}
+           | LessThanExpression     {e1: Expr, e2: Expr}
+           | LiteralExpression      {literal: Literal}
+           | MethodInvocationExpression
+                {method: MethodInvocationSubject, arguments: ExprList}
+           | ModuloExpression       {e1: Expr, e2: Expr}
+           | MultiplicationExpression   {e1: Expr, e2: Expr}
+           | NotExpression          {e: Expr}
            | NotEqualsExpression    {e1: Expr, e2: Expr}
-           | Number                 {n: number}
-           | Or                     {e1: Expr, e2: Expr}
-           | PostDecrement          {e: Expr}
-           | PostIncrement          {e: Expr}
-           | PreDecrement           {e: Expr}
-           | PreIncrement           {e: Expr}
-           | ShiftLeft              {e1: Expr, e2: Expr}
-           | ShiftRight             {e1: Expr, e2: Expr}
-           | ShiftRightUnsigned     {e1: Expr, e2: Expr}
-           | Sub                    {e1: Expr, e2: Expr}
+           | OrExpression           {e1: Expr, e2: Expr}
+           | PostDecrementExpression    {e: Expr}
+           | PostIncrementExpression    {e: Expr}
+           | PreDecrementExpression     {e: Expr}
+           | PreIncrementExpression     {e: Expr}
+           | ShiftLeftExpression        {e1: Expr, e2: Expr}
+           | ShiftRightExpression   {e1: Expr, e2: Expr}
+           | ShiftRightUnsignedExpression     {e1: Expr, e2: Expr}
+           | SubtractionExpression  {e1: Expr, e2: Expr}
            | SwitchExpression       {e: Expr, s: SwitchRuleList}
-           | ArrayAccessIdentifier  {id: IdentifierList, e: Expr}
-           | ArrayAccessExpr        {e1: Expr, e2: Expr}
-           | This                   {}
+           | ArrayAccessExpression  {array: ArrayAccessSubject, e2: Expr}
+           | ThisExpression         {}
 
 .type ClassInstanceCreationType = ClassInstanceCreationType {}
+
+.type ArrayAccessSubject = ArrayAccessSubjectIdentifiers {ids: IdentifierList}
+                         | ArrayAccessSubjectExpression {e: Expr}
 
 .type ExprOptional = [
     expr: Expr
@@ -199,7 +209,7 @@
                    | LeftHandSideFieldAccess { e: Expr }
                    | LeftHandSideArrayAccess { e: Expr }
 
-.type MethodInvocationCallee =
+.type MethodInvocationSubject =
       MethodInvocationIdentifier { id: Identifier }
     | MethodInvocationIdentifiers { ids: IdentifierList, args: TypeList, id: Identifier}
     | MethodInvocationExpr { expr: Expr, args: TypeList, id: Identifier }
@@ -210,28 +220,29 @@
  * Statements
  */
 
-.type Statement = Assert                {e: Expr}
-                | AssertDetailed        {e1: Expr, e2: Expr}
-                | BlockStatement                 {s: StatementList}
-                | Do                    {e: Expr, s: Statement}
-                | For                   {init: ForInitOptional,
+.type Statement = AssertStatement       {e1: Expr, e2: ExprOptional}
+                | BlockStatement        {s: StatementList}
+                | DoStatement           {e: Expr, s: Statement}
+                | ForStatement          {init: ForInitOptional,
                                          cond: ExprOptional,
                                          upd: ForUpdateOptional,
                                          stmt: Statement}
-                | Label                 {id: Identifier, s: Statement}
-                | LocalVariableDeclarationStatement { decl: Declaration }
+                | LabelStatement        {id: Identifier, s: Statement}
                 | IfThenStatement       {e: Expr, s: Statement}
-                | IfThenElseStatement   {e: Expr, s1: Statement, s2: Statement}
-                | Continue              {e: IdentifierOptional}
-                | Break                 {e: IdentifierOptional}
-                | Return                {e: ExprOptional}
-                | Throw                 {e: Expr}
-                | Switch                {e: Expr, s: SwitchRuleList}
+                | ContinueStatement     {id: IdentifierOptional}
+                | BreakStatement        {id: IdentifierOptional}
+                | ReturnStatement       {e: ExprOptional}
+                | ThrowStatement        {e: Expr}
+                | SwitchStatement       {e: Expr, s: SwitchRuleList}
                 | SynchronizedStatement {e: Expr, s: Statement}
-                | While                 {e: Expr, s: Statement}
-                | ExpressionStatement         {e: Expr}
-                | Yield                 {e: Expr}
+                | WhileStatement        {e: Expr, s: Statement}
+                | ExpressionStatement   {e: Expr}
+                | YieldStatement        {e: Expr}
                 | EmptyStatement        {}
+                | LocalVariableDeclarationStatement
+                    {decl: Declaration}
+                | IfThenElseStatement
+                    {e: Expr, s1: Statement, s2: Statement}
 
 .type StatementList = [head: Statement, tail: StatementList]
 
@@ -816,13 +827,13 @@ ZERO_OR_MORE(class_modifiers?, class_modifier)
 
 .decl class_modifier(s: Modifier, a: number, b: number)
 class_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
-class_modifier($Public,                 A, B) :- token_public(A, B).
-class_modifier($Protected,              A, B) :- token_protected(A, B).
-class_modifier($Private,                A, B) :- token_private(A, B).
-class_modifier($Abstract,               A, B) :- token_abstract(A, B).
-class_modifier($Static,                 A, B) :- token_static(A, B).
-class_modifier($Final,                  A, B) :- token_final(A, B).
-class_modifier($Strictfp,               A, B) :- token_strictfp(A, B).
+class_modifier($PublicModifier,                 A, B) :- token_public(A, B).
+class_modifier($ProtectedModifier,              A, B) :- token_protected(A, B).
+class_modifier($PrivateModifier,                A, B) :- token_private(A, B).
+class_modifier($AbstractModifier,               A, B) :- token_abstract(A, B).
+class_modifier($StaticModifier,                 A, B) :- token_static(A, B).
+class_modifier($FinalModifier,                  A, B) :- token_final(A, B).
+class_modifier($StrictfpModifier,               A, B) :- token_strictfp(A, B).
 
 .decl type_parameters(s: TypeList, a: number, b: number)
 type_parameters(nil, A, A) :- any_position(A).
@@ -885,13 +896,13 @@ field_declaration($Field(mods, type, vars), A, E) :-
 
 .decl field_modifier(s: Modifier, a: number, b: number)
 field_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
-field_modifier($Public,                 A, B) :- token_public(A, B).
-field_modifier($Protected,              A, B) :- token_protected(A, B).
-field_modifier($Private,                A, B) :- token_private(A, B).
-field_modifier($Static,                 A, B) :- token_static(A, B).
-field_modifier($Final,                  A, B) :- token_final(A, B).
-field_modifier($Transient,              A, B) :- token_transient(A, B).
-field_modifier($Volatile,               A, B) :- token_volatile(A, B).
+field_modifier($PublicModifier,                 A, B) :- token_public(A, B).
+field_modifier($ProtectedModifier,              A, B) :- token_protected(A, B).
+field_modifier($PrivateModifier,                A, B) :- token_private(A, B).
+field_modifier($StaticModifier,                 A, B) :- token_static(A, B).
+field_modifier($FinalModifier,                  A, B) :- token_final(A, B).
+field_modifier($TransientModifier,              A, B) :- token_transient(A, B).
+field_modifier($VolatileModifier,               A, B) :- token_volatile(A, B).
 
 .decl field_modifiers?(s: ModifierList, a: number, b: number)
 ZERO_OR_MORE(field_modifiers?, field_modifier)
@@ -982,15 +993,15 @@ method_declaration($Method(modifiers, header, body), A, D) :-
 ZERO_OR_MORE(method_modifiers?, method_modifier)
 
 .decl method_modifier(s: Modifier, a: number, b: number)
-method_modifier($Public,        A, B) :- token_public(A, B).
-method_modifier($Protected,     A, B) :- token_protected(A, B).
-method_modifier($Private,       A, B) :- token_private(A, B).
-method_modifier($Abstract,      A, B) :- token_abstract(A, B).
-method_modifier($Static,        A, B) :- token_static(A, B).
-method_modifier($Final,         A, B) :- token_final(A, B).
-method_modifier($Synchronized,  A, B) :- token_synchronized(A, B).
-method_modifier($Native,        A, B) :- token_native(A, B).
-method_modifier($Strictfp,      A, B) :- token_strictfp(A, B).
+method_modifier($PublicModifier,        A, B) :- token_public(A, B).
+method_modifier($ProtectedModifier,     A, B) :- token_protected(A, B).
+method_modifier($PrivateModifier,       A, B) :- token_private(A, B).
+method_modifier($AbstractModifier,      A, B) :- token_abstract(A, B).
+method_modifier($StaticModifier,        A, B) :- token_static(A, B).
+method_modifier($FinalModifier,         A, B) :- token_final(A, B).
+method_modifier($SynchronizedModifier,  A, B) :- token_synchronized(A, B).
+method_modifier($NativeModifier,        A, B) :- token_native(A, B).
+method_modifier($StrictfpModifier,      A, B) :- token_strictfp(A, B).
 
 .decl method_header(s: MethodHeader, a: number, b: number)
 method_header($MethodHeader(t, decl, th), A, D) :-
@@ -1052,7 +1063,7 @@ formal_parameter($FormalParameter(mods,t,id), A, D) :-
 .decl variable_arity_parameter(s: VariableArityParameter, a: number, b: number)
 
 .decl variable_modifier(e: Modifier, a: number, b: number)
-variable_modifier($Final, A, B) :- token_final(A, B).
+variable_modifier($FinalModifier, A, B) :- token_final(A, B).
 
 .decl variable_modifiers?(e: ModifierList, a: number, b: number)
 ZERO_OR_MORE(variable_modifiers?, variable_modifier)
@@ -1165,12 +1176,12 @@ interface_declaration(e, A, B) :- annotation_type_declaration(e, A, B).
 .decl normal_interface_declaration(s: Declaration, a: number, b: number)
 
 .decl interface_modifier(m: Modifier, a: number, b: number)
-interface_modifier($Public, A, B) :- token_public(A, B).
-interface_modifier($Protected, A, B) :- token_protected(A, B).
-interface_modifier($Private, A, B) :- token_private(A, B).
-interface_modifier($Abstract, A, B) :- token_abstract(A, B).
-interface_modifier($Static, A, B) :- token_static(A, B).
-interface_modifier($Strictfp, A, B) :- token_strictfp(A, B).
+interface_modifier($PublicModifier, A, B) :- token_public(A, B).
+interface_modifier($ProtectedModifier, A, B) :- token_protected(A, B).
+interface_modifier($PrivateModifier, A, B) :- token_private(A, B).
+interface_modifier($AbstractModifier, A, B) :- token_abstract(A, B).
+interface_modifier($StaticModifier, A, B) :- token_static(A, B).
+interface_modifier($StrictfpModifier, A, B) :- token_strictfp(A, B).
 
 .decl interface_modifiers?(m: ModifierList, a: number, b: number)
 ZERO_OR_MORE(interface_modifiers?, interface_modifier)
@@ -1198,8 +1209,8 @@ ZERO_OR_MORE(interface_modifiers?, interface_modifier)
 .decl annotation_type_element_declaration(a: number, b: number)
 
 .decl annotation_type_element_modifier(m: Modifier, a: number, b: number)
-annotation_type_element_modifier($Public, A, B) :- token_public(A, B).
-annotation_type_element_modifier($Abstract, A, B) :- token_abstract(A, B).
+annotation_type_element_modifier($PublicModifier, A, B) :- token_public(A, B).
+annotation_type_element_modifier($AbstractModifier, A, B) :- token_abstract(A, B).
 
 .decl annotation_type_element_modifiers?(m: ModifierList, a: number, b: number)
 ZERO_OR_MORE(annotation_type_element_modifiers?, annotation_type_element_modifier)
@@ -1241,7 +1252,7 @@ element_value_pair($ElementValuePair(id, val), A, D) :-
     element_value(val, C, D).
 
 .decl element_value(e: ElementValue, a: number, b: number)
-element_value($ElementValueExpr(e), A, B) :- conditional_expression(e, A, B).
+element_value($ElementValueExpression(e), A, B) :- conditional_expression(e, A, B).
 element_value($ElementValueArrayInitializer(e), A, B) :- element_value_array_initializer(e, A, B).
 element_value($ElementValueAnnotation(e), A, B) :- annotation(e, A, B).
 
@@ -1276,7 +1287,7 @@ marker_annotation(e, A, C) :-
  **************************************************************************/
 
 .decl array_initializer(e: Expr, a: number, b: number)
-array_initializer($ArrayInitializer(e), A, E) :- 
+array_initializer($ArrayInitializerExpression(e), A, E) :- 
     token_left_curly_bracket(A, B),
     variable_initializer_list?(e, B, C),
     token_comma?(C, D),
@@ -1361,13 +1372,13 @@ statement_without_trailing_substatement(e, A, B) :- yield_statement(e, A, B).
 empty_statement($EmptyStatement, A, B) :- token_semicolon(A, B).
 
 .decl labeled_statement(s: Statement, a: number, b: number)
-labeled_statement($Label(id, st), A, D) :-
+labeled_statement($LabelStatement(id, st), A, D) :-
     token_identifier(id, A, B),
     token_colon(B, C),
     statement(st, C, D).
 
 .decl labeled_statement_no_short_if(s: Statement, a: number, b: number)
-labeled_statement_no_short_if($Label(id, st), A, D) :-
+labeled_statement_no_short_if($LabelStatement(id, st), A, D) :-
     token_identifier(id, A, B),
     token_colon(B, C),
     statement_no_short_if(st, C, D).
@@ -1415,11 +1426,11 @@ if_then_else_statement_no_short_if($IfThenElseStatement(e, s1, s2), A, H) :-
     statement_no_short_if(s2, G, H).
 
 .decl assert_statement(s: Statement, a: number, b: number)
-assert_statement($Assert(e), A, D) :-
+assert_statement($AssertStatement(e, nil), A, D) :-
     token_assert(A, B),
     expression(e, B, C),
     token_semicolon(C, D).
-assert_statement($AssertDetailed(e1, e2), A, F) :-
+assert_statement($AssertStatement(e1, [e2]), A, F) :-
     token_assert(A, B),
     expression(e1, B, C),
     token_colon(C, D),
@@ -1427,7 +1438,7 @@ assert_statement($AssertDetailed(e1, e2), A, F) :-
     token_semicolon(E, F).
 
 .decl switch_statement(s: Statement, a: number, b: number)
-switch_statement($Switch(e, rules), A, F) :-
+switch_statement($SwitchStatement(e, rules), A, F) :-
     token_switch(A, B),
     token_left_paren(B, C),
     expression(e, C, D),
@@ -1478,7 +1489,7 @@ case_constants([x, xs], A, D) :-
 case_constant(e, A, B) :- conditional_expression(e, A, B).
 
 .decl while_statement(s: Statement, a: number, b: number)
-while_statement($While(e, s), A, F) :-
+while_statement($WhileStatement(e, s), A, F) :-
     token_while(A, B),
     token_left_paren(B, C),
     expression(e, C, D),
@@ -1486,7 +1497,7 @@ while_statement($While(e, s), A, F) :-
     statement(s, E, F).
 
 .decl while_statement_no_short_if(s: Statement, a: number, b: number)
-while_statement_no_short_if($While(e, s), A, F) :-
+while_statement_no_short_if($WhileStatement(e, s), A, F) :-
     token_while(A, B),
     token_left_paren(B, C),
     expression(e, C, D),
@@ -1494,7 +1505,7 @@ while_statement_no_short_if($While(e, s), A, F) :-
     statement_no_short_if(s, E, F).
 
 .decl do_statement(s: Statement, a: number, b: number)
-do_statement($Do(e, s), A, H) :-
+do_statement($DoStatement(e, s), A, H) :-
     token_do(A, B),
     statement(s, B, C),
     token_while(C, D),
@@ -1512,7 +1523,7 @@ for_statement_no_short_if(e, A, B) :- basic_for_statement_no_short_if(e, A, B).
 for_statement_no_short_if(e, A, B) :- enhanced_for_statement_no_short_if(e, A, B).
 
 .decl basic_for_statement(s: Statement, a: number, b: number)
-basic_for_statement($For(init, expr, upd, stat), A, J) :-
+basic_for_statement($ForStatement(init, expr, upd, stat), A, J) :-
     token_for(A, B),
     token_left_paren(B, C),
     for_init?(init, C, D),
@@ -1524,7 +1535,7 @@ basic_for_statement($For(init, expr, upd, stat), A, J) :-
     statement(stat, I, J).
 
 .decl basic_for_statement_no_short_if(s: Statement, a: number, b: number)
-basic_for_statement($For(init, expr, upd, stat), A, J) :-
+basic_for_statement($ForStatement(init, expr, upd, stat), A, J) :-
     token_for(A, B),
     token_left_paren(B, C),
     for_init?(init, C, D),
@@ -1558,31 +1569,31 @@ statement_expression_list([x, xs], A, D) :-
 .decl enhanced_for_statement_no_short_if(s: Statement, a: number, b: number)
 
 .decl break_statement(s: Statement, a: number, b: number)
-break_statement($Break(id), A, D) :-
+break_statement($BreakStatement(id), A, D) :-
     token_break(A, B),
     identifier?(id, B, C),
     token_semicolon(C, D).
 
 .decl yield_statement(s: Statement, a: number, b: number)
-yield_statement($Yield(e), A, D) :-
+yield_statement($YieldStatement(e), A, D) :-
     token_yield(A, B),
     expression(e, B, C),
     token_semicolon(C, D).
 
 .decl continue_statement(s: Statement, a: number, b: number)
-continue_statement($Continue(id), A, D) :-
+continue_statement($ContinueStatement(id), A, D) :-
     token_continue(A, B),
     identifier?(id, B, C),
     token_semicolon(C, D).
 
 .decl return_statement(s: Statement, a: number, b: number)
-return_statement($Return(e), A, D) :-
+return_statement($ReturnStatement(e), A, D) :-
     token_return(A, B),
     expression?(e, B, C),
     token_semicolon(C, D).
 
 .decl throw_statement(s: Statement, a: number, b: number)
-throw_statement($Throw(e), A, D) :-
+throw_statement($ThrowStatement(e), A, D) :-
     token_throw(A, B),
     expression(e, B, C),
     token_semicolon(C, D).
@@ -1657,7 +1668,7 @@ primary(e, A, B) :- array_creation_expression(e, A, B).
 .decl primary_no_new_array(e: Expr, a: number, b: number)
 primary_no_new_array($LiteralExpression(l), A, B) :- literal(l, A, B).
 primary_no_new_array(e, A, B) :- class_literal(e, A, B).
-primary_no_new_array($This, A, B) :- token_this(A, B).
+primary_no_new_array($ThisExpression, A, B) :- token_this(A, B).
 primary_no_new_array(e, A, D) :-
     token_left_paren(A, B),
     expression(e, B, C),
@@ -1701,12 +1712,12 @@ type_arguments_or_diamond(t, A, B) :- type_arguments(t, A, B).
 .decl field_access(e: Expr, a: number, b: number)
 
 .decl array_access(e: Expr, a: number, b: number)
-array_access($ArrayAccessIdentifier(id, expr), A, E) :-
-    expression_name(id, A, B),
+array_access($ArrayAccessExpression($ArrayAccessSubjectIdentifiers(ids), expr), A, E) :-
+    expression_name(ids, A, B),
     token_left_square_bracket(B, C),
     expression(expr, C, D),
     token_right_square_bracket(D, E).
-array_access($ArrayAccessExpr(e1, e2), A, E) :-
+array_access($ArrayAccessExpression($ArrayAccessSubjectExpression(e1), e2), A, E) :-
     primary_no_new_array(e1, A, B),
     token_left_square_bracket(B, C),
     expression(e2, C, D),
@@ -1775,22 +1786,22 @@ argument_list([x, xs], A, D) :-
 .decl method_reference(e: Expr, a: number, b: number)
 
 .decl array_creation_expression(e: Expr, a: number, b: number)
-array_creation_expression($ArrayCreation(t, de, d), A, E) :-
+array_creation_expression($ArrayCreationExpression(t, de, d, nil), A, E) :-
     token_new(A, B),
     primitive_type(t, B, C),
     dim_exprs(de, C, D),
     dims?(d, D, E).
-array_creation_expression($ArrayCreation(t, de, d), A, E) :-
+array_creation_expression($ArrayCreationExpression(t, de, d, nil), A, E) :-
     token_new(A, B),
     class_or_interface_type(t, B, C),
     dim_exprs(de, C, D),
     dims?(d, D, E).
-array_creation_expression($ArrayCreationWithInitializer(t,d,init), A, E) :-
+array_creation_expression($ArrayCreationExpression(t, nil, d, [init]), A, E) :-
     token_new(A, B),
     primitive_type(t, B, C),
     dims(d, C, D),
     array_initializer(init, D, E).
-array_creation_expression($ArrayCreationWithInitializer(t,d,init), A, E) :-
+array_creation_expression($ArrayCreationExpression(t, nil, d, [init]), A, E) :-
     token_new(A, B),
     class_or_interface_type(t, B, C),
     dims(d, C, D),
@@ -1817,7 +1828,7 @@ expression(e, A, B) :- lambda_expression(e, A, B).
 OPTIONAL(expression?, expression)
 
 .decl lambda_expression(e: Expr, a: number, b: number)
-lambda_expression($Lambda(params, body), A, D) :-
+lambda_expression($LambdaExpression(params, body), A, D) :-
     lambda_parameters(params, A, B),
     token_arrow(B, C),
     lambda_body(body, C, D).
@@ -1869,7 +1880,7 @@ assignment_expression(e, A, B) :- conditional_expression(e, A, B).
 assignment_expression(e, A, B) :- assignment(e, A, B).
 
 .decl assignment(e: Expr, a: number, b: number)
-assignment($Assign(e1, s, e2), A, D) :-
+assignment($AssignmentExpression(e1, s, e2), A, D) :-
     left_hand_side(e1, A, B),
     assignment_operator(s, B, C),
     expression(e2, C, D).
@@ -1913,23 +1924,23 @@ conditional_expression(e, A, F) :-
 
 .decl conditional_or_expression(e: Expr, a: number, b: number)
 conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
-INFIX($Or, conditional_or_expression, conditional_and_expression, "||")
+INFIX($OrExpression, conditional_or_expression, conditional_and_expression, "||")
 
 .decl conditional_and_expression(e: Expr, a: number, b: number)
 conditional_and_expression(e, A, B) :- inclusive_or_expression(e, A, B).
-INFIX($And, conditional_and_expression, inclusive_or_expression, "&&")
+INFIX($AndExpression, conditional_and_expression, inclusive_or_expression, "&&")
 
 .decl inclusive_or_expression(e: Expr, a: number, b: number)
 inclusive_or_expression(e, A, B) :- exclusive_or_expression(e, A, B).
-INFIX($BitwiseInclOr, inclusive_or_expression, exclusive_or_expression, "|")
+INFIX($BitwiseInclusiveOrExpression, inclusive_or_expression, exclusive_or_expression, "|")
 
 .decl exclusive_or_expression(e: Expr, a: number, b: number)
 exclusive_or_expression(e, A, B) :- and_expression(e, A, B).
-INFIX($BitwiseExclOr, exclusive_or_expression, and_expression, "^")
+INFIX($BitwiseExclusiveOrExpression, exclusive_or_expression, and_expression, "^")
 
 .decl and_expression(e: Expr, a: number, b: number)
 and_expression(e, A, B) :- equality_expression(e, A, B).
-INFIX($BitwiseAnd, and_expression, equality_expression, "&")
+INFIX($BitwiseAndExpression, and_expression, equality_expression, "&")
 
 .decl equality_expression(e: Expr, a: number, b: number)
 equality_expression(e, A, B) :-       relational_expression(e, A, B).
@@ -1941,20 +1952,20 @@ relational_expression(e, A, B) :- shift_expression(e, A, B).
 
 .decl shift_expression(e: Expr, a: number, b: number)
 shift_expression(e, A, B) :- additive_expression(e, A, B).
-INFIX($ShiftLeft,          shift_expression, additive_expression, "<<")
-INFIX($ShiftRight,         shift_expression, additive_expression, ">>")
-INFIX($ShiftRightUnsigned, shift_expression, additive_expression, ">>>")
+INFIX($ShiftLeftExpression,          shift_expression, additive_expression, "<<")
+INFIX($ShiftRightExpression,         shift_expression, additive_expression, ">>")
+INFIX($ShiftRightUnsignedExpression, shift_expression, additive_expression, ">>>")
 
 .decl additive_expression(e: Expr, a: number, b: number)
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
-INFIX($Add, additive_expression, multiplicative_expression, "+")
-INFIX($Sub, additive_expression, multiplicative_expression, "-")
+INFIX($AdditionExpression, additive_expression, multiplicative_expression, "+")
+INFIX($SubtractionExpression, additive_expression, multiplicative_expression, "-")
 
 .decl multiplicative_expression(e: Expr, a: number, b: number)
 multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
-INFIX($Mul, multiplicative_expression, unary_expression, "*")
-INFIX($Div, multiplicative_expression, unary_expression, "/")
-INFIX($Mod, multiplicative_expression, unary_expression, "%")
+INFIX($MultiplicationExpression, multiplicative_expression, unary_expression, "*")
+INFIX($DivisionExpression, multiplicative_expression, unary_expression, "/")
+INFIX($ModuloExpression, multiplicative_expression, unary_expression, "%")
 
 .decl unary_expression(e: Expr, a: number, b: number)
 unary_expression(e, A, B) :- postfix_expression(e, A, B).
@@ -1962,15 +1973,15 @@ unary_expression(e, A, B) :- pre_increment_expression(e, A, B).
 unary_expression(e, A, B) :- pre_decrement_expression(e, A, B).
 
 .decl pre_increment_expression(e: Expr, a: number, b: number)
-PREFIX($PreIncrement, pre_increment_expression, unary_expression, "++")
+PREFIX($PreIncrementExpression, pre_increment_expression, unary_expression, "++")
 
 .decl pre_decrement_expression(e: Expr, a: number, b: number)
-PREFIX($PreDecrement, pre_decrement_expression, unary_expression, "--")
+PREFIX($PreDecrementExpression, pre_decrement_expression, unary_expression, "--")
 
 .decl unary_expression_not_plus_minus(e: Expr, a: number, b: number)
 unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
-PREFIX($BitwiseNot, unary_expression_not_plus_minus, unary_expression, "~")
-PREFIX($Not, unary_expression_not_plus_minus, unary_expression, "!")
+PREFIX($BitwiseNotExpression, unary_expression_not_plus_minus, unary_expression, "~")
+PREFIX($NotExpression, unary_expression_not_plus_minus, unary_expression, "!")
 
 .decl postfix_expression(e: Expr, a: number, b: number)
 postfix_expression(e, A, B) :- primary(e, A, B).
@@ -1979,23 +1990,23 @@ postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
 
 .decl post_increment_expression(e: Expr, a: number, b: number)
-POSTFIX($PostIncrement, post_increment_expression, postfix_expression, "++")
+POSTFIX($PostIncrementExpression, post_increment_expression, postfix_expression, "++")
 .decl post_decrement_expression(e: Expr, a: number, b: number)
-POSTFIX($PostDecrement, post_decrement_expression, postfix_expression, "--")
+POSTFIX($PostDecrementExpression, post_decrement_expression, postfix_expression, "--")
 
 .decl cast_expression(e: Expr, a: number, b: number)
-cast_expression($Cast(t, nil, e), A, E) :-
+cast_expression($CastExpression(t, nil, e), A, E) :-
     token_left_paren(A, B),
     primitive_type(t, B, C),
     token_right_paren(C, D),
     unary_expression(e, D, E).
-cast_expression($Cast(t, b, e), A, F) :-
+cast_expression($CastExpression(t, b, e), A, F) :-
     token_left_paren(A, B),
     reference_type(t, B, C),
     additional_bounds?(b, C, D),
     token_right_paren(D, E),
     unary_expression_not_plus_minus(e, E, F).
-cast_expression($Cast(t, b, e), A, F) :-
+cast_expression($CastExpression(t, b, e), A, F) :-
     token_left_paren(A, B),
     reference_type(t, B, C),
     additional_bounds?(b, C, D),
