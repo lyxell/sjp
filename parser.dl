@@ -146,7 +146,7 @@
            | BitwiseNotExpression   {e: Expr}
            | CastExpression         {t: Type, bounds: TypeList, e: Expr}
            | ClassInstanceCreationExpression
-                {typeargs: TypeList, class: ClassInstanceCreationType,
+                {typeargs: TypeList, class: ClassInstanceCreationSubject,
                  args: ExprList, body: DeclarationList}
            | DivisionExpression     {e1: Expr, e2: Expr}
            | DimensionExpression    {a: AnnotationList, e: Expr}
@@ -175,7 +175,11 @@
            | ArrayAccessExpression  {array: ArrayAccessSubject, e2: Expr}
            | ThisExpression         {}
 
-.type ClassInstanceCreationType = ClassInstanceCreationType {}
+.type ClassInstanceCreationSubject = ClassInstanceCreationSubject {
+    annotations: AnnotationList,
+    id: Identifier,
+    typeargs: TypeList
+}
 
 .type ArrayAccessSubject = ArrayAccessSubjectIdentifiers {ids: IdentifierList}
                          | ArrayAccessSubjectExpression {e: Expr}
@@ -341,7 +345,7 @@
 
 .type MethodHeader = MethodHeader {result: Type, decl: MethodDeclarator, throws: TypeList}
 .type MethodDeclarator = MethodDeclarator {id: Identifier, rp: ReceiverParameterOptional, params: FormalParameterList, dims: DimensionList}
-.type ReceiverParameter = ReceiverParameter {}
+.type ReceiverParameter = ReceiverParameter { annotations: AnnotationList }
 .type ReceiverParameterOptional = [rp: ReceiverParameter]
 .type FormalParameter = FormalParameter {mods: ModifierList, type: Type, decl: VariableDeclaratorId}
 .type FormalParameterList = [head: FormalParameter, tail: FormalParameterList]
@@ -953,7 +957,7 @@ unann_class_or_interface_type(t, A, B) :- unann_interface_type(t, A, B).
 unann_class_type($ClassType(nil, id, args), A, C) :-
     type_identifier(id, A, B),
     type_arguments?(args, B, C).
-unann_class_type($ClassType(anns, id, args), A, D) :-
+unann_class_type($ClassType(anns, id, args), A, F) :-
     package_name(pn, A, B), // TODO: handle this
     token_dot(B, C),
     annotations?(anns, C, D),
@@ -1030,13 +1034,13 @@ method_declarator($MethodDeclarator(id, nil, params, dims), A, F) :-
     dims?(dims, E, F).
 
 .decl receiver_parameter(s: ReceiverParameter, a: number, b: number)
-receiver_parameter($ReceiverParameter, A, F) :-
+receiver_parameter($ReceiverParameter(anns), A, F) :-
     annotations?(anns, A, B),
     unann_type(t, B, C),
     identifier(id, C, D),
     token_dot(D, E),
     token_this(E, F).
-receiver_parameter($ReceiverParameter, A, D) :-
+receiver_parameter($ReceiverParameter(anns), A, D) :-
     annotations?(anns, A, B),
     unann_type(t, B, C),
     token_this(C, D).
@@ -1696,8 +1700,8 @@ unqualified_class_instance_creation_expression($ClassInstanceCreationExpression(
     token_right_paren(F, G),
     class_body?(body, G, H).
 
-.decl class_or_interface_type_to_instantiate(e: ClassInstanceCreationType, a: number, b: number)
-class_or_interface_type_to_instantiate($ClassInstanceCreationType, A, D) :-
+.decl class_or_interface_type_to_instantiate(e: ClassInstanceCreationSubject, a: number, b: number)
+class_or_interface_type_to_instantiate($ClassInstanceCreationSubject(anns, id, ta), A, D) :-
     annotations?(anns, A, B),
     identifier(id, B, C),
     // TODO ...
