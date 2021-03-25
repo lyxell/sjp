@@ -173,6 +173,7 @@
            | SubtractionExpression  {e1: Expr, e2: Expr}
            | SwitchExpression       {e: Expr, s: SwitchRuleList}
            | ArrayAccessExpression  {array: ArrayAccessSubject, e2: Expr}
+           | FieldAccessExpression  {field: FieldAccessSubject, id: Identifier}
            | ThisExpression         {}
 
 .type ClassInstanceCreationSubject = ClassInstanceCreationSubject {
@@ -180,6 +181,8 @@
     id: Identifier,
     typeargs: TypeList
 }
+
+.type FieldAccessSubject = FieldAccessSubjectExpression {e: Expr}
 
 .type ArrayAccessSubject = ArrayAccessSubjectIdentifiers {ids: IdentifierList}
                          | ArrayAccessSubjectExpression {e: Expr}
@@ -239,6 +242,7 @@
                 | ThrowStatement        {e: Expr}
                 | SwitchStatement       {e: Expr, s: SwitchRuleList}
                 | SynchronizedStatement {e: Expr, s: Statement}
+                | TryStatement          {s: Statement, c: CatchClauseList}
                 | WhileStatement        {e: Expr, s: Statement}
                 | ExpressionStatement   {e: Expr}
                 | YieldStatement        {e: Expr}
@@ -263,6 +267,10 @@
 
 .type CatchFormalParameter = CatchFormalParameter {}
 .type CatchClause = CatchClause {param: CatchFormalParameter, b: Statement}
+.type CatchClauseList = [
+    head: CatchClause,
+    tail: CatchClauseList
+]
 
 .type ForUpdate = ForUpdate {}
 .type ForUpdateOptional = [e: ForUpdate]
@@ -358,6 +366,8 @@
 .input token
 .decl token(s: symbol, c: Identifier, n: number)
 
+.decl token_try(a: number, b: number)
+      token_try(A, A + 1) :- token("TOKEN_KEYWORD", "try", A).
 .decl token_new(a: number, b: number)
       token_new(A, A + 1) :- token("TOKEN_KEYWORD", "new", A).
 .decl token_super(a: number, b: number)
@@ -366,6 +376,8 @@
       token_ampersand(A, A + 1) :- token("TOKEN_SEPARATOR", "&", A).
 .decl token_equal_sign(a: number, b: number)
       token_equal_sign(A, A + 1) :- token("TOKEN_OPERATOR", "=", A).
+.decl token_vertical_bar(a: number, b: number)
+      token_vertical_bar(A, A + 1) :- token("TOKEN_OPERATOR", "|", A).
 .decl token_catch(a: number, b: number)
       token_catch(A, A + 1) :- token("TOKEN_KEYWORD", "catch", A).
 .decl token_for(a: number, b: number)
@@ -690,8 +702,18 @@ type_argument(e, A, B) :- reference_type(e, A, B).
  **************************************************************************/
 
 .decl module_name(s: IdentifierList, a: number, b: number)
+module_name([x, nil], A, B) :- identifier(x, A, B).
+module_name([x, xs], A, D) :-
+    module_name(xs, A, B),
+    token_dot(B, C),
+    identifier(x, C, D).
 
 .decl package_name(s: IdentifierList, a: number, b: number)
+package_name([x, nil], A, B) :- identifier(x, A, B).
+package_name([x, xs], A, D) :-
+    package_name(xs, A, B),
+    token_dot(B, C),
+    identifier(x, C, D).
 
 .decl type_name(s: IdentifierList, a: number, b: number)
 type_name([t, nil], A, B) :- type_identifier(t, A, B).
@@ -1611,8 +1633,17 @@ synchronized_statement($SynchronizedStatement(e, s), A, F) :-
     block(s, E, F).
 
 .decl try_statement(s: Statement, a: number, b: number)
+try_statement($TryStatement(s, c), A, D) :-
+    token_try(A, B),
+    block(s, B, C),
+    catches(c, C, D).
+// TODO ...
 
-// TODO Catches
+.decl catches(e: CatchClauseList, a: number, b: number)
+catches([x, nil], A, B) :- catch_clause(x, A, B).
+catches([x, xs], A, C) :-
+    catch_clause(x, A, B),
+    catches(xs, B, C).
 
 .decl catch_clause(e: CatchClause, a: number, b: number)
 catch_clause($CatchClause(param, b), A, F) :-
@@ -1624,7 +1655,18 @@ catch_clause($CatchClause(param, b), A, F) :-
 
 .decl catch_formal_parameter(e: CatchFormalParameter, a: number, b: number)
 
-// TODO CatchType
+.decl catch_type(t: TypeList, a: number, b: number)
+catch_type([x, nil], A, B) :- unann_class_type(x, A, B).
+catch_type([x, xs], B, C) :-
+    unann_class_type(x, A, B),
+    catch_type_tail(xs, B, C).
+
+.decl catch_type_tail(t: TypeList, a: number, b: number)
+catch_type_tail(nil, A, A) :- any_position(A).
+catch_type_tail([x, xs], A, D) :-
+    token_vertical_bar(A, B),
+    class_type(x, B, C),
+    catch_type_tail(xs, C, D).
 
 .decl finally(e: Statement, a: number, b: number)
 finally(b, A, C) :-
@@ -1714,6 +1756,11 @@ type_arguments_or_diamond(nil, A, C) :-
 type_arguments_or_diamond(t, A, B) :- type_arguments(t, A, B).
 
 .decl field_access(e: Expr, a: number, b: number)
+field_access($FieldAccessExpression($FieldAccessSubjectExpression(e), id), A, D) :-
+    primary(e, A, B),
+    token_dot(B, C),
+    identifier(id, C, D).
+// TODO ...
 
 .decl array_access(e: Expr, a: number, b: number)
 array_access($ArrayAccessExpression($ArrayAccessSubjectIdentifiers(ids), expr), A, E) :-
