@@ -589,13 +589,13 @@ class_type($ClassType(anns, id, args), A, D) :-
     annotations?(anns, A, B),
     type_identifier(id, B, C),
     type_arguments?(args, C, D).
-class_type($ClassType(anns, id, args), A, D) :-
+class_type($ClassType(anns, id, args), A, F) :-
     package_name(pn, A, B), // TODO: handle this
     token_dot(B, C),
     annotations?(anns, C, D),
     type_identifier(id, D, E),
     type_arguments?(args, E, F).
-class_type($ClassType(anns, id, args), A, D) :-
+class_type($ClassType(anns, id, args), A, F) :-
     class_or_interface_type(pn, A, B), // TODO: handle this
     token_dot(B, C),
     annotations?(anns, C, D),
@@ -632,7 +632,7 @@ dim($Dimension(a), A, D) :-
     token_right_square_bracket(C, D).
 
 .decl type_parameter(t: Type, a: number, b: number)
-type_parameter($TypeParameter(mods, id, bound), A, B) :-
+type_parameter($TypeParameter(mods, id, bound), A, D) :-
     type_parameter_modifiers?(mods, A, B),
     type_identifier(id, B, C),
     type_bound?(bound, C, D).
