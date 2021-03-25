@@ -28,13 +28,13 @@
 
 int curr = 1;
 
-void report(const char* token, const char* start, const char* end) {
+void report(FILE* output, const char* token, const char* start, const char* end) {
     char buf[120];
     snprintf(buf, end - start + 1, "%s", start);
-    printf("%s\t%s\t%d\n", token, buf, curr++);
+    fprintf(output, "%s\t%s\t%d\n", token, buf, curr++);
 }
 
-int lex(const char *YYCURSOR) {
+int lex(FILE* output, const char *YYCURSOR) {
     while (1) {
         const char *YYSTART = YYCURSOR;
         /*!re2c
@@ -51,37 +51,37 @@ int lex(const char *YYCURSOR) {
         "static" | "strictfp" | "super" | "switch" | "synchronized" | "this" |
         "throw" | "throws" | "transient" | "try" | "void" | "volatile" |
         "while" {
-            report("TOKEN_KEYWORD", YYSTART, YYCURSOR);
+            report(output, "TOKEN_KEYWORD", YYSTART, YYCURSOR);
             continue;
         }
         [ \t\v\n\r] {
             continue;
         }
         "{" | "}" | "(" | ")" | "[" | "]" {
-            report("TOKEN_BRACKET", YYSTART, YYCURSOR);
+            report(output, "TOKEN_BRACKET", YYSTART, YYCURSOR);
             continue;
         }
         "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
         ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
         "*"  | "/"  | "%" {
-            report("TOKEN_OPERATOR", YYSTART, YYCURSOR);
+            report(output, "TOKEN_OPERATOR", YYSTART, YYCURSOR);
             continue;
         }
         "="  | "+="  | "-="  | "*="   | "/=" | "&=" | "|=" | "^=" |
         "%=" | "<<=" | ">>=" | ">>>=" {
-            report("TOKEN_OPERATOR", YYSTART, YYCURSOR);
+            report(output, "TOKEN_OPERATOR", YYSTART, YYCURSOR);
             continue;
         }
         "0" | [1-9][0-9]* {
-            report("TOKEN_LITERAL_INTEGER", YYSTART, YYCURSOR);
+            report(output, "TOKEN_LITERAL_INTEGER", YYSTART, YYCURSOR);
             continue;
         }
         ";" | "," | "." {
-            report("TOKEN_SEPARATOR", YYSTART, YYCURSOR);
+            report(output, "TOKEN_SEPARATOR", YYSTART, YYCURSOR);
             continue;
         }
         [a-zA-Z_][a-zA-Z_0-9]* {
-            report("TOKEN_IDENTIFIER", YYSTART, YYCURSOR);
+            report(output, "TOKEN_IDENTIFIER", YYSTART, YYCURSOR);
             continue;
         }
         * {
@@ -91,8 +91,8 @@ int lex(const char *YYCURSOR) {
     }
 }
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s InputClass.Java\n", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s InputClass.java output.facts\n", argv[0]);
         return 1;
     }
     FILE* f = fopen(argv[1], "r");
@@ -109,8 +109,13 @@ int main(int argc, char** argv) {
         return 1;
     }
     fread(buffer, 1, size, f);
-    lex(buffer);
-    report("TOKEN_EOF", 0, 0);
+    FILE* output = fopen(argv[2], "w+");
+    if (!output) {
+        fprintf(stderr, "Failed to open %s\n", argv[2]);
+        return 1;
+    }
+    lex(output, buffer);
+    report(output, "TOKEN_EOF", 0, 0);
     return 0;
 }
 
