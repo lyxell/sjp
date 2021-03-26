@@ -1,6 +1,9 @@
 .PHONY: run
 
 run: build/root.csv
+	@cat build/root.csv
+
+pretty_print: build/root.csv
 	@cat build/root.csv | prettier --parser babel
 
 build/root.csv: build/token.facts parser.dl
