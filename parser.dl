@@ -126,6 +126,7 @@
 .type Modifier = PublicModifier         {}
                | PrivateModifier        {}
                | ProtectedModifier      {}
+               | DefaultModifier        {}
                | StaticModifier         {}
                | TransitiveModifier     {}
                | NativeModifier         {}
@@ -1392,7 +1393,14 @@ constant_modifier($FinalModifier, A, B) :- token_final(A, B).
 
 .decl interface_method_declaration(a: number, b: number)
 
-.decl interface_method_modifier(a: number, b: number)
+.decl interface_method_modifier(m: Modifier, a: number, b: number)
+interface_method_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
+interface_method_modifier($PublicModifier, A, B) :- token_public(A, B).
+interface_method_modifier($PrivateModifier, A, B) :- token_private(A, B).
+interface_method_modifier($AbstractModifier, A, B) :- token_abstract(A, B).
+interface_method_modifier($DefaultModifier, A, B) :- token_default(A, B).
+interface_method_modifier($StaticModifier, A, B) :- token_static(A, B).
+interface_method_modifier($StrictfpModifier, A, B) :- token_strictfp(A, B).
 
 .decl annotation_type_declaration(s: Declaration, a: number, b: number)
 annotation_type_declaration($AnnotationTypeDeclaration(mods, id, body), A, F) :-
