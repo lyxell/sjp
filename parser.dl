@@ -30,6 +30,7 @@
 
 .type Identifier <: symbol
 .type IdentifierList = [head: Identifier, tail: IdentifierList]
+.type IdentifierListList = [head: IdentifierList, tail: IdentifierListList]
 .type IdentifierOptional = [id: Identifier]
 
 /* Literals */
@@ -41,7 +42,8 @@
 .type CompilationUnit = OrdinaryCompilationUnit {pkgs: PackageDeclarationOptional,
                                                  imps: ImportDeclarationList,
                                                  decls: DeclarationList}
-                      | ModularCompilationUnit  {}
+                      | ModularCompilationUnit  {imps: ImportDeclarationList,
+                                                 decl: Declaration}
 
 /* Variable declarations */
 
@@ -66,7 +68,17 @@
     pdecl: PackageDeclaration
 ]
 
-.type ModuleDirective = ModuleDirective {}
+.type ModuleDirective = ModuleDirectiveOpens { id: IdentifierList, to: IdentifierListList}
+                      | ModuleDirectiveRequires { mods: ModifierList, id: IdentifierList }
+                      | ModuleDirectiveExports { id: IdentifierList, to: IdentifierListList }
+                      | ModuleDirectiveUses { id: IdentifierList }
+
+                      | ModuleDirectiveProvides { id: IdentifierList, with: IdentifierListList }
+
+.type ModuleDirectiveList = [
+    head: ModuleDirective,
+    tail: ModuleDirectiveList
+]
 
 .type ImportDeclaration = Import                {ids: IdentifierList}
                         | ImportOnDemandFrom    {ids: IdentifierList}
@@ -113,6 +125,7 @@
                | PrivateModifier        {}
                | ProtectedModifier      {}
                | StaticModifier         {}
+               | TransitiveModifier     {}
                | NativeModifier         {}
                | AnnotationModifier     {annotation: Annotation}
                | SynchronizedModifier   {}
@@ -306,11 +319,15 @@
            | Float          {}
            | ArrayType      {type: Type, dims: DimensionList}
            | Double         {}
+           | Wildcard       {annotations: AnnotationList, bounds: WildcardBounds}
            | ClassType      {annotations: AnnotationList, id: Identifier, typeargs: TypeList}
 .type TypeList = [head: Type, tail: TypeList]
 .type TypeOptional = [t: Type]
 .type TypeBound = TypeBound {t: Type, additional: TypeList}
 .type TypeBoundOptional = [t: TypeBound]
+
+.type WildcardBounds = WildcardBoundsExtends {type: Type}
+                     | WildcardBoundsSuper {type: Type}
 
 /* Declarations */
 
@@ -318,6 +335,10 @@
                                           id: Identifier,
                                           superclass: TypeOptional,
                                           body: DeclarationList}
+                  | ModuleDeclaration    {annotations: AnnotationList,
+                                          id: Identifier,
+                                          directives: ModuleDirectiveList
+                                         }
                   | Field                {modifiers: ModifierList,
                                           type: Type,
                                           vars: VariableDeclaratorList}
@@ -366,6 +387,22 @@
 .input token
 .decl token(s: symbol, c: Identifier, n: number)
 
+.decl token_requires(a: number, b: number)
+      token_requires(A, A + 1) :- token("TOKEN_KEYWORD", "requires", A).
+.decl token_transitive(a: number, b: number)
+      token_transitive(A, A + 1) :- token("TOKEN_KEYWORD", "transitive", A).
+.decl token_exports(a: number, b: number)
+      token_exports(A, A + 1) :- token("TOKEN_KEYWORD", "exports", A).
+.decl token_provides(a: number, b: number)
+      token_provides(A, A + 1) :- token("TOKEN_KEYWORD", "provides", A).
+.decl token_to(a: number, b: number)
+      token_to(A, A + 1) :- token("TOKEN_KEYWORD", "to", A).
+.decl token_uses(a: number, b: number)
+      token_uses(A, A + 1) :- token("TOKEN_KEYWORD", "uses", A).
+.decl token_opens(a: number, b: number)
+      token_opens(A, A + 1) :- token("TOKEN_KEYWORD", "opens", A).
+.decl token_with(a: number, b: number)
+      token_with(A, A + 1) :- token("TOKEN_KEYWORD", "with", A).
 .decl token_try(a: number, b: number)
       token_try(A, A + 1) :- token("TOKEN_KEYWORD", "try", A).
 .decl token_new(a: number, b: number)
@@ -692,9 +729,19 @@ type_argument_list([x, xs], A, C) :-
 .decl type_argument(e: Type, a: number, b: number)
 type_argument(e, A, B) :- reference_type(e, A, B).
 
-.decl wildcard(a: number, b: number)
+.decl wildcard(e: Type, a: number, b: number)
+wildcard($Wildcard(anns, bounds), A, D) :-
+    annotations?(anns, A, B),
+    token_question_mark(B, C),
+    wildcard_bounds(bounds, C, D).
 
-.decl wildcard_bounds(a: number, b: number)
+.decl wildcard_bounds(e: WildcardBounds, a: number, b: number)
+wildcard_bounds($WildcardBoundsExtends(t), A, C) :-
+    token_extends(A, B),
+    reference_type(t, B, C).
+wildcard_bounds($WildcardBoundsSuper(t), A, C) :-
+    token_super(A, B),
+    reference_type(t, B, C).
 
 /**
  * Names
@@ -767,6 +814,9 @@ ordinary_compilation_unit($OrdinaryCompilationUnit(pdecl, impdecl, tdecl), A, D)
     type_declarations?(tdecl, C, D).
 
 .decl modular_compilation_unit(e: CompilationUnit, a: number, b: number)
+modular_compilation_unit($ModularCompilationUnit(impdecl, mdecl), A, C) :-
+    import_declarations?(impdecl, A, B),
+    module_declaration(mdecl, B, C).
 
 .decl package_declaration(e: PackageDeclaration, a: number, b: number)
 package_declaration($PackageDeclaration(mods, ids), A, E) :-
@@ -828,8 +878,65 @@ ZERO_OR_MORE(type_declarations?, type_declaration)
 .decl module_declaration(s: Declaration, a: number, b: number)
 
 .decl module_directive(s: ModuleDirective, a: number, b: number)
+module_directive($ModuleDirectiveRequires(mods, ids), A, E) :-
+    token_requires(A, B),
+    requires_modifiers?(mods, B, C),
+    module_name(ids, C, D),
+    token_semicolon(D, E).
+module_directive($ModuleDirectiveExports(ids, nil), A, D) :-
+    token_exports(A, B),
+    package_name(ids, B, C),
+    token_semicolon(C, D).
+module_directive($ModuleDirectiveExports(ids, to), A, F) :-
+    token_exports(A, B),
+    package_name(ids, B, C),
+    token_to(C, D),
+    module_directive_module_name_list(to, D, E),
+    token_semicolon(E, F).
+module_directive($ModuleDirectiveOpens(ids, nil), A, D) :-
+    token_opens(A, B),
+    package_name(ids, B, C),
+    token_semicolon(C, D).
+module_directive($ModuleDirectiveOpens(ids, to), A, F) :-
+    token_opens(A, B),
+    package_name(ids, B, C),
+    token_to(C, D),
+    module_directive_module_name_list(to, D, E),
+    token_semicolon(E, F).
+module_directive($ModuleDirectiveUses(t), A, D) :-
+    token_uses(A, B),
+    type_name(t, B, C),
+    token_semicolon(C, D).
+module_directive($ModuleDirectiveProvides(t, ts), A, F) :-
+    token_provides(A, B),
+    type_name(t, B, C),
+    token_with(C, D),
+    module_directive_type_name_list(ts, D, E),
+    token_semicolon(E, F).
 
-.decl requires_modifier(s: Identifier, a: number, b: number)
+.decl module_directives?(s: ModuleDirectiveList, a: number, b: number)
+ZERO_OR_MORE(module_directives?, module_directive)
+
+.decl module_directive_module_name_list(s: IdentifierListList, a: number, b: number)
+module_directive_module_name_list([x, nil], A, B) :- module_name(x, A, B).
+module_directive_module_name_list([x, xs], A, D) :-
+    module_name(x, A, B),
+    token_comma(B, C),
+    module_directive_module_name_list(xs, C, D).
+
+.decl module_directive_type_name_list(s: IdentifierListList, a: number, b: number)
+module_directive_type_name_list([x, nil], A, B) :- type_name(x, A, B).
+module_directive_type_name_list([x, xs], A, B) :-
+    type_name(x, A, B),
+    token_comma(B, C),
+    module_directive_type_name_list(xs, C, D).
+
+.decl requires_modifier(s: Modifier, a: number, b: number)
+requires_modifier($StaticModifier, A, B) :- token_static(A, B).
+requires_modifier($TransitiveModifier, A, B) :- token_transitive(A, B).
+
+.decl requires_modifiers?(s: ModifierList, a: number, b: number)
+ZERO_OR_MORE(requires_modifiers?, requires_modifier)
 
 /**
  * Classes
