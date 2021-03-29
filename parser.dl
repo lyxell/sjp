@@ -213,7 +213,7 @@
 
 .type LambdaParameter =
       LambdaParameter {m: ModifierList, t: Type, decl: VariableDeclaratorId}
-    | LambdaParameterVariableArity {m: VariableArityParameter}
+    | LambdaParameterVariableArity {m: FormalParameter}
 
 .type LambdaParameterList = [
     head: LambdaParameter,
@@ -378,9 +378,11 @@
 .type MethodDeclarator = MethodDeclarator {id: Identifier, rp: ReceiverParameterOptional, params: FormalParameterList, dims: DimensionList}
 .type ReceiverParameter = ReceiverParameter { annotations: AnnotationList }
 .type ReceiverParameterOptional = [rp: ReceiverParameter]
-.type FormalParameter = FormalParameter {mods: ModifierList, type: Type, decl: VariableDeclaratorId}
+.type FormalParameter =
+      FormalParameter {mods: ModifierList, type: Type, decl: VariableDeclaratorId}
+    | VariableArityParameter {mods: ModifierList, type: Type, anns: AnnotationList, id: Identifier}
+
 .type FormalParameterList = [head: FormalParameter, tail: FormalParameterList]
-.type VariableArityParameter = VariableArityParameter {}
 
 /**
  * Tokens
@@ -411,6 +413,8 @@
       token_new(A, A + 1) :- token("TOKEN_KEYWORD", "new", A).
 .decl token_super(a: number, b: number)
       token_super(A, A + 1) :- token("TOKEN_IDENTIFIER", "super", A).
+.decl token_ellipsis(a: number, b: number)
+      token_ellipsis(A, A + 1) :- token("TOKEN_SEPARATOR", "...", A).
 .decl token_ampersand(a: number, b: number)
       token_ampersand(A, A + 1) :- token("TOKEN_SEPARATOR", "&", A).
 .decl token_equal_sign(a: number, b: number)
@@ -1207,11 +1211,18 @@ formal_parameter($FormalParameter(mods,t,id), A, D) :-
     variable_modifiers?(mods, A, B),
     unann_type(t, B, C),
     variable_declarator_id(id, C, D).
-// TODO: Variable arity parameter
+formal_parameter(v, A, B) :- variable_arity_parameter(v, A, B).
 
-.decl variable_arity_parameter(s: VariableArityParameter, a: number, b: number)
+.decl variable_arity_parameter(s: FormalParameter, a: number, b: number)
+variable_arity_parameter($VariableArityParameter(mods, t, anns, id), A, F) :-
+    variable_modifiers?(mods, A, B),
+    unann_type(t, B, C),
+    annotations?(anns, C, D),
+    token_ellipsis(D, E),
+    identifier(id, E, F).
 
 .decl variable_modifier(e: Modifier, a: number, b: number)
+variable_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
 variable_modifier($FinalModifier, A, B) :- token_final(A, B).
 
 .decl variable_modifiers?(e: ModifierList, a: number, b: number)
