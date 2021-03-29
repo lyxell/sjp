@@ -287,7 +287,7 @@
     tail: CatchClauseList
 ]
 
-.type ForUpdate = ForUpdate {}
+.type ForUpdate = ForUpdate { e: ExprList }
 .type ForUpdateOptional = [e: ForUpdate]
 
 .type SwitchLabel = SwitchCase {e: ExprList}
@@ -353,6 +353,7 @@
                                           body: Statement}
                   | EmptyDeclaration     {}
                   | LocalVariableDeclaration { mods: ModifierList, type: Type, decl: VariableDeclaratorList}
+                  | AnnotationTypeDeclaration { mods: ModifierList, id: Identifier, body: DeclarationList }
 
 .type DeclarationList = [head: Declaration, tail: DeclarationList]
 
@@ -391,6 +392,8 @@
 .input token
 .decl token(s: symbol, c: Identifier, n: number)
 
+.decl token_implements(a: number, b: number)
+      token_implements(A, A + 1) :- token("TOKEN_KEYWORD", "implements", A).
 .decl token_requires(a: number, b: number)
       token_requires(A, A + 1) :- token("TOKEN_KEYWORD", "requires", A).
 .decl token_transitive(a: number, b: number)
@@ -477,6 +480,8 @@
 .decl token_comma?(a: number, b: number)
       token_comma?(A, A) :- any_position(A).
       token_comma?(A, B) :- token_comma(A, B).
+.decl token_interface(a: number, b: number)
+      token_interface(A, A + 1) :- token("TOKEN_KEYWORD", "interface", A).
 .decl token_class(a: number, b: number)
       token_class(A, A + 1) :- token("TOKEN_KEYWORD", "class", A).
 .decl token_extends(a: number, b: number)
@@ -880,7 +885,7 @@ single_static_import_declaration($SingleStaticImportDeclaration(t, id), A, G) :-
     token_semicolon(F, G).
 
 .decl static_import_on_demand_declaration(s: ImportDeclaration, a: number, b: number)
-static_import_on_demand_declaration($StaticImportOnDemandDeclaration(t), A, B) :-
+static_import_on_demand_declaration($StaticImportOnDemandDeclaration(t), A, G) :-
     token_import(A, B),
     token_static(B, C),
     type_name(t, C, D),
@@ -1010,9 +1015,18 @@ superclass(t, A, C) :-
 .decl superclass?(t: TypeOptional, a: number, b: number)
 OPTIONAL(superclass?, superclass)
 
-.decl superinterfaces(t: Type, a: number, b: number)
+.decl superinterfaces(t: TypeList, a: number, b: number)
+superinterfaces(t, A, C) :-
+    token_implements(A, B),
+    interface_type_list(t, B, C).
 
-// TODO InterfaceTypeList
+
+.decl interface_type_list(t: TypeList, a: number, b: number)
+interface_type_list([x, nil], A, B) :- interface_type(x, A, B).
+interface_type_list([x, xs], A, D) :-
+    interface_type(x, A, B),
+    token_comma(B, C),
+    interface_type_list(xs, C, D).
 
 .decl class_body(s: DeclarationList, a: number, b: number)
 class_body(declarations, A, D) :-
@@ -1112,7 +1126,7 @@ unann_class_type($ClassType(anns, id, args), A, F) :-
     annotations?(anns, C, D),
     type_identifier(id, D, E),
     type_arguments?(args, E, F).
-unann_class_type($ClassType(anns, id, args), A, D) :-
+unann_class_type($ClassType(anns, id, args), A, F) :-
     unann_class_or_interface_type(pn, A, B), // TODO: handle this
     token_dot(B, C),
     annotations?(anns, C, D),
@@ -1265,6 +1279,10 @@ static_initializer($StaticInitializer(e), A, C) :-
 .decl constructor_declaration(s: Declaration, a: number, b: number)
 
 .decl constructor_modifier(s: Modifier, a: number, b: number)
+constructor_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
+constructor_modifier($PublicModifier, A, B) :- token_public(A, B).
+constructor_modifier($ProtectedModifier, A, B) :- token_protected(A, B).
+constructor_modifier($PrivateModifier, A, B) :- token_private(A, B).
 
 .decl constructor_declarator(e: ConstructorDeclarator, a: number, b: number)
 
@@ -1352,21 +1370,44 @@ ZERO_OR_MORE(interface_modifiers?, interface_modifier)
 
 .decl interface_member_declaration(a: number, b: number)
 
-.decl constant_declaration(a: number, b: number)
+.decl constant_declaration(d: Declaration, a: number, b: number)
 
-.decl constant_modifier(a: number, b: number)
+.decl constant_modifier(m: Modifier, a: number, b: number)
+constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
+constant_modifier($PublicModifier, A, B) :- token_public(A, B).
+constant_modifier($StaticModifier, A, B) :- token_static(A, B).
+constant_modifier($FinalModifier, A, B) :- token_final(A, B).
 
 .decl interface_method_declaration(a: number, b: number)
 
 .decl interface_method_modifier(a: number, b: number)
 
 .decl annotation_type_declaration(s: Declaration, a: number, b: number)
+annotation_type_declaration($AnnotationTypeDeclaration(mods, id, body), A, F) :-
+    interface_modifiers?(mods, A, B),
+    token_at(B, C),
+    token_interface(C, D),
+    type_identifier(id, D, E),
+    annotation_type_body(body, E, F).
 
-.decl annotation_type_body(a: number, b: number)
+.decl annotation_type_body(d: DeclarationList, a: number, b: number)
+annotation_type_body(decls, A, D) :-
+    token_left_curly_bracket(A, B),
+    annotation_type_member_declarations?(decls, B, C),
+    token_right_curly_bracket(C, D).
 
-.decl annotation_type_member_declaration(a: number, b: number)
+.decl annotation_type_member_declaration(d: Declaration, a: number, b: number)
+annotation_type_member_declaration(d, A, B) :- annotation_type_element_declaration(d, A, B).
+annotation_type_member_declaration(d, A, B) :- constant_declaration(d, A, B).
+annotation_type_member_declaration(d, A, B) :- class_declaration(d, A, B).
+annotation_type_member_declaration(d, A, B) :- interface_declaration(d, A, B).
+annotation_type_member_declaration($EmptyDeclaration, A, B) :- token_semicolon(A, B).
 
-.decl annotation_type_element_declaration(a: number, b: number)
+.decl annotation_type_member_declarations?(d: DeclarationList, a: number, b: number)
+ZERO_OR_MORE(annotation_type_member_declarations?, annotation_type_member_declaration)
+
+
+.decl annotation_type_element_declaration(d: Declaration, a: number, b: number)
 
 .decl annotation_type_element_modifier(m: Modifier, a: number, b: number)
 annotation_type_element_modifier($PublicModifier, A, B) :- token_public(A, B).
@@ -1713,7 +1754,7 @@ for_init($ForInit, A, B) :- local_variable_declaration(_, A, B).
 OPTIONAL(for_init?, for_init)
 
 .decl for_update(s: ForUpdate, a: number, b: number)
-for_update($ForUpdate, A, B) :- statement_expression_list(e, A, B).
+for_update($ForUpdate(e), A, B) :- statement_expression_list(e, A, B).
 .decl for_update?(s: ForUpdateOptional, a: number, b: number)
 OPTIONAL(for_update?, for_update)
 
@@ -1791,7 +1832,7 @@ catch_clause($CatchClause(param, b), A, F) :-
 
 .decl catch_type(t: TypeList, a: number, b: number)
 catch_type([x, nil], A, B) :- unann_class_type(x, A, B).
-catch_type([x, xs], B, C) :-
+catch_type([x, xs], A, C) :-
     unann_class_type(x, A, B),
     catch_type_tail(xs, B, C).
 
