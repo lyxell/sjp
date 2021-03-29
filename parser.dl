@@ -187,6 +187,8 @@
            | ShiftRightUnsignedExpression     {e1: Expr, e2: Expr}
            | SubtractionExpression  {e1: Expr, e2: Expr}
            | SwitchExpression       {e: Expr, s: SwitchRuleList}
+           | UnaryPlusExpression    {e: Expr}
+           | UnaryMinusExpression   {e: Expr}
            | ArrayAccessExpression  {array: ArrayAccessSubject, e2: Expr}
            | FieldAccessExpression  {field: FieldAccessSubject, id: Identifier}
            | ThisExpression         {}
@@ -2204,9 +2206,11 @@ INFIX($DivisionExpression, multiplicative_expression, unary_expression, "/")
 INFIX($ModuloExpression, multiplicative_expression, unary_expression, "%")
 
 .decl unary_expression(e: Expr, a: number, b: number)
-unary_expression(e, A, B) :- postfix_expression(e, A, B).
 unary_expression(e, A, B) :- pre_increment_expression(e, A, B).
 unary_expression(e, A, B) :- pre_decrement_expression(e, A, B).
+PREFIX($UnaryPlusExpression, unary_expression, unary_expression, "+")
+PREFIX($UnaryMinusExpression, unary_expression, unary_expression, "-")
+unary_expression(e, A, B) :- unary_expression_not_plus_minus(e, A, B).
 
 .decl pre_increment_expression(e: Expr, a: number, b: number)
 PREFIX($PreIncrementExpression, pre_increment_expression, unary_expression, "++")
@@ -2218,6 +2222,8 @@ PREFIX($PreDecrementExpression, pre_decrement_expression, unary_expression, "--"
 unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
 PREFIX($BitwiseNotExpression, unary_expression_not_plus_minus, unary_expression, "~")
 PREFIX($NotExpression, unary_expression_not_plus_minus, unary_expression, "!")
+unary_expression_not_plus_minus(e, A, B) :- cast_expression(e, A, B).
+unary_expression_not_plus_minus(e, A, B) :- switch_expression(e, A, B).
 
 .decl postfix_expression(e: Expr, a: number, b: number)
 postfix_expression(e, A, B) :- primary(e, A, B).
