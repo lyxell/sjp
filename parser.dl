@@ -80,8 +80,10 @@
     tail: ModuleDirectiveList
 ]
 
-.type ImportDeclaration = Import                {ids: IdentifierList}
-                        | ImportOnDemandFrom    {ids: IdentifierList}
+.type ImportDeclaration = SingleTypeImportDeclaration {ids: IdentifierList}
+                        | TypeImportOnDemandDeclaration {ids: IdentifierList}
+                        | SingleStaticImportDeclaration {t: IdentifierList, id: Identifier}
+                        | StaticImportOnDemandDeclaration {t: IdentifierList }
 
 .type ImportDeclarationList = [
     key: ImportDeclaration,
@@ -851,13 +853,13 @@ import_declaration(e, A, B) :- static_import_on_demand_declaration(e, A, B).
 ZERO_OR_MORE(import_declarations?, import_declaration)
 
 .decl single_type_import_declaration(s: ImportDeclaration, a: number, b: number)
-single_type_import_declaration($Import(syms), A, D) :-
+single_type_import_declaration($SingleTypeImportDeclaration(syms), A, D) :-
     token_import(A, B),
     type_name(syms, B, C),
     token_semicolon(C, D).
 
 .decl type_import_on_demand_declaration(s: ImportDeclaration, a: number, b: number)
-type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, F) :-
+type_import_on_demand_declaration($TypeImportOnDemandDeclaration(syms), A, F) :-
     token_import(A, B),
     type_name(syms, B, C),
     token_dot(C, D),
@@ -865,8 +867,22 @@ type_import_on_demand_declaration($ImportOnDemandFrom(syms), A, F) :-
     token_semicolon(E, F).
 
 .decl single_static_import_declaration(s: ImportDeclaration, a: number, b: number)
+single_static_import_declaration($SingleStaticImportDeclaration(t, id), A, G) :-
+    token_import(A, B),
+    token_static(B, C),
+    type_name(t, C, D),
+    token_dot(D, E),
+    identifier(id, E, F),
+    token_semicolon(F, G).
 
 .decl static_import_on_demand_declaration(s: ImportDeclaration, a: number, b: number)
+static_import_on_demand_declaration($StaticImportOnDemandDeclaration(t), A, B) :-
+    token_import(A, B),
+    token_static(B, C),
+    type_name(t, C, D),
+    token_dot(D, E),
+    token_asterisk(E, F),
+    token_semicolon(F, G).
 
 .decl type_declaration(s: Declaration, a: number, b: number)
 type_declaration(e, A, B) :- class_declaration(e, A, B).
