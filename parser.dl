@@ -637,8 +637,10 @@ floating_point_type($Double, A, B) :- token_double(A, B).
 
 .decl reference_type(t: Type, a: number, b: number)
 reference_type(t, A, B) :- class_or_interface_type(t, A, B).
-reference_type(t, A, B) :- type_variable(t, A, B).
 reference_type(t, A, B) :- array_type(t, A, B).
+// Note: the derivation of TypeVariable is omitted to handle an ambiguity in
+// the Java specification. The same derivation is handled by
+// ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
 .decl class_or_interface_type(t: Type, a: number, b: number)
 class_or_interface_type(t, A, B) :- class_type(t, A, B).
@@ -675,7 +677,9 @@ array_type($ArrayType(b, d), A, C) :- primitive_type(b, A, B), dims(d, B, C).
 array_type($ArrayType(b, d), A, C) :-
     class_or_interface_type(b, A, B),
     dims(d, B, C).
-array_type($ArrayType(b, d), A, C) :- type_variable(b, A, B), dims(d, B, C).
+// Note: the derivation of TypeVariable is omitted to handle an ambiguity in
+// the Java specification. The same derivation is handled by
+// ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
 .decl dims(e: DimensionList, a: number, b: number)
 dims([x, nil], A, B) :- dim(x, A, B).
@@ -704,11 +708,13 @@ type_parameter_modifier($AnnotationModifier(t), A, B) :- annotation(t, A, B).
 ZERO_OR_MORE(type_parameter_modifiers?, type_parameter_modifier)
 
 .decl type_bound(t: TypeBound, a: number, b: number)
-type_bound($TypeBound(t, nil), A, B) :- token_extends(A, B), type_variable(t, A, B).
 type_bound($TypeBound(t, a), A, D) :-
     token_extends(A, B),
     class_or_interface_type(t, B, C),
     additional_bounds?(a, C, D).
+// Note: the derivation of TypeVariable is omitted to handle an ambiguity in
+// the Java specification. The same derivation is handled by
+// ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
 .decl type_bound?(t: TypeBoundOptional, a: number, b: number)
 OPTIONAL(type_bound?, type_bound)
@@ -1109,8 +1115,10 @@ unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
 .decl unann_reference_type(t: Type, a: number, b: number)
 unann_reference_type(t, A, B) :- unann_class_or_interface_type(t, A, B).
-unann_reference_type(t, A, B) :- unann_type_variable(t, A, B).
 unann_reference_type(t, A, B) :- unann_array_type(t, A, B).
+// Note: the derivation of UnannTypeVariable is omitted to handle an ambiguity
+// in the Java specification. The same derivation is handled by
+// UnannClassOrInterfaceType → UnannClassType -> TypeIdentifier
 
 .decl unann_class_or_interface_type(t: Type, a: number, b: number)
 unann_class_or_interface_type(t, A, B) :- unann_class_type(t, A, B).
@@ -1146,9 +1154,9 @@ unann_array_type($ArrayType(t, d), A, C) :-
 unann_array_type($ArrayType(t, d), A, C) :-
     unann_class_or_interface_type(t, A, B),
     dims(d, B, C).
-unann_array_type($ArrayType(t, d), A, C) :-
-    unann_type_variable(t, A, B),
-    dims(d, B, C).
+// Note: the derivation of UnannTypeVariable is omitted to handle an ambiguity
+// in the Java specification. The same derivation is handled by
+// UnannClassOrInterfaceType → UnannClassType -> TypeIdentifier
 
 .decl method_declaration(s: Declaration, a: number, b: number)
 method_declaration($Method(modifiers, header, body), A, D) :-
@@ -1260,7 +1268,9 @@ exception_type_list([x, xs], A, D) :-
 
 .decl exception_type(t: Type, a: number, b: number)
 exception_type(t, A, B) :- class_type(t, A, B).
-exception_type(t, A, B) :- type_variable(t, A, B).
+// Note: the derivation of TypeVariable is omitted to handle an ambiguity in
+// the Java specification. The same derivation is handled by
+// ClassType → {Annotation} TypeIdentifier
 
 .decl method_body(s: Statement, a: number, b: number)
 method_body(s, A, B) :-
