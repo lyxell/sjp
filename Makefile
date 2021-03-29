@@ -4,7 +4,7 @@ run: build/root.csv
 	@cat build/root.csv
 
 pretty_print: build/root.csv
-	@cat build/root.csv | prettier --parser babel
+	@cat build/root.csv | prettier --parser babel --trailing-comma none
 
 build/root.csv: build/token.facts parser.dl
 	souffle --fact-dir=build --output-dir=build parser.dl
