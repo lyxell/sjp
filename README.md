@@ -22,7 +22,7 @@ public class Example {
 
 yields the following AST in Soufflé:
 
-```
+```prolog
 $OrdinaryCompilationUnit(
   nil,
   [
