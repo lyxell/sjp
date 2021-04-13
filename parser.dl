@@ -174,6 +174,8 @@
            | LiteralExpression      {literal: Literal}
            | MethodInvocationExpression
                 {method: MethodInvocationSubject, arguments: ExprList}
+           | MethodReferenceExpression
+                {subject: MethodReferenceSubject, args: TypeList, id: Identifier}
            | ModuloExpression       {e1: Expr, e2: Expr}
            | MultiplicationExpression   {e1: Expr, e2: Expr}
            | NotExpression          {e: Expr}
@@ -241,6 +243,11 @@
     | MethodInvocationSuper { args: TypeList, id: Identifier }
     | MethodInvocationIdentifiersSuper { ids: IdentifierList, args: TypeList, id: Identifier }
 
+.type MethodReferenceSubject = 
+      MethodReferenceSubjectIdentifierList {ids: IdentifierList}
+    | MethodReferenceSubjectExpression {e: Expr}
+    | MethodReferenceSubjectType {t: Type}
+
 /**
  * Statements
  */
@@ -283,7 +290,8 @@
 .type ForInit = ForInit {}
 .type ForInitOptional = [e: ForInit]
 
-.type CatchFormalParameter = CatchFormalParameter {}
+.type CatchFormalParameter =
+      CatchFormalParameter {mods: ModifierList, types: TypeList, decl: VariableDeclaratorId}
 .type CatchClause = CatchClause {param: CatchFormalParameter, b: Statement}
 .type CatchClauseList = [
     head: CatchClause,
@@ -1849,6 +1857,10 @@ catch_clause($CatchClause(param, b), A, F) :-
     block(b, E, F).
 
 .decl catch_formal_parameter(e: CatchFormalParameter, a: number, b: number)
+catch_formal_parameter($CatchFormalParameter(mods, t, id), A, D) :-
+    variable_modifiers?(mods, A, B),
+    catch_type(t, B, C),
+    variable_declarator_id(id, C, D).
 
 .decl catch_type(t: TypeList, a: number, b: number)
 catch_type([x, nil], A, B) :- unann_class_type(x, A, B).
@@ -2030,6 +2042,25 @@ argument_list([x, xs], A, D) :-
     argument_list(xs, C, D).
 
 .decl method_reference(e: Expr, a: number, b: number)
+method_reference($MethodReferenceExpression($MethodReferenceSubjectIdentifierList(ids), args, id), A, F) :-
+    expression_name(ids, A, B),
+    token_colon(B, C),
+    token_colon(C, D),
+    type_arguments?(args, D, E),
+    identifier(id, E, F).
+method_reference($MethodReferenceExpression($MethodReferenceSubjectExpression(e), args, id), A, F) :-
+    primary(e, A, B),
+    token_colon(B, C),
+    token_colon(C, D),
+    type_arguments?(args, D, E),
+    identifier(id, E, F).
+method_reference($MethodReferenceExpression($MethodReferenceSubjectType(t), args, id), A, F) :-
+    reference_type(t, A, B),
+    token_colon(B, C),
+    token_colon(C, D),
+    type_arguments?(args, D, E),
+    identifier(id, E, F).
+// TODO ...
 
 .decl array_creation_expression(e: Expr, a: number, b: number)
 array_creation_expression($ArrayCreationExpression(t, de, d, nil), A, E) :-
