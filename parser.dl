@@ -403,6 +403,9 @@
 .input token
 .decl token(s: symbol, n: number)
 
+.input token_type
+.decl token_type(n: number, s: symbol)
+
 .input num_tokens
 .decl num_tokens(n: number)
 
@@ -464,10 +467,14 @@
 .decl token_package(a: number, b: number)
       token_package(A, A + 1) :- token("package", A).
 .decl token_literal_integer(s: symbol, a: number, b: number)
-      token_literal_integer(s, A, A + 1) :- token(s, A).
+      token_literal_integer(s, A, A + 1) :-
+      token_type(A, "integer"),
+      token(s, A).
       // TODO
 .decl token_identifier(id: Identifier, a: number, b: number)
-      token_identifier(as(id, Identifier), A, A + 1) :- token(id, A).
+      token_identifier(as(id, Identifier), A, A + 1) :-
+      token_type(A, "identifier"),
+      token(id, A).
 .decl token_left_paren(a: number, b: number)
       token_left_paren(A, A + 1) :- token("(", A).
 .decl token_right_paren(a: number, b: number)
@@ -580,7 +587,7 @@ any_position(n) :- num_tokens(n).
 
 #define ZERO_OR_MORE(take_many, take_one) \
     take_many(nil, A, A) :- any_position(A). \
-    take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
+    take_many([x, xs], A, C) :- take_many(xs, B, C), take_one(x, A, B).
 
 #define OPTIONAL(take_zero_or_one, take_one) \
     take_zero_or_one(nil, A, A) :- any_position(A). \
@@ -588,18 +595,18 @@ any_position(n) :- num_tokens(n).
 
 #define INFIX(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
-        current_level(e1, A, B), B > A, \
+        current_level(e1, A, B), \
         token(symbol, B), \
-        next_level(e2, B + 1, C), C > B + 1.
+        next_level(e2, B + 1, C).
 
 #define PREFIX(node, current_level, next_level, symbol) \
     current_level(node(e1), A, B) :- \
         token(symbol, A), \
-        next_level(e1, A + 1, B), B > A + 1.
+        next_level(e1, A + 1, B).
 
 #define POSTFIX(node, current_level, next_level, symbol) \
-    current_level(node(e1), A, B + 1) :- \
-        next_level(e1, A, B), B > A, \
+    current_level(node(e1), A, B) :- \
+        next_level(e1, A, B), \
         token(symbol, B).
 
 /**
@@ -2317,4 +2324,7 @@ root(s) :-
     compilation_unit(s, 0, A),
     num_tokens(A).
 
+.output token
+.output token_type
+.output num_tokens
 .output root

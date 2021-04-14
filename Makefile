@@ -4,33 +4,18 @@ all: sjp
 	@mkdir -p build
 	./sjp
 
-sjp: parser.cpp sjp.hpp
-	$(CXX) -std=c++17 -D__EMBEDDED_SOUFFLE__ main.cpp parser.cpp -o $@
-
-run: build/root.csv
-	@cat build/root.csv
+sjp: parser.cpp sjp.hpp main.cpp
+	$(CXX) -std=c++17 -O2 -D__EMBEDDED_SOUFFLE__ main.cpp parser.cpp -o $@
 
 pretty_print: build/root.csv
 	@cat build/root.csv | prettier --parser babel --trailing-comma none
 
-build/root.csv: build/token.facts parser.dl
-	souffle --fact-dir=build --output-dir=build parser.dl
-
-build/token.facts: build/scanner Example.java
-	build/scanner Example.java build/token.facts
-
-build/scanner: build/scanner_re2c.c
-	@mkdir -p build
-	gcc -Wall -O2 -g -std=c99 build/scanner_re2c.c -o $@
-
-build/%_re2c.c: %.c
-	@mkdir -p build
-	re2c -W --input-encoding utf8 -i $< -o $@
-
-.PHONY: clean
-
-clean:
-	rm -rf build
+profile:
+	cp build/token_type.csv build/token_type.facts
+	cp build/token.csv build/token.facts
+	cp build/num_tokens.csv build/num_tokens.facts
+	souffle --fact-dir=build --output-dir=build --profile=build/profile parser.dl
+	souffle-profile build/profile -j
 
 parser.cpp: parser.dl
 	souffle --no-warn \
@@ -41,3 +26,8 @@ parser.cpp: parser.dl
 
 sjp.hpp: sjp_re2c.hpp
 	re2c -W --input-encoding utf8 -i $< -o $@
+
+.PHONY: clean
+
+clean:
+	rm -rf build
