@@ -13,12 +13,12 @@ In progress
 
 ## Performance
 
-The parser performs well (linear in the number of tokens) in
-practice. It parses files with < 1000 lines in ~10 ms on a
-consumer grade computer. Larger files, say ~10000 lines, may take
-closer to ~500 ms.
+The parser performs well in practice. It parses files with < 1000
+lines in ~10 ms on a consumer grade computer. Larger files, say
+~10000 lines, may take closer to ~500 ms.
 
-In theory it is possible to construct inputs where the parser
+The parser usually exhibits linear runtime behavior in practice,
+however, it is possible to construct inputs where the parser
 suffers from quadratic runtime behavior. This occurs when the
 parser has to construct long sequential lists of one AST node
 type, such as when a class has a lots of methods in a sequence or
