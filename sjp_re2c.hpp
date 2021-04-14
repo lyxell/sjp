@@ -141,17 +141,11 @@ namespace sjp {
         void parse() {
             program->run();
             program->printAll();
-
+        }
+        size_t num_asts() {
             souffle::Relation* relation = program->getRelation("root");
             assert(relation != NULL);
-            std::cout << relation->size() << std::endl;
-            std::cout << relation->getAttrType(0) << std::endl;
-            /*
-            std::string x;
-            for (auto &output : *relation) {
-                output >> x;
-                std::cout << x << std::endl;
-            }*/
+            return relation->size();
         }
         ~parser() {
             delete program;

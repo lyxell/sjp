@@ -15,5 +15,6 @@ int main(int argc, char** argv) {
     auto t3 = hclock::now();
     std::cout << "Time difference:"
         << std::chrono::duration_cast<std::chrono::milliseconds>(t3-t1).count() << " milliseconds" << std::endl;
+    std::cout << "Parsed " << parser.num_asts() << " ASTs" << std::endl;
     return 0;
 }
