@@ -11,6 +11,20 @@ the Java SE 15 grammar specification.
 
 In progress
 
+## Performance
+
+The parser performs well (linear in the number of tokens) in
+practice. It parses files with < 1000 lines in ~10 ms on a
+consumer grade computer. Larger files, say ~10000 lines, may take
+closer to ~500 ms.
+
+In theory it is possible to construct inputs where the parser
+suffers from quadratic runtime behavior. This occurs when it has
+to construct long sequential lists of one AST node type, such as
+when a class has a lots of methods in a sequence or a compilation
+unit has lots of classes in a sequence. If you need to parse such
+files you might run into issues.
+
 ## Example
 
 The following Java source code file:
