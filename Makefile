@@ -1,5 +1,12 @@
 .PHONY: run
 
+all: sjp
+	@mkdir -p build
+	./sjp
+
+sjp: parser.cpp sjp.hpp
+	$(CXX) -std=c++17 -D__EMBEDDED_SOUFFLE__ main.cpp parser.cpp -o $@
+
 run: build/root.csv
 	@cat build/root.csv
 
@@ -24,3 +31,13 @@ build/%_re2c.c: %.c
 
 clean:
 	rm -rf build
+
+parser.cpp: parser.dl
+	souffle --no-warn \
+			--generate=$@ \
+			--fact-dir=build \
+			--output-dir=build \
+			parser.dl
+
+sjp.hpp: sjp_re2c.hpp
+	re2c -W --input-encoding utf8 -i $< -o $@
