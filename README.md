@@ -19,11 +19,11 @@ consumer grade computer. Larger files, say ~10000 lines, may take
 closer to ~500 ms.
 
 In theory it is possible to construct inputs where the parser
-suffers from quadratic runtime behavior. This occurs when it has
-to construct long sequential lists of one AST node type, such as
-when a class has a lots of methods in a sequence or a compilation
-unit has lots of classes in a sequence. If you need to parse such
-files you might run into issues.
+suffers from quadratic runtime behavior. This occurs when the
+parser has to construct long sequential lists of one AST node
+type, such as when a class has a lots of methods in a sequence or
+a compilation unit has lots of classes in a sequence. If you need
+to parse such files you might run into issues.
 
 ## Example
 
