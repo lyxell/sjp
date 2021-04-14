@@ -660,7 +660,7 @@ floating_point_type($Double, A, B) :- token_double(A, B).
 reference_type(t, A, B) :- class_or_interface_type(t, A, B).
 reference_type(t, A, B) :- array_type(t, A, B).
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
-// the Java specification. The same derivation is handled by
+// the Java grammar specification. The same derivation is handled by
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
 .decl class_or_interface_type(t: Type, a: number, b: number)
@@ -734,7 +734,7 @@ type_bound($TypeBound(t, a), A, D) :-
     class_or_interface_type(t, B, C),
     additional_bounds?(a, C, D).
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
-// the Java specification. The same derivation is handled by
+// the Java grammar specification. The same derivation is handled by
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
 .decl type_bound?(t: TypeBoundOptional, a: number, b: number)
