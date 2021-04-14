@@ -103,18 +103,6 @@ namespace sjp {
         return {tokens, i32_value, token_type};
     }
 
-    /**
-     * Expects a null-terminated filename.
-     */
-    std::tuple<std::vector<std::string>,
-               std::unordered_map<size_t,int32_t>,
-               std::unordered_map<size_t, std::string>>
-    lex_file(const char *filename) {
-        std::ifstream t(filename);
-        return lex_string(std::string((std::istreambuf_iterator<char>(t)),
-                                    std::istreambuf_iterator<char>()).c_str());
-    }
-
     class parser {
         souffle::SouffleProgram *program;
     public:
@@ -123,7 +111,13 @@ namespace sjp {
             assert(program != NULL);
         }
         void add_file(const char* filename) {
-            auto [tokens, i32_value, token_type] = lex_file(filename);
+            std::ifstream t(filename);
+            add_string(filename,
+                std::string((std::istreambuf_iterator<char>(t)),
+                std::istreambuf_iterator<char>()).c_str());
+        }
+        void add_string(const char* filename, const char* content) {
+            auto [tokens, i32_value, token_type] = lex_string(content);
             souffle::Relation* relation = program->getRelation("token");
             assert(relation != NULL);
             for (int32_t i = 0; i < tokens.size(); i++) {
