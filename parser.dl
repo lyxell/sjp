@@ -849,18 +849,19 @@ ambiguous_name([x, xs], A, D) :-
  **************************************************************************/
 
 .decl compilation_unit(id: id, a: number, b: number)
-compilation_unit(id, A, B) :- ordinary_compilation_unit(id, _, _, A, B).
+compilation_unit(id, A, B) :- ordinary_compilation_unit(id, _, _, _, A, B).
 compilation_unit(id, A, B) :- modular_compilation_unit(id, A, B).
 
 .decl ordinary_compilation_unit(id: id,
                                 package_declaration: id,
                                 import_declarations: id_list,
+                                type_declarations: id_list,
                                 a: number,
                                 b: number)
-ordinary_compilation_unit(["ordinary_compilation_unit", A, D], pd, ids, A, D) :-
+ordinary_compilation_unit(["ordinary_compilation_unit", A, D], pd, ids, tds, A, D) :-
     package_declaration?(pd, A, B),
     import_declarations?(ids, B, C),
-    type_declarations?(_, C, D).
+    type_declarations?(tds, C, D).
 
 .decl modular_compilation_unit(id: id, a: number, b: number)
 modular_compilation_unit(["modular_compilation_unit", A, C], A, C) :-
@@ -931,11 +932,11 @@ static_import_on_demand_declaration(["static_import_on_demand_declaration", A, G
     token_asterisk(E, F),
     token_semicolon(F, G).
 
-.decl type_declaration(s: Declaration, a: number, b: number)
-type_declaration(e, A, B) :- class_declaration(e, A, B).
-type_declaration(e, A, B) :- interface_declaration(e, A, B).
+.decl type_declaration(s: id, a: number, b: number)
+type_declaration(id, A, B) :- class_declaration(id, A, B).
+type_declaration(id, A, B) :- interface_declaration(id, A, B).
 
-.decl type_declarations?(s: DeclarationList, a: number, b: number)
+.decl type_declarations?(s: id_list, a: number, b: number)
 ZERO_OR_MORE(type_declarations?, type_declaration)
 
 .decl module_declaration(s: Declaration, a: number, b: number)
@@ -1006,17 +1007,17 @@ ZERO_OR_MORE(requires_modifiers?, requires_modifier)
  * See §8 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl class_declaration(s: Declaration, a: number, b: number)
-class_declaration(e, A, B) :- normal_class_declaration(e, A, B).
-class_declaration(e, A, B) :- enum_declaration(e, A, B).
+.decl class_declaration(id: id, a: number, b: number)
+class_declaration(id, A, B) :- normal_class_declaration(id, A, B).
+class_declaration(id, A, B) :- enum_declaration(id, A, B).
 
-.decl normal_class_declaration(s: Declaration, a: number, b: number)
-normal_class_declaration($ClassDeclaration(modifiers, id, sup, declarations), A, F) :-
-    class_modifiers?(modifiers, A, B),
+.decl normal_class_declaration(id: id, a: number, b: number)
+normal_class_declaration(["normal_class_declaration", A, F], A, F) :-
+    class_modifiers?(_, A, B),
     token_class(B, C),
-    type_identifier(id, C, D),
-    superclass?(sup, D, E),
-    class_body(declarations, E, F).
+    type_identifier(_, C, D),
+    superclass?(_, D, E),
+    class_body(_, E, F).
 
 .decl class_modifiers?(s: ModifierList, a: number, b: number)
 ZERO_OR_MORE(class_modifiers?, class_modifier)
@@ -1066,37 +1067,37 @@ interface_type_list([x, xs], A, D) :-
     token_comma(B, C),
     interface_type_list(xs, C, D).
 
-.decl class_body(s: DeclarationList, a: number, b: number)
+.decl class_body(id: id_list, a: number, b: number)
 class_body(declarations, A, D) :-
     token_left_curly_bracket(A, B),
     class_body_declarations?(declarations, B, C),
     token_right_curly_bracket(C, D).
 
-.decl class_body?(s: DeclarationList, a: number, b: number)
+.decl class_body?(s: id_list, a: number, b: number)
 class_body?(nil, A, A) :- any_position(A).
 class_body?(x, A, B) :- class_body(x, A, B).
 
-.decl class_body_declarations?(d: DeclarationList, a: number, b: number)
+.decl class_body_declarations?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(class_body_declarations?, class_body_declaration)
 
-.decl class_body_declaration(d: Declaration, a: number, b: number)
+.decl class_body_declaration(id: id, a: number, b: number)
 class_body_declaration(e, A, B) :- class_member_declaration(e, A, B).
 class_body_declaration(e, A, B) :- instance_initializer(e, A, B).
 class_body_declaration(e, A, B) :- static_initializer(e, A, B).
 class_body_declaration(e, A, B) :- constructor_declaration(e, A, B).
 
-.decl class_member_declaration(s: Declaration, a: number, b: number)
+.decl class_member_declaration(id: id, a: number, b: number)
 class_member_declaration(e, A, B) :- field_declaration(e, A, B).
-class_member_declaration(e, A, B) :- method_declaration(e, A, B).
-class_member_declaration(e, A, B) :- class_declaration(e, A, B).
-class_member_declaration(e, A, B) :- interface_declaration(e, A, B).
-class_member_declaration($EmptyDeclaration, A, B) :- token_semicolon(A, B).
+class_member_declaration(id, A, B) :- method_declaration(id, A, B).
+class_member_declaration(id, A, B) :- class_declaration(id, A, B).
+class_member_declaration(id, A, B) :- interface_declaration(id, A, B).
+class_member_declaration(nil, A, B) :- token_semicolon(A, B).
 
-.decl field_declaration(s: Declaration, a: number, b: number)
-field_declaration($Field(mods, type, vars), A, E) :-
-    field_modifiers?(mods, A, B),
-    unann_type(type, B, C),
-    variable_declarator_list(vars, C, D),
+.decl field_declaration(id: id, a: number, b: number)
+field_declaration(["field_declaration", A, E], A, E) :-
+    field_modifiers?(_, A, B),
+    unann_type(_, B, C),
+    variable_declarator_list(_, C, D),
     token_semicolon(D, E).
 
 .decl field_modifier(s: Modifier, a: number, b: number)
@@ -1190,11 +1191,11 @@ unann_array_type($ArrayType(t, d), A, C) :-
 // in the Java specification. The same derivation is handled by
 // UnannClassOrInterfaceType → UnannClassType -> TypeIdentifier
 
-.decl method_declaration(s: Declaration, a: number, b: number)
-method_declaration($Method(modifiers, header, body), A, D) :-
-    method_modifiers?(modifiers, A, B),
-    method_header(header, B, C),
-    method_body(body, C, D).
+.decl method_declaration(id: id, a: number, b: number)
+method_declaration(["method_declaration", A, D], A, D) :-
+    method_modifiers?(_, A, B),
+    method_header(_, B, C),
+    method_body(_, C, D).
 
 .decl method_modifiers?(s: ModifierList, a: number, b: number)
 ZERO_OR_MORE(method_modifiers?, method_modifier)
@@ -1310,15 +1311,16 @@ method_body(s, A, B) :-
 method_body($EmptyStatement, A, B) :-
     token_semicolon(A, B).
 
-.decl instance_initializer(s: Declaration, a: number, b: number)
-instance_initializer($InstanceInitializer(e), A, B) :- block(e, A, B).
+.decl instance_initializer(id: id, a: number, b: number)
+instance_initializer(["instance_initializer", A, B], A, B)
+    :- block(_, A, B).
 
-.decl static_initializer(s: Declaration, a: number, b: number)
-static_initializer($StaticInitializer(e), A, C) :-
+.decl static_initializer(id: id, a: number, b: number)
+static_initializer(["static_initializer", A, C], A, C) :-
     token_static(A, B),
-    block(e, B, C).
+    block(_, B, C).
 
-.decl constructor_declaration(s: Declaration, a: number, b: number)
+.decl constructor_declaration(id: id, a: number, b: number)
 
 .decl constructor_modifier(s: Modifier, a: number, b: number)
 constructor_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
@@ -1335,14 +1337,14 @@ simple_type_name(e, A, B) :- type_identifier(e, A, B).
 
 .decl explicit_constructor_invocation(e: ExplicitConstructorInvocation, a: number, b: number)
 
-.decl enum_declaration(s: Declaration, a: number, b: number)
+.decl enum_declaration(id: id, a: number, b: number)
 
 .decl enum_body(s: EnumBody, a: number, b: number)
-enum_body($EnumBody(con, decl), A, F) :-
+enum_body($EnumBody(con, nil), A, F) :-
     token_left_curly_bracket(A, B),
     enum_constant_list?(con, B, C),
     token_comma?(C, D),
-    enum_body_declarations?(decl, D, E),
+    enum_body_declarations?(_, D, E),
     token_right_curly_bracket(E, F).
 
 .decl enum_constant_list(e: EnumConstantList, a: number, b: number)
@@ -1357,17 +1359,17 @@ enum_constant_list?(nil, A, A) :- any_position(A).
 enum_constant_list?(x, A, B) :- enum_constant_list(x, A, B).
 
 .decl enum_constant(e: EnumConstant, a: number, b: number)
-enum_constant($EnumConstant(mods, id, nil, body), A, D) :-
+enum_constant($EnumConstant(mods, id, nil, nil), A, D) :-
     enum_constant_modifiers?(mods, A, B),
     identifier(id, B, C),
-    class_body?(body, C, D).
-enum_constant($EnumConstant(mods, id, args, body), A, G) :-
+    class_body?(_, C, D).
+enum_constant($EnumConstant(mods, id, args, nil), A, G) :-
     enum_constant_modifiers?(mods, A, B),
     identifier(id, B, C),
     token_left_paren(C, D),
     argument_list?(args, D, E),
     token_right_paren(E, F),
-    class_body?(body, F, G).
+    class_body?(_, F, G).
 
 .decl enum_constant_modifier(e: Modifier, a: number, b: number)
 enum_constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
@@ -1375,25 +1377,25 @@ enum_constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
 .decl enum_constant_modifiers?(e: ModifierList, a: number, b: number)
 ZERO_OR_MORE(enum_constant_modifiers?, enum_constant_modifier)
 
-.decl enum_body_declarations(e: DeclarationList, a: number, b: number)
-enum_body_declarations(e, A, C) :-
+.decl enum_body_declarations(ids: id_list, a: number, b: number)
+enum_body_declarations(ids, A, C) :-
     token_semicolon(A, B),
-    class_body_declarations?(e, B, C).
+    class_body_declarations?(ids, B, C).
 
-.decl enum_body_declarations?(e: DeclarationList, a: number, b: number)
+.decl enum_body_declarations?(e: id_list, a: number, b: number)
 enum_body_declarations?(nil, A, A) :- any_position(A).
-enum_body_declarations?(x, A, B) :- enum_body_declarations(x, A, B).
+enum_body_declarations?(ids, A, B) :- enum_body_declarations(ids, A, B).
 
 /**
  * Interfaces
  * See §9 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl interface_declaration(s: Declaration, a: number, b: number)
-interface_declaration(e, A, B) :- normal_interface_declaration(e, A, B).
-interface_declaration(e, A, B) :- annotation_type_declaration(e, A, B).
+.decl interface_declaration(id: id, a: number, b: number)
+interface_declaration(id, A, B) :- normal_interface_declaration(id, A, B).
+interface_declaration(id, A, B) :- annotation_type_declaration(id, A, B).
 
-.decl normal_interface_declaration(s: Declaration, a: number, b: number)
+.decl normal_interface_declaration(id: id, a: number, b: number)
 
 .decl interface_modifier(m: Modifier, a: number, b: number)
 interface_modifier($PublicModifier, A, B) :- token_public(A, B).
@@ -1412,7 +1414,7 @@ ZERO_OR_MORE(interface_modifiers?, interface_modifier)
 
 .decl interface_member_declaration(a: number, b: number)
 
-.decl constant_declaration(d: Declaration, a: number, b: number)
+.decl constant_declaration(id: id, a: number, b: number)
 
 .decl constant_modifier(m: Modifier, a: number, b: number)
 constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
@@ -1431,32 +1433,32 @@ interface_method_modifier($DefaultModifier, A, B) :- token_default(A, B).
 interface_method_modifier($StaticModifier, A, B) :- token_static(A, B).
 interface_method_modifier($StrictfpModifier, A, B) :- token_strictfp(A, B).
 
-.decl annotation_type_declaration(s: Declaration, a: number, b: number)
-annotation_type_declaration($AnnotationTypeDeclaration(mods, id, body), A, F) :-
-    interface_modifiers?(mods, A, B),
+.decl annotation_type_declaration(id: id, a: number, b: number)
+annotation_type_declaration(["annotation_type_declaration", A, F], A, F) :-
+    interface_modifiers?(_, A, B),
     token_at(B, C),
     token_interface(C, D),
-    type_identifier(id, D, E),
-    annotation_type_body(body, E, F).
+    type_identifier(_, D, E),
+    annotation_type_body(_, E, F).
 
-.decl annotation_type_body(d: DeclarationList, a: number, b: number)
+.decl annotation_type_body(ids: id_list, a: number, b: number)
 annotation_type_body(decls, A, D) :-
     token_left_curly_bracket(A, B),
     annotation_type_member_declarations?(decls, B, C),
     token_right_curly_bracket(C, D).
 
-.decl annotation_type_member_declaration(d: Declaration, a: number, b: number)
+.decl annotation_type_member_declaration(id: id, a: number, b: number)
 annotation_type_member_declaration(d, A, B) :- annotation_type_element_declaration(d, A, B).
 annotation_type_member_declaration(d, A, B) :- constant_declaration(d, A, B).
 annotation_type_member_declaration(d, A, B) :- class_declaration(d, A, B).
 annotation_type_member_declaration(d, A, B) :- interface_declaration(d, A, B).
-annotation_type_member_declaration($EmptyDeclaration, A, B) :- token_semicolon(A, B).
+annotation_type_member_declaration(nil, A, B) :- token_semicolon(A, B).
 
-.decl annotation_type_member_declarations?(d: DeclarationList, a: number, b: number)
+.decl annotation_type_member_declarations?(d: id_list, a: number, b: number)
 ZERO_OR_MORE(annotation_type_member_declarations?, annotation_type_member_declaration)
 
 
-.decl annotation_type_element_declaration(d: Declaration, a: number, b: number)
+.decl annotation_type_element_declaration(id: id, a: number, b: number)
 
 .decl annotation_type_element_modifier(m: Modifier, a: number, b: number)
 annotation_type_element_modifier($PublicModifier, A, B) :- token_public(A, B).
@@ -1961,14 +1963,14 @@ class_instance_creation_expression(e, A, B) :-
 // TODO ...
 
 .decl unqualified_class_instance_creation_expression(e: Expr, a: number, b: number)
-unqualified_class_instance_creation_expression($ClassInstanceCreationExpression(ta, e, args, body), A, H) :-
+unqualified_class_instance_creation_expression($ClassInstanceCreationExpression(ta, e, args, nil), A, H) :-
     token_new(A, B),
     type_arguments?(ta, B, C),
     class_or_interface_type_to_instantiate(e, C, D),
     token_left_paren(D, E),
     argument_list?(args, E, F),
     token_right_paren(F, G),
-    class_body?(body, G, H).
+    class_body?(_, G, H).
 
 .decl class_or_interface_type_to_instantiate(e: ClassInstanceCreationSubject, a: number, b: number)
 class_or_interface_type_to_instantiate($ClassInstanceCreationSubject(anns, id, ta), A, D) :-
@@ -2345,7 +2347,10 @@ in_tree(id) :- in_tree_list([id, _]).
 
 .decl in_tree_list(ids: id_list)
 in_tree_list(ids) :-
-    ordinary_compilation_unit(unit, _, ids, _, _),
+    ordinary_compilation_unit(unit, _, ids, _, _, _),
+    in_tree(unit).
+in_tree_list(ids) :-
+    ordinary_compilation_unit(unit, _, _, ids, _, _),
     in_tree(unit).
 in_tree_list(tail) :- in_tree_list([_, tail]).
 
