@@ -109,7 +109,6 @@ namespace sjp {
         parser() {
             program = souffle::ProgramFactory::newInstance("parser");
             assert(program != NULL);
-            program->setNumThreads(4);
         }
         void add_file(const char* filename) {
             std::ifstream t(filename);
@@ -142,6 +141,22 @@ namespace sjp {
         void parse() {
             program->run();
             program->printAll();
+        }
+        std::vector<std::tuple<std::string,int,int>>
+        get_tuples() {
+            std::vector<std::tuple<std::string,int,int>> result;
+            souffle::Relation* relation = program->getRelation("in_tree");
+            for (auto &output : *relation) {
+                int record_reference;
+                output >> record_reference;
+                auto record = program->getRecordTable().unpack(record_reference, 3);
+                int symbol_reference = *record;
+                result.emplace_back(
+                    program->getSymbolTable().decode(symbol_reference),
+                    record[1],
+                    record[2]);
+            }
+            return result;
         }
         size_t num_asts() {
             souffle::Relation* relation = program->getRelation("root");
