@@ -162,6 +162,7 @@ namespace sjp {
                 int record_reference;
                 output >> record_reference;
                 auto record = program->getRecordTable().unpack(record_reference, 3);
+                if (!record) continue;
                 int symbol_reference = *record;
                 
                 result.emplace_back(

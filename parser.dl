@@ -1088,7 +1088,7 @@ class_body_declaration(e, A, B) :- constructor_declaration(e, A, B).
 
 .decl class_member_declaration(id: id, a: number, b: number)
 class_member_declaration(id, A, B) :- field_declaration(id, A, B).
-class_member_declaration(id, A, B) :- method_declaration(id, _, _, A, B).
+class_member_declaration(id, A, B) :- method_declaration(id, _, _, _, A, B).
 class_member_declaration(id, A, B) :- class_declaration(id, A, B).
 class_member_declaration(id, A, B) :- interface_declaration(id, A, B).
 class_member_declaration(nil, A, B) :- token_semicolon(A, B).
@@ -1191,11 +1191,11 @@ unann_array_type($ArrayType(t, d), A, C) :-
 // in the Java specification. The same derivation is handled by
 // UnannClassOrInterfaceType → UnannClassType -> TypeIdentifier
 
-.decl method_declaration(id: id, mods: id_list, header: id, a: number, b: number)
-method_declaration(["method_declaration", A, D], mods, header, A, D) :-
+.decl method_declaration(id: id, mods: id_list, header: id, body: id, a: number, b: number)
+method_declaration(["method_declaration", A, D], mods, header, body, A, D) :-
     method_modifiers?(mods, A, B),
     method_header(header, _, B, C),
-    method_body(_, C, D).
+    method_body(body, C, D).
 
 .decl method_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(method_modifiers?, method_modifier)
@@ -1305,20 +1305,20 @@ exception_type(t, A, B) :- class_type(t, A, B).
 // the Java specification. The same derivation is handled by
 // ClassType → {Annotation} TypeIdentifier
 
-.decl method_body(s: Statement, a: number, b: number)
-method_body(s, A, B) :-
-    block(s, A, B).
-method_body($EmptyStatement, A, B) :-
+.decl method_body(id: id, a: number, b: number)
+method_body(id, A, B) :-
+    block(id, _, A, B).
+method_body(nil, A, B) :-
     token_semicolon(A, B).
 
 .decl instance_initializer(id: id, a: number, b: number)
 instance_initializer(["instance_initializer", A, B], A, B)
-    :- block(_, A, B).
+    :- block(_, _, A, B).
 
 .decl static_initializer(id: id, a: number, b: number)
 static_initializer(["static_initializer", A, C], A, C) :-
     token_static(A, B),
-    block(_, B, C).
+    block(_, _, B, C).
 
 .decl constructor_declaration(id: id, a: number, b: number)
 
@@ -1561,141 +1561,141 @@ variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
  * See §14 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl block(s: Statement, a: number, b: number)
-block($BlockStatement(s), A, D) :-
+.decl block(id: id, statements: id_list, a: number, b: number)
+block(["block", A, D], statements, A, D) :-
     token_left_curly_bracket(A, B),
-    block_statements?(s, B, C),
+    block_statements?(statements, B, C),
     token_right_curly_bracket(C, D).
 
-.decl block_statements?(s: StatementList, a: number, b: number)
+.decl block_statements?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(block_statements?, block_statement)
 
-.decl block_statement(s: Statement, a: number, b: number)
-block_statement(e, A, B) :- local_variable_declaration_statement(e, A, B).
+.decl block_statement(id: id, a: number, b: number)
+block_statement(id, A, B) :- local_variable_declaration_statement(id, A, B).
 // TODO: class declaration
-block_statement(e, A, B) :- statement(e, A, B).
+block_statement(id, A, B) :- statement(id, A, B).
 
-.decl local_variable_declaration_statement(s: Statement, a: number, b: number)
-local_variable_declaration_statement($LocalVariableDeclarationStatement(decl), A, C) :-
-    local_variable_declaration(decl, A, B),
+.decl local_variable_declaration_statement(id: id, a: number, b: number)
+local_variable_declaration_statement(id, A, C) :-
+    local_variable_declaration(id, A, B),
     token_semicolon(B, C).
 
-.decl local_variable_declaration(d: Declaration, a: number, b: number)
-local_variable_declaration($LocalVariableDeclaration(mods, type, decls), A, D) :-
-    variable_modifiers?(mods, A, B),
-    local_variable_type(type, B, C),
-    variable_declarator_list(decls, C, D).
+.decl local_variable_declaration(id: id, a: number, b: number)
+local_variable_declaration(["local_variable_declaration", A, D], A, D) :-
+    variable_modifiers?(_, A, B),
+    local_variable_type(_, B, C),
+    variable_declarator_list(_, C, D).
 
 .decl local_variable_type(t: Type, a: number, b: number)
 local_variable_type(t, A, B) :- unann_type(t, A, B).
 local_variable_type($Var, A, B) :- token_var(A, B).
 
-.decl statement(s: Statement, a: number, b: number)
-statement(e, A, B) :- statement_without_trailing_substatement(e, A, B).
-statement(e, A, B) :- labeled_statement(e, A, B).
-statement(e, A, B) :- if_then_statement(e, A, B).
-statement(e, A, B) :- if_then_else_statement(e, A, B).
-statement(e, A, B) :- while_statement(e, A, B).
-statement(e, A, B) :- for_statement(e, A, B).
+.decl statement(id: id, a: number, b: number)
+statement(id, A, B) :- statement_without_trailing_substatement(id, A, B).
+statement(id, A, B) :- labeled_statement(id, A, B).
+statement(id, A, B) :- if_then_statement(id, A, B).
+statement(id, A, B) :- if_then_else_statement(id, A, B).
+statement(id, A, B) :- while_statement(id, A, B).
+statement(id, A, B) :- for_statement(id, A, B).
 
-.decl statement_no_short_if(s: Statement, a: number, b: number)
-statement_no_short_if(e, A, B) :- statement_without_trailing_substatement(e, A, B).
-statement_no_short_if(e, A, B) :- labeled_statement_no_short_if(e, A, B).
-statement_no_short_if(e, A, B) :- if_then_else_statement_no_short_if(e, A, B).
-statement_no_short_if(e, A, B) :- while_statement_no_short_if(e, A, B).
-statement_no_short_if(e, A, B) :- for_statement_no_short_if(e, A, B).
+.decl statement_no_short_if(id: id, a: number, b: number)
+statement_no_short_if(id, A, B) :- statement_without_trailing_substatement(id, A, B).
+statement_no_short_if(id, A, B) :- labeled_statement_no_short_if(id, A, B).
+statement_no_short_if(id, A, B) :- if_then_else_statement_no_short_if(id, A, B).
+statement_no_short_if(id, A, B) :- while_statement_no_short_if(id, A, B).
+statement_no_short_if(id, A, B) :- for_statement_no_short_if(id, A, B).
 
-.decl statement_without_trailing_substatement(s: Statement, a: number, b: number)
-statement_without_trailing_substatement(e, A, B) :- block(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- empty_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- expression_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- assert_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- switch_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- do_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- break_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- continue_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- return_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- synchronized_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- throw_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- try_statement(e, A, B).
-statement_without_trailing_substatement(e, A, B) :- yield_statement(e, A, B).
+.decl statement_without_trailing_substatement(id: id, a: number, b: number)
+statement_without_trailing_substatement(id, A, B) :- block(id, _, A, B).
+statement_without_trailing_substatement(id, A, B) :- empty_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- expression_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- assert_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- switch_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- do_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- break_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- continue_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- return_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- synchronized_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- throw_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- try_statement(id, A, B).
+statement_without_trailing_substatement(id, A, B) :- yield_statement(id, A, B).
 
-.decl empty_statement(s: Statement, a: number, b: number)
-empty_statement($EmptyStatement, A, B) :- token_semicolon(A, B).
+.decl empty_statement(id: id, a: number, b: number)
+empty_statement(["empty_statement", A, B], A, B) :- token_semicolon(A, B).
 
-.decl labeled_statement(s: Statement, a: number, b: number)
-labeled_statement($LabelStatement(id, st), A, D) :-
-    token_identifier(id, A, B),
+.decl labeled_statement(id: id, a: number, b: number)
+labeled_statement(["labeled_statement", A, D], A, D) :-
+    token_identifier(_, A, B),
     token_colon(B, C),
-    statement(st, C, D).
+    statement(_, C, D).
 
-.decl labeled_statement_no_short_if(s: Statement, a: number, b: number)
-labeled_statement_no_short_if($LabelStatement(id, st), A, D) :-
-    token_identifier(id, A, B),
+.decl labeled_statement_no_short_if(id: id, a: number, b: number)
+labeled_statement_no_short_if(["labeled_statement", A, D], A, D) :-
+    token_identifier(_, A, B),
     token_colon(B, C),
-    statement_no_short_if(st, C, D).
+    statement_no_short_if(_, C, D).
 
-.decl expression_statement(e: Statement, a: number, b: number)
-expression_statement($ExpressionStatement(e), A, C) :-
-    statement_expression(e, A, B),
+.decl expression_statement(id: id, a: number, b: number)
+expression_statement(id, A, C) :-
+    statement_expression(id, A, B),
     token_semicolon(B, C).
 
-.decl statement_expression(e: Expr, a: number, b: number)
-statement_expression(e, A, B) :- assignment(e, A, B).
-statement_expression(e, A, B) :- pre_increment_expression(e, A, B).
-statement_expression(e, A, B) :- pre_decrement_expression(e, A, B).
-statement_expression(e, A, B) :- post_increment_expression(e, A, B).
-statement_expression(e, A, B) :- post_decrement_expression(e, A, B).
-statement_expression(e, A, B) :- method_invocation(e, A, B).
-statement_expression(e, A, B) :- class_instance_creation_expression(e, A, B).
+.decl statement_expression(id: id, a: number, b: number)
+statement_expression(nil, A, B) :- assignment(_, A, B).
+statement_expression(nil, A, B) :- pre_increment_expression(_, A, B).
+statement_expression(nil, A, B) :- pre_decrement_expression(_, A, B).
+statement_expression(nil, A, B) :- post_increment_expression(_, A, B).
+statement_expression(nil, A, B) :- post_decrement_expression(_, A, B).
+statement_expression(nil, A, B) :- method_invocation(_, A, B).
+statement_expression(nil, A, B) :- class_instance_creation_expression(_, A, B).
 
-.decl if_then_statement(s: Statement, a: number, b: number)
-if_then_statement($IfThenStatement(e, s), A, F) :-
+.decl if_then_statement(id: id, a: number, b: number)
+if_then_statement(["if_then_statement", A, F], A, F) :-
     token_if(A, B),
     token_left_paren(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_right_paren(D, E),
-    statement(s, E, F).
+    statement(_, E, F).
 
-.decl if_then_else_statement(s: Statement, a: number, b: number)
-if_then_else_statement($IfThenElseStatement(e, s1, s2), A, H) :-
+.decl if_then_else_statement(id: id, a: number, b: number)
+if_then_else_statement(["if_then_else_statement", A, H], A, H) :-
     token_if(A, B),
     token_left_paren(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_right_paren(D, E),
-    statement_no_short_if(s1, E, F),
+    statement_no_short_if(_, E, F),
     token_else(F, G),
-    statement(s2, G, H).
+    statement(_, G, H).
 
-.decl if_then_else_statement_no_short_if(s: Statement, a: number, b: number)
-if_then_else_statement_no_short_if($IfThenElseStatement(e, s1, s2), A, H) :-
+.decl if_then_else_statement_no_short_if(id: id, a: number, b: number)
+if_then_else_statement_no_short_if(["if_then_else_statement", A, H], A, H) :-
     token_if(A, B),
     token_left_paren(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_right_paren(D, E),
-    statement_no_short_if(s1, E, F),
+    statement_no_short_if(_, E, F),
     token_else(F, G),
-    statement_no_short_if(s2, G, H).
+    statement_no_short_if(_, G, H).
 
-.decl assert_statement(s: Statement, a: number, b: number)
-assert_statement($AssertStatement(e, nil), A, D) :-
+.decl assert_statement(id: id, a: number, b: number)
+assert_statement(["assert_statement", A, D], A, D) :-
     token_assert(A, B),
-    expression(e, B, C),
+    expression(_, B, C),
     token_semicolon(C, D).
-assert_statement($AssertStatement(e1, [e2]), A, F) :-
+assert_statement(["assert_statement", A, F], A, F) :-
     token_assert(A, B),
-    expression(e1, B, C),
+    expression(_, B, C),
     token_colon(C, D),
-    expression(e2, D, E),
+    expression(_, D, E),
     token_semicolon(E, F).
 
-.decl switch_statement(s: Statement, a: number, b: number)
-switch_statement($SwitchStatement(e, rules), A, F) :-
+.decl switch_statement(id: id, a: number, b: number)
+switch_statement(["switch_statement", A, F], A, F) :-
     token_switch(A, B),
     token_left_paren(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_right_paren(D, E),
-    switch_block(rules, E, F).
+    switch_block(_, E, F).
 
 .decl switch_block(s: SwitchRuleList, a: number, b: number)
 switch_block([rule, rules], A, E) :-
@@ -1713,14 +1713,14 @@ switch_rule($SwitchRuleExpr(label, expr), A, E) :-
     token_arrow(B, C),
     expression(expr, C, D),
     token_semicolon(D, E).
-switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
-    switch_label(label, A, B),
-    token_arrow(B, C),
-    block(stmt, C, D).
-switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
-    switch_label(label, A, B),
-    token_arrow(B, C),
-    throw_statement(stmt, C, D).
+//switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
+//    switch_label(label, A, B),
+//    token_arrow(B, C),
+//    block(stmt, C, D).
+//switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
+//    switch_label(label, A, B),
+//    token_arrow(B, C),
+//    throw_statement(stmt, C, D).
 
 .decl switch_block_statement_group(a: number, b: number)
 
@@ -1740,63 +1740,63 @@ case_constants([x, xs], A, D) :-
 .decl case_constant(e: Expr, a: number, b: number)
 case_constant(e, A, B) :- conditional_expression(e, A, B).
 
-.decl while_statement(s: Statement, a: number, b: number)
-while_statement($WhileStatement(e, s), A, F) :-
+.decl while_statement(id: id, a: number, b: number)
+while_statement(["while_statement", A, F], A, F) :-
     token_while(A, B),
     token_left_paren(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_right_paren(D, E),
-    statement(s, E, F).
+    statement(_, E, F).
 
-.decl while_statement_no_short_if(s: Statement, a: number, b: number)
-while_statement_no_short_if($WhileStatement(e, s), A, F) :-
+.decl while_statement_no_short_if(id: id, a: number, b: number)
+while_statement_no_short_if(["while_statement", A, F], A, F) :-
     token_while(A, B),
     token_left_paren(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_right_paren(D, E),
-    statement_no_short_if(s, E, F).
+    statement_no_short_if(_, E, F).
 
-.decl do_statement(s: Statement, a: number, b: number)
-do_statement($DoStatement(e, s), A, H) :-
+.decl do_statement(id: id, a: number, b: number)
+do_statement(["do_statement", A, H], A, H) :-
     token_do(A, B),
-    statement(s, B, C),
+    statement(_, B, C),
     token_while(C, D),
     token_left_paren(D, E),
-    expression(e, E, F),
+    expression(_, E, F),
     token_right_paren(F, G),
     token_semicolon(G, H).
 
-.decl for_statement(s: Statement, a: number, b: number)
-for_statement(e, A, B) :- for_statement_no_short_if(e, A, B).
-for_statement(e, A, B) :- enhanced_for_statement(e, A, B).
+.decl for_statement(id: id, a: number, b: number)
+for_statement(id, A, B) :- for_statement_no_short_if(id, A, B).
+for_statement(id, A, B) :- enhanced_for_statement(id, A, B).
 
-.decl for_statement_no_short_if(s: Statement, a: number, b: number)
-for_statement_no_short_if(e, A, B) :- basic_for_statement_no_short_if(e, A, B).
-for_statement_no_short_if(e, A, B) :- enhanced_for_statement_no_short_if(e, A, B).
+.decl for_statement_no_short_if(id: id, a: number, b: number)
+for_statement_no_short_if(id, A, B) :- basic_for_statement_no_short_if(id, A, B).
+for_statement_no_short_if(id, A, B) :- enhanced_for_statement_no_short_if(id, A, B).
 
-.decl basic_for_statement(s: Statement, a: number, b: number)
-basic_for_statement($ForStatement(init, expr, upd, stat), A, J) :-
+.decl basic_for_statement(id: id, a: number, b: number)
+basic_for_statement(["for_statement", A, J], A, J) :-
     token_for(A, B),
     token_left_paren(B, C),
-    for_init?(init, C, D),
+    for_init?(_, C, D),
     token_semicolon(D, E),
-    expression?(expr, E, F),
+    expression?(_, E, F),
     token_semicolon(F, G),
-    for_update?(upd, G, H),
+    for_update?(_, G, H),
     token_right_paren(H, I),
-    statement(stat, I, J).
+    statement(_, I, J).
 
-.decl basic_for_statement_no_short_if(s: Statement, a: number, b: number)
-basic_for_statement($ForStatement(init, expr, upd, stat), A, J) :-
+.decl basic_for_statement_no_short_if(id: id, a: number, b: number)
+basic_for_statement(["for_statement", A, J], A, J) :-
     token_for(A, B),
     token_left_paren(B, C),
-    for_init?(init, C, D),
+    for_init?(_, C, D),
     token_semicolon(D, E),
-    expression?(expr, E, F),
+    expression?(_, E, F),
     token_semicolon(F, G),
-    for_update?(upd, G, H),
+    for_update?(_, G, H),
     token_right_paren(H, I),
-    statement_no_short_if(stat, I, J).
+    statement_no_short_if(_, I, J).
 
 .decl for_init(s: ForInit, a: number, b: number)
 for_init($ForInit, A, B) :- statement_expression_list(_, A, B).
@@ -1810,59 +1810,60 @@ for_update($ForUpdate(e), A, B) :- statement_expression_list(e, A, B).
 OPTIONAL(for_update?, for_update)
 
 .decl statement_expression_list(s: ExprList, a: number, b: number)
-statement_expression_list([x, nil], A, B) :- statement_expression(x, A, B).
-statement_expression_list([x, xs], A, D) :-
-    statement_expression(x, A, B),
+statement_expression_list(nil, A, B) :- statement_expression(_, A, B).
+statement_expression_list(nil, A, D) :-
+    statement_expression(_, A, B),
     token_comma(B, C),
-    statement_expression_list(xs, C, D).
+    statement_expression_list(_, C, D).
+// FIXME
 
-.decl enhanced_for_statement(s: Statement, a: number, b: number)
+.decl enhanced_for_statement(id: id, a: number, b: number)
 
-.decl enhanced_for_statement_no_short_if(s: Statement, a: number, b: number)
+.decl enhanced_for_statement_no_short_if(id: id, a: number, b: number)
 
-.decl break_statement(s: Statement, a: number, b: number)
-break_statement($BreakStatement(id), A, D) :-
+.decl break_statement(id: id, a: number, b: number)
+break_statement(["break_statement", A, D], A, D) :-
     token_break(A, B),
     identifier?(id, B, C),
     token_semicolon(C, D).
 
-.decl yield_statement(s: Statement, a: number, b: number)
-yield_statement($YieldStatement(e), A, D) :-
+.decl yield_statement(id: id, a: number, b: number)
+yield_statement(["yield_statement", A, D], A, D) :-
     token_yield(A, B),
-    expression(e, B, C),
+    expression(_, B, C),
     token_semicolon(C, D).
 
-.decl continue_statement(s: Statement, a: number, b: number)
-continue_statement($ContinueStatement(id), A, D) :-
+.decl continue_statement(id: id, a: number, b: number)
+continue_statement(["continue_statement", A, D], A, D) :-
     token_continue(A, B),
-    identifier?(id, B, C),
+    identifier?(_, B, C),
     token_semicolon(C, D).
 
-.decl return_statement(s: Statement, a: number, b: number)
-return_statement($ReturnStatement(e), A, D) :-
+.decl return_statement(id: id, a: number, b: number)
+return_statement(["return_statement", A, D], A, D) :-
     token_return(A, B),
-    expression?(e, B, C),
+    expression?(_, B, C),
     token_semicolon(C, D).
 
-.decl throw_statement(s: Statement, a: number, b: number)
-throw_statement($ThrowStatement(e), A, D) :-
+.decl throw_statement(id: id, a: number, b: number)
+throw_statement(["throw_statement", A, D], A, D) :-
     token_throw(A, B),
-    expression(e, B, C),
+    expression(_, B, C),
     token_semicolon(C, D).
 
-.decl synchronized_statement(s: Statement, a: number, b: number)
-synchronized_statement($SynchronizedStatement(e, s), A, F) :-
-    token_synchronized(A, B),
-    token_left_paren(B, C),
-    expression(e, C, D),
-    token_right_paren(D, E),
-    block(s, E, F).
+.decl synchronized_statement(id: id, a: number, b: number)
+//synchronized_statement($SynchronizedStatement(e, s), A, F) :-
+//    token_synchronized(A, B),
+//    token_left_paren(B, C),
+//    expression(e, C, D),
+//    token_right_paren(D, E),
+//    block(s, E, F).
 
-.decl try_statement(s: Statement, a: number, b: number)
-try_statement($TryStatement(s, c), A, D) :-
-    token_try(A, B),
-    block(s, B, C),
-    catches(c, C, D).
+.decl try_statement(id: id, a: number, b: number)
+//try_statement($TryStatement(s, c), A, D) :-
+//    token_try(A, B),
+//    block(s, B, C),
+//    catches(c, C, D).
 // TODO ...
 
 .decl catches(e: CatchClauseList, a: number, b: number)
@@ -1872,12 +1873,12 @@ catches([x, xs], A, C) :-
     catches(xs, B, C).
 
 .decl catch_clause(e: CatchClause, a: number, b: number)
-catch_clause($CatchClause(param, b), A, F) :-
-    token_catch(A, B),
-    token_left_paren(B, C),
-    catch_formal_parameter(param, C, D),
-    token_right_paren(D, E),
-    block(b, E, F).
+//catch_clause($CatchClause(param, b), A, F) :-
+//    token_catch(A, B),
+//    token_left_paren(B, C),
+//    catch_formal_parameter(param, C, D),
+//    token_right_paren(D, E),
+//    block(b, E, F).
 
 .decl catch_formal_parameter(e: CatchFormalParameter, a: number, b: number)
 catch_formal_parameter($CatchFormalParameter(mods, t, id), A, D) :-
@@ -1899,9 +1900,9 @@ catch_type_tail([x, xs], A, D) :-
     catch_type_tail(xs, C, D).
 
 .decl finally(e: Statement, a: number, b: number)
-finally(b, A, C) :-
-    token_finally(A, B),
-    block(b, B, C).
+//finally(b, A, C) :-
+//    token_finally(A, B),
+//    block(b, B, C).
 
 // TODO TryWithResourcesStatement
 
@@ -2172,8 +2173,8 @@ lambda_parameter_type(t, A, B) :- unann_type(t, A, B).
 lambda_parameter_type($Var, A, B) :- token_var(A, B).
 
 .decl lambda_body(e: LambdaBody, a: number, b: number)
-lambda_body($LambdaBodyExpr(e), A, B) :- expression(e, A, B).
-lambda_body($LambdaBodyBlock(e), A, B) :- block(e, A, B).
+//lambda_body($LambdaBodyExpr(e), A, B) :- expression(e, A, B).
+//lambda_body($LambdaBodyBlock(e), A, B) :- block(e, A, B).
 
 .decl assignment_expression(e: Expr, a: number, b: number)
 assignment_expression(e, A, B) :- conditional_expression(e, A, B).
@@ -2343,8 +2344,9 @@ root(id) :-
 in_tree(id) :- root(id).
 in_tree(id) :- in_tree_list([id, _]).
 
-in_tree(header) :-
-    method_declaration(id, _, header, _, _),
+in_tree(header),
+in_tree(body) :-
+    method_declaration(id, _, header, body, _, _),
     in_tree(id).
 
 in_tree(res) :-
@@ -2354,11 +2356,16 @@ in_tree(res) :-
 /* list in tree */
 
 .decl in_tree_list(ids: id_list)
+in_tree_list(tail) :- in_tree_list([_, tail]).
 
 in_tree_list(imports),
 in_tree_list(decls) :-
     ordinary_compilation_unit(unit, _, imports, decls, _, _),
     in_tree(unit).
+
+in_tree_list(statements) :-
+    block(id, statements, _, _),
+    in_tree(id).
 
 in_tree_list(cb),
 in_tree_list(mods) :-
@@ -2366,11 +2373,8 @@ in_tree_list(mods) :-
     in_tree(decl).
 
 in_tree_list(mods) :-
-    method_declaration(decl, mods, _, _, _),
+    method_declaration(decl, mods, _, _, _, _),
     in_tree(decl).
-
-// recursive
-in_tree_list(tail) :- in_tree_list([_, tail]).
 
 .output token
 .output token_type
