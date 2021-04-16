@@ -28,6 +28,9 @@
 
 /* Identifiers */
 
+.type id = [type: symbol, from: number, to: number]
+.type id_list = [head: id, tail: id_list]
+
 .type Identifier <: symbol
 .type IdentifierList = [head: Identifier, tail: IdentifierList]
 .type IdentifierListList = [head: IdentifierList, tail: IdentifierListList]
@@ -593,6 +596,10 @@ any_position(n) :- num_tokens(n).
     take_zero_or_one(nil, A, A) :- any_position(A). \
     take_zero_or_one([x], A, B) :- take_one(x, A, B).
 
+#define ID_OPTIONAL(take_zero_or_one, take_one) \
+    take_zero_or_one(nil, A, A) :- any_position(A). \
+    take_zero_or_one(x, A, B) :- take_one(x, A, B).
+
 #define INFIX(node, current_level, next_level, symbol) \
     current_level(node(e1, e2), A, C) :- \
         current_level(e1, A, B), \
@@ -841,30 +848,34 @@ ambiguous_name([x, xs], A, D) :-
  * See §7 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl compilation_unit(e: CompilationUnit, a: number, b: number)
-compilation_unit(e, A, B) :- ordinary_compilation_unit(e, A, B).
-compilation_unit(e, A, B) :- modular_compilation_unit(e, A, B).
+.decl compilation_unit(id: id, a: number, b: number)
+compilation_unit(id, A, B) :- ordinary_compilation_unit(id, _, _, A, B).
+compilation_unit(id, A, B) :- modular_compilation_unit(id, A, B).
 
-.decl ordinary_compilation_unit(e: CompilationUnit, a: number, b: number)
-ordinary_compilation_unit($OrdinaryCompilationUnit(pdecl, impdecl, tdecl), A, D) :-
-    package_declaration?(pdecl, A, B),
-    import_declarations?(impdecl, B, C),
-    type_declarations?(tdecl, C, D).
+.decl ordinary_compilation_unit(id: id,
+                                package_declaration: id,
+                                import_declarations: id_list,
+                                a: number,
+                                b: number)
+ordinary_compilation_unit(["ordinary_compilation_unit", A, D], pd, ids, A, D) :-
+    package_declaration?(pd, A, B),
+    import_declarations?(ids, B, C),
+    type_declarations?(_, C, D).
 
-.decl modular_compilation_unit(e: CompilationUnit, a: number, b: number)
-modular_compilation_unit($ModularCompilationUnit(impdecl, mdecl), A, C) :-
-    import_declarations?(impdecl, A, B),
-    module_declaration(mdecl, B, C).
+.decl modular_compilation_unit(id: id, a: number, b: number)
+modular_compilation_unit(["modular_compilation_unit", A, C], A, C) :-
+    import_declarations?(_, A, B),
+    module_declaration(_, B, C).
 
-.decl package_declaration(e: PackageDeclaration, a: number, b: number)
-package_declaration($PackageDeclaration(mods, ids), A, E) :-
-    package_modifiers?(mods, A, B),
+.decl package_declaration(id: id, a: number, b: number)
+package_declaration(["package_declaration", A, E], A, E) :-
+    package_modifiers?(_, A, B),
     token_package(B, C),
-    package_declaration_identifiers(ids, C, D),
+    package_declaration_identifiers(_, C, D),
     token_semicolon(D, E).
 
-.decl package_declaration?(e: PackageDeclarationOptional, a: number, b: number)
-OPTIONAL(package_declaration?, package_declaration)
+.decl package_declaration?(id: id, a: number, b: number)
+ID_OPTIONAL(package_declaration?, package_declaration)
 
 .decl package_declaration_identifiers(e: IdentifierList, a: number, b: number)
 package_declaration_identifiers([x, nil], A, B) :- identifier(x, A, B).
@@ -879,43 +890,43 @@ package_modifier($AnnotationModifier(e), A, B) :- annotation(e, A, B).
 .decl package_modifiers?(e: ModifierList, a: number, b: number)
 ZERO_OR_MORE(package_modifiers?, package_modifier)
 
-.decl import_declaration(s: ImportDeclaration, a: number, b: number)
-import_declaration(e, A, B) :- single_type_import_declaration(e, A, B).
-import_declaration(e, A, B) :- type_import_on_demand_declaration(e, A, B).
-import_declaration(e, A, B) :- single_static_import_declaration(e, A, B).
-import_declaration(e, A, B) :- static_import_on_demand_declaration(e, A, B).
+.decl import_declaration(id: id, a: number, b: number)
+import_declaration(id, A, B) :- single_type_import_declaration(id, A, B).
+import_declaration(id, A, B) :- type_import_on_demand_declaration(id, A, B).
+import_declaration(id, A, B) :- single_static_import_declaration(id, A, B).
+import_declaration(id, A, B) :- static_import_on_demand_declaration(id, A, B).
 
-.decl import_declarations?(s: ImportDeclarationList, a: number, b: number)
+.decl import_declarations?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(import_declarations?, import_declaration)
 
-.decl single_type_import_declaration(s: ImportDeclaration, a: number, b: number)
-single_type_import_declaration($SingleTypeImportDeclaration(syms), A, D) :-
+.decl single_type_import_declaration(id: id, a: number, b: number)
+single_type_import_declaration(["single_type_import_declaration", A, D], A, D) :-
     token_import(A, B),
-    type_name(syms, B, C),
+    type_name(_, B, C),
     token_semicolon(C, D).
 
-.decl type_import_on_demand_declaration(s: ImportDeclaration, a: number, b: number)
-type_import_on_demand_declaration($TypeImportOnDemandDeclaration(syms), A, F) :-
+.decl type_import_on_demand_declaration(id: id, a: number, b: number)
+type_import_on_demand_declaration(["type_import_on_demand_declaration", A, F], A, F) :-
     token_import(A, B),
-    type_name(syms, B, C),
+    type_name(_, B, C),
     token_dot(C, D),
     token_asterisk(D, E),
     token_semicolon(E, F).
 
-.decl single_static_import_declaration(s: ImportDeclaration, a: number, b: number)
-single_static_import_declaration($SingleStaticImportDeclaration(t, id), A, G) :-
+.decl single_static_import_declaration(id: id, a: number, b: number)
+single_static_import_declaration(["single_static_import_declaration", A, G], A, G) :-
     token_import(A, B),
     token_static(B, C),
-    type_name(t, C, D),
+    type_name(_, C, D),
     token_dot(D, E),
-    identifier(id, E, F),
+    identifier(_, E, F),
     token_semicolon(F, G).
 
-.decl static_import_on_demand_declaration(s: ImportDeclaration, a: number, b: number)
-static_import_on_demand_declaration($StaticImportOnDemandDeclaration(t), A, G) :-
+.decl static_import_on_demand_declaration(id: id, a: number, b: number)
+static_import_on_demand_declaration(["static_import_on_demand_declaration", A, G], A, G) :-
     token_import(A, B),
     token_static(B, C),
-    type_name(t, C, D),
+    type_name(_, C, D),
     token_dot(D, E),
     token_asterisk(E, F),
     token_semicolon(F, G).
@@ -2319,12 +2330,27 @@ constant_expression(e, A, B) :- expression(e, A, B).
  * Output
  **************************************************************************/
 
-.decl root(s: CompilationUnit)
-root(s) :-
-    compilation_unit(s, 0, A),
-    num_tokens(A).
+.decl root(id: id)
+root(id) :-
+    compilation_unit(id, 0, B),
+    num_tokens(B).
+
+/* in tree */
+
+.decl in_tree(id: id)
+in_tree(id) :- root(id).
+in_tree(id) :- in_tree_list([id, _]).
+
+/* list in tree */
+
+.decl in_tree_list(ids: id_list)
+in_tree_list(ids) :-
+    ordinary_compilation_unit(unit, _, ids, _, _),
+    in_tree(unit).
+in_tree_list(tail) :- in_tree_list([_, tail]).
 
 .output token
 .output token_type
 .output num_tokens
 .output root
+.output in_tree

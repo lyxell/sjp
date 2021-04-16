@@ -109,6 +109,7 @@ namespace sjp {
         parser() {
             program = souffle::ProgramFactory::newInstance("parser");
             assert(program != NULL);
+            program->setNumThreads(4);
         }
         void add_file(const char* filename) {
             std::ifstream t(filename);
@@ -146,6 +147,7 @@ namespace sjp {
             souffle::Relation* relation = program->getRelation("root");
             assert(relation != NULL);
             return relation->size();
+            return 0;
         }
         ~parser() {
             delete program;
