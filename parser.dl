@@ -1008,29 +1008,29 @@ ZERO_OR_MORE(requires_modifiers?, requires_modifier)
  **************************************************************************/
 
 .decl class_declaration(id: id, a: number, b: number)
-class_declaration(id, A, B) :- normal_class_declaration(id, A, B).
+class_declaration(id, A, B) :- normal_class_declaration(id, _, A, B).
 class_declaration(id, A, B) :- enum_declaration(id, A, B).
 
-.decl normal_class_declaration(id: id, a: number, b: number)
-normal_class_declaration(["normal_class_declaration", A, F], A, F) :-
-    class_modifiers?(_, A, B),
+.decl normal_class_declaration(id: id, mods: id_list, a: number, b: number)
+normal_class_declaration(["normal_class_declaration", A, F], mods, A, F) :-
+    class_modifiers?(mods, A, B),
     token_class(B, C),
     type_identifier(_, C, D),
     superclass?(_, D, E),
     class_body(_, E, F).
 
-.decl class_modifiers?(s: ModifierList, a: number, b: number)
+.decl class_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(class_modifiers?, class_modifier)
 
-.decl class_modifier(s: Modifier, a: number, b: number)
-class_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
-class_modifier($PublicModifier,                 A, B) :- token_public(A, B).
-class_modifier($ProtectedModifier,              A, B) :- token_protected(A, B).
-class_modifier($PrivateModifier,                A, B) :- token_private(A, B).
-class_modifier($AbstractModifier,               A, B) :- token_abstract(A, B).
-class_modifier($StaticModifier,                 A, B) :- token_static(A, B).
-class_modifier($FinalModifier,                  A, B) :- token_final(A, B).
-class_modifier($StrictfpModifier,               A, B) :- token_strictfp(A, B).
+.decl class_modifier(s: id, a: number, b: number)
+//class_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
+class_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
+class_modifier(["protected_modifier", A, B],  A, B) :- token_protected(A, B).
+class_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
+class_modifier(["abstract_modifier", A, B], A, B) :- token_abstract(A, B).
+class_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
+class_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
+class_modifier(["strictfp_modifier", A, B], A, B) :- token_strictfp(A, B).
 
 .decl type_parameters(s: TypeList, a: number, b: number)
 type_parameters(nil, A, A) :- any_position(A).
@@ -2352,6 +2352,10 @@ in_tree_list(ids) :-
 in_tree_list(ids) :-
     ordinary_compilation_unit(unit, _, _, ids, _, _),
     in_tree(unit).
+in_tree_list(mods) :-
+    normal_class_declaration(decl, mods, _, _),
+    in_tree(decl).
+// recursive
 in_tree_list(tail) :- in_tree_list([_, tail]).
 
 .output token
