@@ -1008,16 +1008,16 @@ ZERO_OR_MORE(requires_modifiers?, requires_modifier)
  **************************************************************************/
 
 .decl class_declaration(id: id, a: number, b: number)
-class_declaration(id, A, B) :- normal_class_declaration(id, _, A, B).
+class_declaration(id, A, B) :- normal_class_declaration(id, _, _, A, B).
 class_declaration(id, A, B) :- enum_declaration(id, A, B).
 
-.decl normal_class_declaration(id: id, mods: id_list, a: number, b: number)
-normal_class_declaration(["normal_class_declaration", A, F], mods, A, F) :-
+.decl normal_class_declaration(id: id, mods: id_list, cb: id_list, a: number, b: number)
+normal_class_declaration(["normal_class_declaration", A, F], mods, cb, A, F) :-
     class_modifiers?(mods, A, B),
     token_class(B, C),
     type_identifier(_, C, D),
     superclass?(_, D, E),
-    class_body(_, E, F).
+    class_body(cb, E, F).
 
 .decl class_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(class_modifiers?, class_modifier)
@@ -1087,8 +1087,8 @@ class_body_declaration(e, A, B) :- static_initializer(e, A, B).
 class_body_declaration(e, A, B) :- constructor_declaration(e, A, B).
 
 .decl class_member_declaration(id: id, a: number, b: number)
-class_member_declaration(e, A, B) :- field_declaration(e, A, B).
-class_member_declaration(id, A, B) :- method_declaration(id, A, B).
+class_member_declaration(id, A, B) :- field_declaration(id, A, B).
+class_member_declaration(id, A, B) :- method_declaration(id, _, _, A, B).
 class_member_declaration(id, A, B) :- class_declaration(id, A, B).
 class_member_declaration(id, A, B) :- interface_declaration(id, A, B).
 class_member_declaration(nil, A, B) :- token_semicolon(A, B).
@@ -1191,35 +1191,35 @@ unann_array_type($ArrayType(t, d), A, C) :-
 // in the Java specification. The same derivation is handled by
 // UnannClassOrInterfaceType → UnannClassType -> TypeIdentifier
 
-.decl method_declaration(id: id, a: number, b: number)
-method_declaration(["method_declaration", A, D], A, D) :-
-    method_modifiers?(_, A, B),
-    method_header(_, B, C),
+.decl method_declaration(id: id, mods: id_list, header: id, a: number, b: number)
+method_declaration(["method_declaration", A, D], mods, header, A, D) :-
+    method_modifiers?(mods, A, B),
+    method_header(header, _, B, C),
     method_body(_, C, D).
 
-.decl method_modifiers?(s: ModifierList, a: number, b: number)
+.decl method_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(method_modifiers?, method_modifier)
 
-.decl method_modifier(s: Modifier, a: number, b: number)
-method_modifier($PublicModifier,        A, B) :- token_public(A, B).
-method_modifier($ProtectedModifier,     A, B) :- token_protected(A, B).
-method_modifier($PrivateModifier,       A, B) :- token_private(A, B).
-method_modifier($AbstractModifier,      A, B) :- token_abstract(A, B).
-method_modifier($StaticModifier,        A, B) :- token_static(A, B).
-method_modifier($FinalModifier,         A, B) :- token_final(A, B).
-method_modifier($SynchronizedModifier,  A, B) :- token_synchronized(A, B).
-method_modifier($NativeModifier,        A, B) :- token_native(A, B).
-method_modifier($StrictfpModifier,      A, B) :- token_strictfp(A, B).
+.decl method_modifier(id: id, a: number, b: number)
+method_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
+method_modifier(["protected_modifier", A, B], A, B) :- token_protected(A, B).
+method_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
+method_modifier(["abstract_modifier", A, B], A, B) :- token_abstract(A, B).
+method_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
+method_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
+method_modifier(["synchronized_modifier", A, B], A, B) :- token_synchronized(A, B).
+method_modifier(["native_modifier", A, B], A, B) :- token_native(A, B).
+method_modifier(["strictfp_modifier", A, B], A, B) :- token_strictfp(A, B).
 
-.decl method_header(s: MethodHeader, a: number, b: number)
-method_header($MethodHeader(t, decl, th), A, D) :-
-    result(t, A, B),
-    method_declarator(decl, B, C),
-    throws?(th, C, D).
+.decl method_header(id: id, res: id, a: number, b: number)
+method_header(["method_header", A, D], res, A, D) :-
+    result(res, A, B),
+    method_declarator(_, B, C),
+    throws?(_, C, D).
 
-.decl result(t: Type, a: number, b: number)
-result(t, A, B) :- unann_type(t, A, B).
-result($Void, A, B) :- token_void(A, B).
+.decl result(id: id, a: number, b: number)
+//result(t, A, B) :- unann_type(t, A, B).
+result(["void_type", A, B], A, B) :- token_void(A, B).
 
 .decl method_declarator(s: MethodDeclarator, a: number, b: number)
 method_declarator($MethodDeclarator(id, [rp], params, dims), A, H) :-
@@ -2343,18 +2343,32 @@ root(id) :-
 in_tree(id) :- root(id).
 in_tree(id) :- in_tree_list([id, _]).
 
+in_tree(header) :-
+    method_declaration(id, _, header, _, _),
+    in_tree(id).
+
+in_tree(res) :-
+    method_header(id, res, _, _),
+    in_tree(id).
+
 /* list in tree */
 
 .decl in_tree_list(ids: id_list)
-in_tree_list(ids) :-
-    ordinary_compilation_unit(unit, _, ids, _, _, _),
+
+in_tree_list(imports),
+in_tree_list(decls) :-
+    ordinary_compilation_unit(unit, _, imports, decls, _, _),
     in_tree(unit).
-in_tree_list(ids) :-
-    ordinary_compilation_unit(unit, _, _, ids, _, _),
-    in_tree(unit).
+
+in_tree_list(cb),
 in_tree_list(mods) :-
-    normal_class_declaration(decl, mods, _, _),
+    normal_class_declaration(decl, mods, cb, _, _),
     in_tree(decl).
+
+in_tree_list(mods) :-
+    method_declaration(decl, mods, _, _, _),
+    in_tree(decl).
+
 // recursive
 in_tree_list(tail) :- in_tree_list([_, tail]).
 
