@@ -601,19 +601,19 @@ any_position(n) :- num_tokens(n).
     take_zero_or_one(x, A, B) :- take_one(x, A, B).
 
 #define INFIX(node, current_level, next_level, symbol) \
-    current_level(node(e1, e2), A, C) :- \
-        current_level(e1, A, B), \
+    current_level([node, A, C], A, C) :- \
+        current_level(_, A, B), \
         token(symbol, B), \
-        next_level(e2, B + 1, C).
+        next_level(_, B + 1, C).
 
 #define PREFIX(node, current_level, next_level, symbol) \
-    current_level(node(e1), A, B) :- \
+    current_level([node, A, B], A, B) :- \
         token(symbol, A), \
-        next_level(e1, A + 1, B).
+        next_level(_, A + 1, B).
 
 #define POSTFIX(node, current_level, next_level, symbol) \
-    current_level(node(e1), A, B) :- \
-        next_level(e1, A, B), \
+    current_level([node, A, B], A, B + 1) :- \
+        next_level(_, A, B), \
         token(symbol, B).
 
 /**
@@ -1113,30 +1113,30 @@ field_modifier($VolatileModifier,               A, B) :- token_volatile(A, B).
 .decl field_modifiers?(s: ModifierList, a: number, b: number)
 ZERO_OR_MORE(field_modifiers?, field_modifier)
 
-.decl variable_declarator_list(s: VariableDeclaratorList, a: number, b: number)
-variable_declarator_list([x, nil], A, B) :- variable_declarator(x, A, B).
+.decl variable_declarator_list(id: id_list, a: number, b: number)
+variable_declarator_list([x, nil], A, B) :- variable_declarator(x, _, _, A, B).
 variable_declarator_list([x, xs], A, D) :-
-    variable_declarator(x, A, B),
+    variable_declarator(x, _, _, A, B),
     token_comma(B, C),
     variable_declarator_list(xs, C, D).
 
-.decl variable_declarator(s: VariableDeclarator, a: number, b: number)
-variable_declarator($VariableDeclarator(id, nil), A, B) :-
-    variable_declarator_id(id, A, B).
-variable_declarator($VariableDeclarator(id, [init]), A, D) :-
-    variable_declarator_id(id, A, B),
+.decl variable_declarator(id: id, name: id, initializer: id, a: number, b: number)
+variable_declarator(["variable_declarator", A, B], name, nil, A, B) :-
+    variable_declarator_id(name, A, B).
+variable_declarator(["variable_declarator", A, D], name, initializer, A, D) :-
+    variable_declarator_id(name, A, B),
     token_equal_sign(B, C),
-    variable_initializer(init, C, D).
+    variable_initializer(initializer, C, D).
 
-.decl variable_declarator_id(s: VariableDeclaratorId, a: number, b: number)
-variable_declarator_id($VariableDeclaratorId(id), A, B) :- identifier(id, A, B).
-variable_declarator_id($VariableDeclaratorArray(id, d), A, C) :-
-    identifier(id, A, B),
-    dims(d, B, C).
+.decl variable_declarator_id(id: id, a: number, b: number)
+variable_declarator_id(nil, A, B) :- identifier(_, A, B).
+variable_declarator_id(nil, A, C) :-
+    identifier(_, A, B),
+    dims(_, B, C).
 
-.decl variable_initializer(s: Expr, a: number, b: number)
-variable_initializer(e, A, B) :- expression(e, A, B).
-variable_initializer(e, A, B) :- array_initializer(e, A, B).
+.decl variable_initializer(id: id, a: number, b: number)
+variable_initializer(id, A, B) :- expression(id, A, B).
+variable_initializer(id, A, B) :- array_initializer(id, A, B).
 
 .decl unann_type(t: Type, a: number, b: number)
 unann_type(e, A, B) :- unann_primitive_type(e, A, B).
@@ -1221,21 +1221,21 @@ method_header(["method_header", A, D], res, A, D) :-
 //result(t, A, B) :- unann_type(t, A, B).
 result(["void_type", A, B], A, B) :- token_void(A, B).
 
-.decl method_declarator(s: MethodDeclarator, a: number, b: number)
-method_declarator($MethodDeclarator(id, [rp], params, dims), A, H) :-
-    identifier(id, A, B),
+.decl method_declarator(id: id, a: number, b: number)
+method_declarator(nil, A, H) :-
+    identifier(_, A, B),
     token_left_paren(B, C),
-    receiver_parameter(rp, C, D),
+    receiver_parameter(_, C, D),
     token_comma(D, E),
-    formal_parameter_list?(params, E, F),
+    formal_parameter_list?(_, E, F),
     token_right_paren(F, G),
-    dims?(dims, G, H).
-method_declarator($MethodDeclarator(id, nil, params, dims), A, F) :-
-    identifier(id, A, B),
+    dims?(_, G, H).
+method_declarator(nil, A, F) :-
+    identifier(_, A, B),
     token_left_paren(B, C),
-    formal_parameter_list?(params, C, D),
+    formal_parameter_list?(_, C, D),
     token_right_paren(D, E),
-    dims?(dims, E, F).
+    dims?(_, E, F).
 
 .decl receiver_parameter(s: ReceiverParameter, a: number, b: number)
 receiver_parameter($ReceiverParameter(anns), A, F) :-
@@ -1250,37 +1250,37 @@ receiver_parameter($ReceiverParameter(anns), A, D) :-
     token_this(C, D).
 // TODO, fill $ReceiverParameter
 
-.decl formal_parameter_list(s: FormalParameterList, a: number, b: number)
+.decl formal_parameter_list(ids: id_list, a: number, b: number)
 formal_parameter_list([x, nil], A, B) :- formal_parameter(x, A, B).
 formal_parameter_list([x, xs], A, D) :-
     formal_parameter(x, A, B),
     token_comma(B, C),
     formal_parameter_list(xs, C, D).
 
-.decl formal_parameter_list?(s: FormalParameterList, a: number, b: number)
+.decl formal_parameter_list?(ids: id_list, a: number, b: number)
 formal_parameter_list?(nil, A, A) :- any_position(A).
 formal_parameter_list?(x, A, B) :- formal_parameter_list(x, A, B).
 
-.decl formal_parameter(s: FormalParameter, a: number, b: number)
-formal_parameter($FormalParameter(mods,t,id), A, D) :-
-    variable_modifiers?(mods, A, B),
-    unann_type(t, B, C),
-    variable_declarator_id(id, C, D).
-formal_parameter(v, A, B) :- variable_arity_parameter(v, A, B).
+.decl formal_parameter(id: id, a: number, b: number)
+formal_parameter(nil, A, D) :-
+    variable_modifiers?(_, A, B),
+    unann_type(_, B, C),
+    variable_declarator_id(_, C, D).
+formal_parameter(id, A, B) :- variable_arity_parameter(id, A, B).
 
-.decl variable_arity_parameter(s: FormalParameter, a: number, b: number)
-variable_arity_parameter($VariableArityParameter(mods, t, anns, id), A, F) :-
-    variable_modifiers?(mods, A, B),
-    unann_type(t, B, C),
-    annotations?(anns, C, D),
+.decl variable_arity_parameter(id: id, a: number, b: number)
+variable_arity_parameter(nil, A, F) :-
+    variable_modifiers?(_, A, B),
+    unann_type(_, B, C),
+    annotations?(_, C, D),
     token_ellipsis(D, E),
-    identifier(id, E, F).
+    identifier(_, E, F).
 
-.decl variable_modifier(e: Modifier, a: number, b: number)
-variable_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
-variable_modifier($FinalModifier, A, B) :- token_final(A, B).
+.decl variable_modifier(id: id, a: number, b: number)
+//variable_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
+variable_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 
-.decl variable_modifiers?(e: ModifierList, a: number, b: number)
+.decl variable_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(variable_modifiers?, variable_modifier)
 
 .decl throws(e: TypeList, a: number, b: number)
@@ -1363,13 +1363,13 @@ enum_constant($EnumConstant(mods, id, nil, nil), A, D) :-
     enum_constant_modifiers?(mods, A, B),
     identifier(id, B, C),
     class_body?(_, C, D).
-enum_constant($EnumConstant(mods, id, args, nil), A, G) :-
-    enum_constant_modifiers?(mods, A, B),
-    identifier(id, B, C),
-    token_left_paren(C, D),
-    argument_list?(args, D, E),
-    token_right_paren(E, F),
-    class_body?(_, F, G).
+//enum_constant($EnumConstant(mods, id, args, nil), A, G) :-
+//    enum_constant_modifiers?(mods, A, B),
+//    identifier(id, B, C),
+//    token_left_paren(C, D),
+//    argument_list?(args, D, E),
+//    token_right_paren(E, F),
+//    class_body?(_, F, G).
 
 .decl enum_constant_modifier(e: Modifier, a: number, b: number)
 enum_constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
@@ -1504,9 +1504,9 @@ element_value_pair($ElementValuePair(id, val), A, D) :-
     element_value(val, C, D).
 
 .decl element_value(e: ElementValue, a: number, b: number)
-element_value($ElementValueExpression(e), A, B) :- conditional_expression(e, A, B).
-element_value($ElementValueArrayInitializer(e), A, B) :- element_value_array_initializer(e, A, B).
-element_value($ElementValueAnnotation(e), A, B) :- annotation(e, A, B).
+//element_value($ElementValueExpression(e), A, B) :- conditional_expression(e, A, B).
+//element_value($ElementValueArrayInitializer(e), A, B) :- element_value_array_initializer(e, A, B).
+//element_value($ElementValueAnnotation(e), A, B) :- annotation(e, A, B).
 
 .decl element_value_array_initializer(e: ElementValueList, a: number, b: number)
 element_value_array_initializer(e, A, E) :-
@@ -1538,21 +1538,21 @@ marker_annotation(e, A, C) :-
  * See §10 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl array_initializer(e: Expr, a: number, b: number)
-array_initializer($ArrayInitializerExpression(e), A, E) :- 
+.decl array_initializer(id: id, a: number, b: number)
+array_initializer(["array_initializer_expression", A, E], A, E) :- 
     token_left_curly_bracket(A, B),
-    variable_initializer_list?(e, B, C),
+    variable_initializer_list?(_, B, C),
     token_comma?(C, D),
     token_right_curly_bracket(D, E).
 
-.decl variable_initializer_list(s: ExprList, a: number, b: number)
+.decl variable_initializer_list(ids: id_list, a: number, b: number)
 variable_initializer_list([x, nil], A, B) :- variable_initializer(x, A, B).
 variable_initializer_list([x, xs], A, D) :-
     variable_initializer(x, A, B),
     token_comma(B, C),
     variable_initializer_list(xs, C, D).
 
-.decl variable_initializer_list?(s: ExprList, a: number, b: number)
+.decl variable_initializer_list?(ids: id_list, a: number, b: number)
 variable_initializer_list?(nil, A, A) :- any_position(A).
 variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
 
@@ -1577,14 +1577,14 @@ block_statement(id, A, B) :- statement(id, A, B).
 
 .decl local_variable_declaration_statement(id: id, a: number, b: number)
 local_variable_declaration_statement(id, A, C) :-
-    local_variable_declaration(id, A, B),
+    local_variable_declaration(id, _, _, A, B),
     token_semicolon(B, C).
 
-.decl local_variable_declaration(id: id, a: number, b: number)
-local_variable_declaration(["local_variable_declaration", A, D], A, D) :-
-    variable_modifiers?(_, A, B),
+.decl local_variable_declaration(id: id, mods: id_list, declarators: id_list, a: number, b: number)
+local_variable_declaration(["local_variable_declaration", A, D], mods, declarators, A, D) :-
+    variable_modifiers?(mods, A, B),
     local_variable_type(_, B, C),
-    variable_declarator_list(_, C, D).
+    variable_declarator_list(declarators, C, D).
 
 .decl local_variable_type(t: Type, a: number, b: number)
 local_variable_type(t, A, B) :- unann_type(t, A, B).
@@ -1593,7 +1593,7 @@ local_variable_type($Var, A, B) :- token_var(A, B).
 .decl statement(id: id, a: number, b: number)
 statement(id, A, B) :- statement_without_trailing_substatement(id, A, B).
 statement(id, A, B) :- labeled_statement(id, A, B).
-statement(id, A, B) :- if_then_statement(id, A, B).
+statement(id, A, B) :- if_then_statement(id, _, _, A, B).
 statement(id, A, B) :- if_then_else_statement(id, A, B).
 statement(id, A, B) :- while_statement(id, A, B).
 statement(id, A, B) :- for_statement(id, A, B).
@@ -1641,21 +1641,21 @@ expression_statement(id, A, C) :-
     token_semicolon(B, C).
 
 .decl statement_expression(id: id, a: number, b: number)
-statement_expression(nil, A, B) :- assignment(_, A, B).
-statement_expression(nil, A, B) :- pre_increment_expression(_, A, B).
-statement_expression(nil, A, B) :- pre_decrement_expression(_, A, B).
-statement_expression(nil, A, B) :- post_increment_expression(_, A, B).
-statement_expression(nil, A, B) :- post_decrement_expression(_, A, B).
-statement_expression(nil, A, B) :- method_invocation(_, A, B).
-statement_expression(nil, A, B) :- class_instance_creation_expression(_, A, B).
+statement_expression(id, A, B) :- assignment(id, A, B).
+statement_expression(id, A, B) :- pre_increment_expression(id, A, B).
+statement_expression(id, A, B) :- pre_decrement_expression(id, A, B).
+statement_expression(id, A, B) :- post_increment_expression(id, A, B).
+statement_expression(id, A, B) :- post_decrement_expression(id, A, B).
+statement_expression(id, A, B) :- method_invocation(id, A, B).
+statement_expression(id, A, B) :- class_instance_creation_expression(id, A, B).
 
-.decl if_then_statement(id: id, a: number, b: number)
-if_then_statement(["if_then_statement", A, F], A, F) :-
+.decl if_then_statement(id: id, expr: id, statement: id, a: number, b: number)
+if_then_statement(["if_then_statement", A, F], expr, statement, A, F) :-
     token_if(A, B),
     token_left_paren(B, C),
-    expression(_, C, D),
+    expression(expr, C, D),
     token_right_paren(D, E),
-    statement(_, E, F).
+    statement(statement, E, F).
 
 .decl if_then_else_statement(id: id, a: number, b: number)
 if_then_else_statement(["if_then_else_statement", A, H], A, H) :-
@@ -1708,11 +1708,11 @@ switch_block([rule, rules], A, E) :-
 ZERO_OR_MORE(switch_rules?, switch_rule)
 
 .decl switch_rule(e: SwitchRule, a: number, b: number)
-switch_rule($SwitchRuleExpr(label, expr), A, E) :-
-    switch_label(label, A, B),
-    token_arrow(B, C),
-    expression(expr, C, D),
-    token_semicolon(D, E).
+//switch_rule($SwitchRuleExpr(label, expr), A, E) :-
+//    switch_label(label, A, B),
+//    token_arrow(B, C),
+//    expression(expr, C, D),
+//    token_semicolon(D, E).
 //switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
 //    switch_label(label, A, B),
 //    token_arrow(B, C),
@@ -1725,20 +1725,20 @@ switch_rule($SwitchRuleExpr(label, expr), A, E) :-
 .decl switch_block_statement_group(a: number, b: number)
 
 .decl switch_label(s: SwitchLabel, a: number, b: number)
-switch_label($SwitchDefault, A, B) :- token_default(A, B).
-switch_label($SwitchCase(exprs), A, C) :-
-    token_case(A, B),
-    case_constants(exprs, B, C).
+//switch_label($SwitchDefault, A, B) :- token_default(A, B).
+//switch_label($SwitchCase(exprs), A, C) :-
+//    token_case(A, B),
+//    case_constants(exprs, B, C).
 
-.decl case_constants(e: ExprList, a: number, b: number)
+.decl case_constants(ids: id_list, a: number, b: number)
 case_constants([x, nil], A, B) :- case_constant(x, A, B).
 case_constants([x, xs], A, D) :-
     case_constant(x, A, B),
     token_comma(B, C),
     case_constants(xs, C, D).
 
-.decl case_constant(e: Expr, a: number, b: number)
-case_constant(e, A, B) :- conditional_expression(e, A, B).
+.decl case_constant(id: id, a: number, b: number)
+case_constant(id, A, B) :- conditional_expression(id, A, B).
 
 .decl while_statement(id: id, a: number, b: number)
 while_statement(["while_statement", A, F], A, F) :-
@@ -1800,21 +1800,22 @@ basic_for_statement(["for_statement", A, J], A, J) :-
 
 .decl for_init(s: ForInit, a: number, b: number)
 for_init($ForInit, A, B) :- statement_expression_list(_, A, B).
-for_init($ForInit, A, B) :- local_variable_declaration(_, A, B).
+for_init($ForInit, A, B) :- local_variable_declaration(_, _, _, A, B).
 .decl for_init?(s: ForInitOptional, a: number, b: number)
 OPTIONAL(for_init?, for_init)
 
-.decl for_update(s: ForUpdate, a: number, b: number)
-for_update($ForUpdate(e), A, B) :- statement_expression_list(e, A, B).
-.decl for_update?(s: ForUpdateOptional, a: number, b: number)
-OPTIONAL(for_update?, for_update)
+.decl for_update(ids: id_list, a: number, b: number)
+for_update(ids, A, B) :- statement_expression_list(ids, A, B).
+.decl for_update?(ids: id_list, a: number, b: number)
+for_update?(nil, A, A) :- any_position(A).
+for_update?(ids, A, B) :- for_update(ids, A, B).
 
-.decl statement_expression_list(s: ExprList, a: number, b: number)
-statement_expression_list(nil, A, B) :- statement_expression(_, A, B).
-statement_expression_list(nil, A, D) :-
-    statement_expression(_, A, B),
+.decl statement_expression_list(id: id_list, a: number, b: number)
+statement_expression_list([x, nil], A, B) :- statement_expression(x, A, B).
+statement_expression_list([x, xs], A, D) :-
+    statement_expression(x, A, B),
     token_comma(B, C),
-    statement_expression_list(_, C, D).
+    statement_expression_list(xs, C, D).
 // FIXME
 
 .decl enhanced_for_statement(id: id, a: number, b: number)
@@ -1880,11 +1881,11 @@ catches([x, xs], A, C) :-
 //    token_right_paren(D, E),
 //    block(b, E, F).
 
-.decl catch_formal_parameter(e: CatchFormalParameter, a: number, b: number)
-catch_formal_parameter($CatchFormalParameter(mods, t, id), A, D) :-
-    variable_modifiers?(mods, A, B),
-    catch_type(t, B, C),
-    variable_declarator_id(id, C, D).
+.decl catch_formal_parameter(id: id, a: number, b: number)
+catch_formal_parameter(nil, A, D) :-
+    variable_modifiers?(_, A, B),
+    catch_type(_, B, C),
+    variable_declarator_id(_, C, D).
 
 .decl catch_type(t: TypeList, a: number, b: number)
 catch_type([x, nil], A, B) :- unann_class_type(x, A, B).
@@ -1922,63 +1923,63 @@ resource_list([x, xs], A, D) :-
     resource_list(xs, C, D).
 
 .decl resource(e: Resource, a: number, b: number)
-resource($ResourceInitialization(mods, type, id, expr), A, F) :-
-    variable_modifiers?(mods, A, B),
-    local_variable_type(type, B, C),
-    identifier(id, C, D),
-    token_equal_sign(D, E),
-    expression(expr, E, F).
-resource($ResourceAccess(e), A, B) :-
-    variable_access(e, A, B).
+//resource($ResourceInitialization(mods, type, id, expr), A, F) :-
+//    variable_modifiers?(mods, A, B),
+//    local_variable_type(type, B, C),
+//    identifier(id, C, D),
+//    token_equal_sign(D, E),
+//    expression(expr, E, F).
+//resource($ResourceAccess(e), A, B) :-
+//    variable_access(e, A, B).
 
-.decl variable_access(e: Expr, a: number, b: number)
+.decl variable_access(id: id, a: number, b: number)
 
 /**
  * Expressions
  * See §15 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl primary(e: Expr, a: number, b: number)
-primary(e, A, B) :- primary_no_new_array(e, A, B).
-primary(e, A, B) :- array_creation_expression(e, A, B).
+.decl primary(id: id, a: number, b: number)
+primary(id, A, B) :- primary_no_new_array(id, A, B).
+primary(id, A, B) :- array_creation_expression(id, A, B).
 
-.decl primary_no_new_array(e: Expr, a: number, b: number)
-primary_no_new_array($LiteralExpression(l), A, B) :- literal(l, A, B).
-primary_no_new_array(e, A, B) :- class_literal(e, A, B).
-primary_no_new_array($ThisExpression, A, B) :- token_this(A, B).
-primary_no_new_array(e, A, D) :-
+.decl primary_no_new_array(id: id, a: number, b: number)
+primary_no_new_array(nil, A, B) :- literal(_, A, B). // TODO
+primary_no_new_array(nil, A, B) :- class_literal(_, A, B). // TODO
+//primary_no_new_array($ThisExpression, A, B) :- token_this(A, B). TODO
+primary_no_new_array(id, A, D) :-
     token_left_paren(A, B),
-    expression(e, B, C),
+    expression(id, B, C),
     token_right_paren(C, D).
-primary_no_new_array(e, A, B) :- class_instance_creation_expression(e, A, B).
-primary_no_new_array(e, A, B) :- field_access(e, A, B).
-primary_no_new_array(e, A, B) :- array_access(e, A, B).
-primary_no_new_array(e, A, B) :- method_invocation(e, A, B).
-primary_no_new_array(e, A, B) :- method_reference(e, A, B).
+primary_no_new_array(id, A, B) :- class_instance_creation_expression(id, A, B).
+primary_no_new_array(id, A, B) :- field_access(id, A, B).
+primary_no_new_array(id, A, B) :- array_access(id, A, B).
+primary_no_new_array(id, A, B) :- method_invocation(id, A, B).
+primary_no_new_array(id, A, B) :- method_reference(id, A, B).
 
-.decl class_literal(e: Expr, a: number, b: number)
+.decl class_literal(id: id, a: number, b: number)
 
-.decl class_instance_creation_expression(e: Expr, a: number, b: number)
-class_instance_creation_expression(e, A, B) :-
-    unqualified_class_instance_creation_expression(e, A, B).
+.decl class_instance_creation_expression(id: id, a: number, b: number)
+class_instance_creation_expression(id, A, B) :-
+    unqualified_class_instance_creation_expression(id, A, B).
 // TODO ...
 
-.decl unqualified_class_instance_creation_expression(e: Expr, a: number, b: number)
-unqualified_class_instance_creation_expression($ClassInstanceCreationExpression(ta, e, args, nil), A, H) :-
+.decl unqualified_class_instance_creation_expression(id: id, a: number, b: number)
+unqualified_class_instance_creation_expression(nil, A, H) :-
     token_new(A, B),
-    type_arguments?(ta, B, C),
-    class_or_interface_type_to_instantiate(e, C, D),
+    type_arguments?(_, B, C),
+    class_or_interface_type_to_instantiate(_, C, D),
     token_left_paren(D, E),
-    argument_list?(args, E, F),
+    argument_list?(_, E, F),
     token_right_paren(F, G),
     class_body?(_, G, H).
 
-.decl class_or_interface_type_to_instantiate(e: ClassInstanceCreationSubject, a: number, b: number)
-class_or_interface_type_to_instantiate($ClassInstanceCreationSubject(anns, id, ta), A, D) :-
-    annotations?(anns, A, B),
-    identifier(id, B, C),
+.decl class_or_interface_type_to_instantiate(id: id, a: number, b: number)
+class_or_interface_type_to_instantiate(nil, A, D) :-
+    annotations?(_, A, B),
+    identifier(_, B, C),
     // TODO ...
-    type_arguments_or_diamond(ta, C, D).
+    type_arguments_or_diamond(_, C, D).
 
 .decl type_arguments_or_diamond(e: TypeList, a: number, b: number)
 type_arguments_or_diamond(nil, A, C) :-
@@ -1986,187 +1987,187 @@ type_arguments_or_diamond(nil, A, C) :-
     token_greater_than(B, C).
 type_arguments_or_diamond(t, A, B) :- type_arguments(t, A, B).
 
-.decl field_access(e: Expr, a: number, b: number)
-field_access($FieldAccessExpression($FieldAccessSubjectExpression(e), id), A, D) :-
-    primary(e, A, B),
+.decl field_access(id: id, a: number, b: number)
+field_access(nil, A, D) :-
+    primary(_, A, B),
     token_dot(B, C),
-    identifier(id, C, D).
+    identifier(_, C, D).
 // TODO ...
 
-.decl array_access(e: Expr, a: number, b: number)
-array_access($ArrayAccessExpression($ArrayAccessSubjectIdentifiers(ids), expr), A, E) :-
-    expression_name(ids, A, B),
+.decl array_access(id: id, a: number, b: number)
+array_access(nil, A, E) :-
+    expression_name(_, A, B),
     token_left_square_bracket(B, C),
-    expression(expr, C, D),
+    expression(_, C, D),
     token_right_square_bracket(D, E).
-array_access($ArrayAccessExpression($ArrayAccessSubjectExpression(e1), e2), A, E) :-
-    primary_no_new_array(e1, A, B),
+array_access(nil, A, E) :-
+    primary_no_new_array(_, A, B),
     token_left_square_bracket(B, C),
-    expression(e2, C, D),
+    expression(_, C, D),
     token_right_square_bracket(D, E).
 
-.decl method_invocation(e: Expr, a: number, b: number)
-method_invocation($MethodInvocationExpression($MethodInvocationIdentifier(id), args), A, E) :-
-    method_name(id, A, B),
+.decl method_invocation(id: id, a: number, b: number)
+method_invocation(nil, A, E) :-
+    method_name(_, A, B),
     token_left_paren(B, C),
-    argument_list?(args, C, D),
+    argument_list?(_, C, D),
     token_right_paren(D, E).
-method_invocation($MethodInvocationExpression($MethodInvocationIdentifiers(ids, targs, id), args), A, H) :-
-    type_name(ids, A, B),
+method_invocation(nil, A, H) :-
+    type_name(_, A, B),
     token_dot(B, C),
-    type_arguments?(targs, C, D),
-    identifier(id, D, E),
+    type_arguments?(_, C, D),
+    identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(args, F, G),
+    argument_list?(_, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationIdentifiers(ids, targs, id), args), A, H) :-
-    expression_name(ids, A, B),
+method_invocation(nil, A, H) :-
+    expression_name(_, A, B),
     token_dot(B, C),
-    type_arguments?(targs, C, D),
-    identifier(id, D, E),
+    type_arguments?(_, C, D),
+    identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(args, F, G),
+    argument_list?(_, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationExpr(expr, targs, id), args), A, H) :-
-    primary(expr, A, B),
+method_invocation(nil, A, H) :-
+    primary(_, A, B),
     token_dot(B, C),
-    type_arguments?(targs, C, D),
-    identifier(id, D, E),
+    type_arguments?(_, C, D),
+    identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(args, F, G),
+    argument_list?(_, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationSuper(targs, id), args), A, H) :-
+method_invocation(nil, A, H) :-
     token_super(A, B),
     token_dot(B, C),
-    type_arguments?(targs, C, D),
-    identifier(id, D, E),
+    type_arguments?(_, C, D),
+    identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(args, F, G),
+    argument_list?(_, F, G),
     token_right_paren(G, H).
-method_invocation($MethodInvocationExpression($MethodInvocationIdentifiersSuper(ids, targs, id), args), A, J) :-
-    type_name(ids, A, B),
+method_invocation(nil, A, J) :-
+    type_name(_, A, B),
     token_dot(B, C),
     token_super(C, D),
     token_dot(D, E),
-    type_arguments?(targs, E, F),
-    identifier(id, F, G),
+    type_arguments?(_, E, F),
+    identifier(_, F, G),
     token_left_paren(G, H),
-    argument_list?(args, H, I),
+    argument_list?(_, H, I),
     token_right_paren(I, J).
 
-.decl argument_list?(e: ExprList, a: number, b: number)
+.decl argument_list?(ids: id_list, a: number, b: number)
 argument_list?(nil, A, A) :- any_position(A).
 argument_list?(e, A, B) :- argument_list(e, A, B).
 
-.decl argument_list(e: ExprList, a: number, b: number)
+.decl argument_list(ids: id_list, a: number, b: number)
 argument_list([x, nil], A, B) :- expression(x, A, B).
 argument_list([x, xs], A, D) :-
     expression(x, A, B),
     token_comma(B, C),
     argument_list(xs, C, D).
 
-.decl method_reference(e: Expr, a: number, b: number)
-method_reference($MethodReferenceExpression($MethodReferenceSubjectIdentifierList(ids), args, id), A, F) :-
-    expression_name(ids, A, B),
+.decl method_reference(id: id, a: number, b: number)
+method_reference(nil, A, F) :-
+    expression_name(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
-    type_arguments?(args, D, E),
-    identifier(id, E, F).
-method_reference($MethodReferenceExpression($MethodReferenceSubjectExpression(e), args, id), A, F) :-
-    primary(e, A, B),
+    type_arguments?(_, D, E),
+    identifier(_, E, F).
+method_reference(nil, A, F) :-
+    primary(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
-    type_arguments?(args, D, E),
-    identifier(id, E, F).
-method_reference($MethodReferenceExpression($MethodReferenceSubjectType(t), args, id), A, F) :-
-    reference_type(t, A, B),
+    type_arguments?(_, D, E),
+    identifier(_, E, F).
+method_reference(nil, A, F) :-
+    reference_type(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
-    type_arguments?(args, D, E),
-    identifier(id, E, F).
+    type_arguments?(_, D, E),
+    identifier(_, E, F).
 // TODO ...
 
-.decl array_creation_expression(e: Expr, a: number, b: number)
-array_creation_expression($ArrayCreationExpression(t, de, d, nil), A, E) :-
+.decl array_creation_expression(id: id, a: number, b: number)
+array_creation_expression(nil, A, E) :-
     token_new(A, B),
-    primitive_type(t, B, C),
-    dim_exprs(de, C, D),
-    dims?(d, D, E).
-array_creation_expression($ArrayCreationExpression(t, de, d, nil), A, E) :-
+    primitive_type(_, B, C),
+    dim_exprs(_, C, D),
+    dims?(_, D, E).
+array_creation_expression(nil, A, E) :-
     token_new(A, B),
-    class_or_interface_type(t, B, C),
-    dim_exprs(de, C, D),
-    dims?(d, D, E).
-array_creation_expression($ArrayCreationExpression(t, nil, d, [init]), A, E) :-
+    class_or_interface_type(_, B, C),
+    dim_exprs(_, C, D),
+    dims?(_, D, E).
+array_creation_expression(nil, A, E) :-
     token_new(A, B),
-    primitive_type(t, B, C),
-    dims(d, C, D),
-    array_initializer(init, D, E).
-array_creation_expression($ArrayCreationExpression(t, nil, d, [init]), A, E) :-
+    primitive_type(_, B, C),
+    dims(_, C, D),
+    array_initializer(_, D, E).
+array_creation_expression(nil, A, E) :-
     token_new(A, B),
-    class_or_interface_type(t, B, C),
-    dims(d, C, D),
-    array_initializer(init, D, E).
+    class_or_interface_type(_, B, C),
+    dims(_, C, D),
+    array_initializer(_, D, E).
 
-.decl dim_exprs(e: ExprList, a: number, b: number)
+.decl dim_exprs(ids: id_list, a: number, b: number)
 dim_exprs([x, nil], A, B) :- dim_expr(x, A, B).
 dim_exprs([x, xs], A, C) :-
     dim_expr(x, A, B),
     dim_exprs(xs, B, C).
 
-.decl dim_expr(e: Expr, a: number, b: number)
-dim_expr($DimensionExpression(a, e), A, E) :-
-    annotations?(a, A, B),
+.decl dim_expr(id: id, a: number, b: number)
+dim_expr(nil, A, E) :-
+    annotations?(_, A, B),
     token_left_square_bracket(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_right_square_bracket(D, E).
 
-.decl expression(e: Expr, a: number, b: number)
-expression(e, A, B) :- conditional_expression(e, A, B).
-expression(e, A, B) :- lambda_expression(e, A, B).
+.decl expression(id: id, a: number, b: number)
+expression(id, A, B) :- lambda_expression(id, A, B).
+expression(id, A, B) :- assignment_expression(id, A, B).
 
-.decl expression?(e: ExprOptional, a: number, b: number)
-OPTIONAL(expression?, expression)
+.decl expression?(id: id, a: number, b: number)
+ID_OPTIONAL(expression?, expression)
 
-.decl lambda_expression(e: Expr, a: number, b: number)
-lambda_expression($LambdaExpression(params, body), A, D) :-
-    lambda_parameters(params, A, B),
+.decl lambda_expression(id: id, a: number, b: number)
+lambda_expression(["lambda_expression", A, D], A, D) :-
+    lambda_parameters(_, A, B),
     token_arrow(B, C),
-    lambda_body(body, C, D).
+    lambda_body(_, C, D).
 
-.decl lambda_parameters(e: LambdaParameters, a: number, b: number)
-lambda_parameters($LambdaParametersIdentifier(id), A, B) :-
-    identifier(id, A, B).
-lambda_parameters($LambdaParametersIdentifierList(ids), A, D) :-
+.decl lambda_parameters(id: id, a: number, b: number)
+lambda_parameters(nil, A, B) :-
+    identifier(_, A, B).
+lambda_parameters(nil, A, D) :-
     token_left_paren(A, B),
-    lambda_parameter_list_first_option(ids, B, C),
+    lambda_parameter_list_first_option(_, B, C),
     token_right_paren(C, D).
-lambda_parameters($LambdaParametersLambdaParameterList(params), A, D) :-
+lambda_parameters(nil, A, D) :-
     token_left_paren(A, B),
-    lambda_parameter_list_second_option(params, B, C),
+    lambda_parameter_list_second_option(_, B, C),
     token_right_paren(C, D).
 
 /* Note: Rule lambda_parameter_list is handled by the two following rules */
-.decl lambda_parameter_list_first_option(e: IdentifierList, a: number, b: number)
-lambda_parameter_list_first_option([x, nil], A, B) :- identifier(x, A, B).
-lambda_parameter_list_first_option([x, xs], A, D) :-
-    identifier(x, A, B),
-    token_comma(B, C),
-    lambda_parameter_list_first_option(xs, C, D).
-.decl lambda_parameter_list_second_option(e: LambdaParameterList, a: number, b: number)
+.decl lambda_parameter_list_first_option(ids: id_list, a: number, b: number)
+//lambda_parameter_list_first_option([x, nil], A, B) :- identifier(x, A, B).
+//lambda_parameter_list_first_option([x, xs], A, D) :-
+//    identifier(x, A, B),
+//    token_comma(B, C),
+//    lambda_parameter_list_first_option(xs, C, D).
+.decl lambda_parameter_list_second_option(ids: id_list, a: number, b: number)
 lambda_parameter_list_second_option([x, nil], A, B) :- lambda_parameter(x, A, B).
 lambda_parameter_list_second_option([x, xs], A, D) :-
     lambda_parameter(x, A, B),
     token_comma(B, C),
     lambda_parameter_list_second_option(xs, C, D).
 
-.decl lambda_parameter(e: LambdaParameter, a: number, b: number)
-lambda_parameter($LambdaParameter(mods, t, decl), A, D) :-
-    variable_modifiers?(mods, A, B),
-    lambda_parameter_type(t, B, C),
-    variable_declarator_id(decl, C, D).
-lambda_parameter($LambdaParameterVariableArity(p), A, B) :-
-    variable_arity_parameter(p, A, B).
+.decl lambda_parameter(id: id, a: number, b: number)
+lambda_parameter(nil, A, D) :-
+    variable_modifiers?(_, A, B),
+    lambda_parameter_type(_, B, C),
+    variable_declarator_id(_, C, D).
+lambda_parameter(nil, A, B) :-
+    variable_arity_parameter(_, A, B).
 
 .decl lambda_parameter_type(t: Type, a: number, b: number)
 lambda_parameter_type(t, A, B) :- unann_type(t, A, B).
@@ -2176,23 +2177,23 @@ lambda_parameter_type($Var, A, B) :- token_var(A, B).
 //lambda_body($LambdaBodyExpr(e), A, B) :- expression(e, A, B).
 //lambda_body($LambdaBodyBlock(e), A, B) :- block(e, A, B).
 
-.decl assignment_expression(e: Expr, a: number, b: number)
-assignment_expression(e, A, B) :- conditional_expression(e, A, B).
-assignment_expression(e, A, B) :- assignment(e, A, B).
+.decl assignment_expression(id: id, a: number, b: number)
+assignment_expression(id, A, B) :- conditional_expression(id, A, B).
+assignment_expression(id, A, B) :- assignment(id, A, B).
 
-.decl assignment(e: Expr, a: number, b: number)
-assignment($AssignmentExpression(e1, s, e2), A, D) :-
-    left_hand_side(e1, A, B),
-    assignment_operator(s, B, C),
-    expression(e2, C, D).
+.decl assignment(id: id, a: number, b: number)
+assignment(nil, A, D) :-
+    left_hand_side(_, A, B),
+    assignment_operator(_, B, C),
+    expression(_, C, D).
 
-.decl left_hand_side(e: LeftHandSide, a: number, b: number)
-left_hand_side($LeftHandSideName(n), A, B) :-
-    expression_name(n, A, B).
-left_hand_side($LeftHandSideFieldAccess(e), A, B) :-
-    field_access(e, A, B).
-left_hand_side($LeftHandSideArrayAccess(e), A, B) :-
-    array_access(e, A, B).
+.decl left_hand_side(id: id, a: number, b: number)
+//left_hand_side($LeftHandSideName(n), A, B) :-
+//    expression_name(n, A, B).
+left_hand_side(id, A, B) :-
+    field_access(id, A, B).
+left_hand_side(id, A, B) :-
+    array_access(id, A, B).
 
 .decl assignment_operator(s: symbol, a: number, b: number)
 assignment_operator(s, A, A + 1) :- token(s, A), s = "=".
@@ -2208,125 +2209,125 @@ assignment_operator(s, A, A + 1) :- token(s, A), s = "&=".
 assignment_operator(s, A, A + 1) :- token(s, A), s = "^=".
 assignment_operator(s, A, A + 1) :- token(s, A), s = "|=".
 
-.decl conditional_expression(e: Expr, a: number, b: number)
-conditional_expression(e, A, B) :- conditional_or_expression(e, A, B).
-conditional_expression(e, A, F) :-
-    conditional_or_expression(e, A, B),
+.decl conditional_expression(id: id, a: number, b: number)
+conditional_expression(id, A, B) :- conditional_or_expression(id, A, B).
+conditional_expression(nil, A, F) :-
+    conditional_or_expression(_, A, B),
     token_question_mark(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_colon(D, E),
-    conditional_expression(e, E, F).
-conditional_expression(e, A, F) :-
-    conditional_or_expression(e, A, B),
+    conditional_expression(_, E, F).
+conditional_expression(nil, A, F) :-
+    conditional_or_expression(_, A, B),
     token_question_mark(B, C),
-    expression(e, C, D),
+    expression(_, C, D),
     token_colon(D, E),
-    lambda_expression(e, E, F).
+    lambda_expression(_, E, F).
 
-.decl conditional_or_expression(e: Expr, a: number, b: number)
-conditional_or_expression(e, A, B) :- conditional_and_expression(e, A, B).
-INFIX($OrExpression, conditional_or_expression, conditional_and_expression, "||")
+.decl conditional_or_expression(id: id, a: number, b: number)
+conditional_or_expression(id, A, B) :- conditional_and_expression(id, A, B).
+INFIX("or_expression", conditional_or_expression, conditional_and_expression, "||")
 
-.decl conditional_and_expression(e: Expr, a: number, b: number)
+.decl conditional_and_expression(id: id, a: number, b: number)
 conditional_and_expression(e, A, B) :- inclusive_or_expression(e, A, B).
-INFIX($AndExpression, conditional_and_expression, inclusive_or_expression, "&&")
+INFIX("and_expression", conditional_and_expression, inclusive_or_expression, "&&")
 
-.decl inclusive_or_expression(e: Expr, a: number, b: number)
+.decl inclusive_or_expression(id: id, a: number, b: number)
 inclusive_or_expression(e, A, B) :- exclusive_or_expression(e, A, B).
-INFIX($BitwiseInclusiveOrExpression, inclusive_or_expression, exclusive_or_expression, "|")
+INFIX("bitwise_inclusive_or_expression", inclusive_or_expression, exclusive_or_expression, "|")
 
-.decl exclusive_or_expression(e: Expr, a: number, b: number)
+.decl exclusive_or_expression(id: id, a: number, b: number)
 exclusive_or_expression(e, A, B) :- and_expression(e, A, B).
-INFIX($BitwiseExclusiveOrExpression, exclusive_or_expression, and_expression, "^")
+INFIX("bitwise_exclusive_or_expression", exclusive_or_expression, and_expression, "^")
 
-.decl and_expression(e: Expr, a: number, b: number)
+.decl and_expression(id: id, a: number, b: number)
 and_expression(e, A, B) :- equality_expression(e, A, B).
-INFIX($BitwiseAndExpression, and_expression, equality_expression, "&")
+INFIX("and_expression", and_expression, equality_expression, "&")
 
-.decl equality_expression(e: Expr, a: number, b: number)
+.decl equality_expression(id: id, a: number, b: number)
 equality_expression(e, A, B) :-       relational_expression(e, A, B).
-INFIX($EqualsExpression,    equality_expression, relational_expression, "==")
-INFIX($NotEqualsExpression, equality_expression, relational_expression, "!=")
+INFIX("equals_expression",    equality_expression, relational_expression, "==")
+INFIX("not_equals_expression", equality_expression, relational_expression, "!=")
 
-.decl relational_expression(e: Expr, a: number, b: number)
+.decl relational_expression(id: id, a: number, b: number)
 relational_expression(e, A, B) :- shift_expression(e, A, B).
 
-.decl shift_expression(e: Expr, a: number, b: number)
+.decl shift_expression(id: id, a: number, b: number)
 shift_expression(e, A, B) :- additive_expression(e, A, B).
-INFIX($ShiftLeftExpression,          shift_expression, additive_expression, "<<")
-INFIX($ShiftRightExpression,         shift_expression, additive_expression, ">>")
-INFIX($ShiftRightUnsignedExpression, shift_expression, additive_expression, ">>>")
+INFIX("shift_left_expression",          shift_expression, additive_expression, "<<")
+INFIX("shift_right_expression",         shift_expression, additive_expression, ">>")
+INFIX("shift_right_unsigned_expression", shift_expression, additive_expression, ">>>")
 
-.decl additive_expression(e: Expr, a: number, b: number)
+.decl additive_expression(id: id, a: number, b: number)
 additive_expression(e, A, B) :- multiplicative_expression(e, A, B).
-INFIX($AdditionExpression, additive_expression, multiplicative_expression, "+")
-INFIX($SubtractionExpression, additive_expression, multiplicative_expression, "-")
+INFIX("addition_expression", additive_expression, multiplicative_expression, "+")
+INFIX("subtraction_expression", additive_expression, multiplicative_expression, "-")
 
-.decl multiplicative_expression(e: Expr, a: number, b: number)
+.decl multiplicative_expression(id: id, a: number, b: number)
 multiplicative_expression(e, A, B) :- unary_expression(e, A, B).
-INFIX($MultiplicationExpression, multiplicative_expression, unary_expression, "*")
-INFIX($DivisionExpression, multiplicative_expression, unary_expression, "/")
-INFIX($ModuloExpression, multiplicative_expression, unary_expression, "%")
+INFIX("multiplication_expression", multiplicative_expression, unary_expression, "*")
+INFIX("division_expression", multiplicative_expression, unary_expression, "/")
+INFIX("modulo_expression", multiplicative_expression, unary_expression, "%")
 
-.decl unary_expression(e: Expr, a: number, b: number)
+.decl unary_expression(id: id, a: number, b: number)
 unary_expression(e, A, B) :- pre_increment_expression(e, A, B).
 unary_expression(e, A, B) :- pre_decrement_expression(e, A, B).
-PREFIX($UnaryPlusExpression, unary_expression, unary_expression, "+")
-PREFIX($UnaryMinusExpression, unary_expression, unary_expression, "-")
+PREFIX("unary_plus_expression", unary_expression, unary_expression, "+")
+PREFIX("unary_minus_expression", unary_expression, unary_expression, "-")
 unary_expression(e, A, B) :- unary_expression_not_plus_minus(e, A, B).
 
-.decl pre_increment_expression(e: Expr, a: number, b: number)
-PREFIX($PreIncrementExpression, pre_increment_expression, unary_expression, "++")
+.decl pre_increment_expression(id: id, a: number, b: number)
+PREFIX("pre_increment_expression", pre_increment_expression, unary_expression, "++")
 
-.decl pre_decrement_expression(e: Expr, a: number, b: number)
-PREFIX($PreDecrementExpression, pre_decrement_expression, unary_expression, "--")
+.decl pre_decrement_expression(id: id, a: number, b: number)
+PREFIX("pre_decrement_expression", pre_decrement_expression, unary_expression, "--")
 
-.decl unary_expression_not_plus_minus(e: Expr, a: number, b: number)
+.decl unary_expression_not_plus_minus(id: id, a: number, b: number)
 unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
-PREFIX($BitwiseNotExpression, unary_expression_not_plus_minus, unary_expression, "~")
-PREFIX($NotExpression, unary_expression_not_plus_minus, unary_expression, "!")
+PREFIX("bitwise_not_expression", unary_expression_not_plus_minus, unary_expression, "~")
+PREFIX("not_expression", unary_expression_not_plus_minus, unary_expression, "!")
 unary_expression_not_plus_minus(e, A, B) :- cast_expression(e, A, B).
 unary_expression_not_plus_minus(e, A, B) :- switch_expression(e, A, B).
 
-.decl postfix_expression(e: Expr, a: number, b: number)
+.decl postfix_expression(id: id, a: number, b: number)
 postfix_expression(e, A, B) :- primary(e, A, B).
-postfix_expression($IdentifierExpression(ids), A, B) :- expression_name(ids, A, B).
+//postfix_expression($IdentifierExpression(ids), A, B) :- expression_name(ids, A, B). TODO
 postfix_expression(e, A, B) :- post_increment_expression(e, A, B).
 postfix_expression(e, A, B) :- post_decrement_expression(e, A, B).
 
-.decl post_increment_expression(e: Expr, a: number, b: number)
-POSTFIX($PostIncrementExpression, post_increment_expression, postfix_expression, "++")
-.decl post_decrement_expression(e: Expr, a: number, b: number)
-POSTFIX($PostDecrementExpression, post_decrement_expression, postfix_expression, "--")
+.decl post_increment_expression(id: id, a: number, b: number)
+POSTFIX("post_increment_expression", post_increment_expression, postfix_expression, "++")
+.decl post_decrement_expression(id: id, a: number, b: number)
+POSTFIX("post_decrement_expression", post_decrement_expression, postfix_expression, "--")
 
-.decl cast_expression(e: Expr, a: number, b: number)
-cast_expression($CastExpression(t, nil, e), A, E) :-
+.decl cast_expression(id: id, a: number, b: number)
+cast_expression(["cast_expression", A, E], A, E) :-
     token_left_paren(A, B),
-    primitive_type(t, B, C),
+    primitive_type(_, B, C),
     token_right_paren(C, D),
-    unary_expression(e, D, E).
-cast_expression($CastExpression(t, b, e), A, F) :-
+    unary_expression(_, D, E).
+cast_expression(["cast_expression", A, F], A, F) :-
     token_left_paren(A, B),
     reference_type(t, B, C),
     additional_bounds?(b, C, D),
     token_right_paren(D, E),
     unary_expression_not_plus_minus(e, E, F).
-cast_expression($CastExpression(t, b, e), A, F) :-
+cast_expression(["cast_expression", A, F], A, F) :-
     token_left_paren(A, B),
     reference_type(t, B, C),
     additional_bounds?(b, C, D),
     token_right_paren(D, E),
     lambda_expression(e, E, F).
 
-.decl switch_expression(e: Expr, a: number, b: number)
-switch_expression($SwitchExpression(e1, rules), A, F) :-
+.decl switch_expression(id: id, a: number, b: number)
+switch_expression(["switch_expression", A, F], A, F) :-
     token_switch(A, B),
     token_left_paren(B, C),
-    expression(e1, C, D),
+    expression(_, C, D),
     token_right_paren(D, E),
-    switch_block(rules, E, F).
+    switch_block(_, E, F).
 
-.decl constant_expression(e: Expr, a: number, b: number)
+.decl constant_expression(id: id, a: number, b: number)
 constant_expression(e, A, B) :- expression(e, A, B).
 
 /**
@@ -2353,6 +2354,16 @@ in_tree(res) :-
     method_header(id, res, _, _),
     in_tree(id).
 
+in_tree(name),
+in_tree(initializer) :-
+    variable_declarator(id, name, initializer, _, _),
+    in_tree(id).
+
+in_tree(expr),
+in_tree(statement) :-
+    if_then_statement(id, expr, statement, _, _),
+    in_tree(id).
+
 /* list in tree */
 
 .decl in_tree_list(ids: id_list)
@@ -2375,6 +2386,11 @@ in_tree_list(mods) :-
 in_tree_list(mods) :-
     method_declaration(decl, mods, _, _, _, _),
     in_tree(decl).
+
+in_tree_list(mods),
+in_tree_list(declarators) :-
+    local_variable_declaration(id, mods, declarators, A, D),
+    in_tree(id).
 
 .output token
 .output token_type
