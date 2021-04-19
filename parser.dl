@@ -36,18 +36,6 @@
 .type IdentifierListList = [head: IdentifierList, tail: IdentifierListList]
 .type IdentifierOptional = [id: Identifier]
 
-/* Literals */
-
-.type Literal = IntegerLiteral {s: symbol}
-
-/* Compilation unit */
-
-.type CompilationUnit = OrdinaryCompilationUnit {pkgs: PackageDeclarationOptional,
-                                                 imps: ImportDeclarationList,
-                                                 decls: DeclarationList}
-                      | ModularCompilationUnit  {imps: ImportDeclarationList,
-                                                 decl: Declaration}
-
 /* Variable declarations */
 
 .type VariableDeclarator = VariableDeclarator {decl: VariableDeclaratorId}
@@ -385,7 +373,6 @@
       token_literal_integer(s, A, A + 1) :-
       token_type(A, "integer"),
       token(s, A).
-      // TODO
 .decl token_identifier(id: Identifier, a: number, b: number)
       token_identifier(as(id, Identifier), A, A + 1) :-
       token_type(A, "identifier"),
@@ -544,8 +531,8 @@ identifier(t, A, B) :- token_identifier(t, A, B).
 .decl identifier?(s: IdentifierOptional, a: number, b: number)
 OPTIONAL(identifier?, identifier)
 
-.decl literal(l: Literal, a: number, b: number)
-literal($IntegerLiteral(l), A, B) :- token_literal_integer(l, A, B).
+.decl literal(id: id, a: number, b: number)
+literal(["literal", A, B], A, B) :- token_literal_integer(_, A, B).
 
 /**
  * Types, Values and Variables
@@ -1559,7 +1546,7 @@ statement_expression(id, A, B) :- pre_increment_expression(id, A, B).
 statement_expression(id, A, B) :- pre_decrement_expression(id, A, B).
 statement_expression(id, A, B) :- post_increment_expression(id, A, B).
 statement_expression(id, A, B) :- post_decrement_expression(id, A, B).
-statement_expression(id, A, B) :- method_invocation(id, A, B).
+statement_expression(id, A, B) :- method_invocation(id, _, A, B).
 statement_expression(id, A, B) :- class_instance_creation_expression(id, A, B).
 
 .decl if_then_statement(id: id, expr: id, statement: id, a: number, b: number)
@@ -1857,7 +1844,7 @@ primary(id, A, B) :- primary_no_new_array(id, A, B).
 primary(id, A, B) :- array_creation_expression(id, A, B).
 
 .decl primary_no_new_array(id: id, a: number, b: number)
-primary_no_new_array(nil, A, B) :- literal(_, A, B). // TODO
+primary_no_new_array(id, A, B) :- literal(id, A, B).
 primary_no_new_array(nil, A, B) :- class_literal(_, A, B). // TODO
 //primary_no_new_array($ThisExpression, A, B) :- token_this(A, B). TODO
 primary_no_new_array(id, A, D) :-
@@ -1867,7 +1854,7 @@ primary_no_new_array(id, A, D) :-
 primary_no_new_array(id, A, B) :- class_instance_creation_expression(id, A, B).
 primary_no_new_array(id, A, B) :- field_access(id, A, B).
 primary_no_new_array(id, A, B) :- array_access(id, A, B).
-primary_no_new_array(id, A, B) :- method_invocation(id, A, B).
+primary_no_new_array(id, A, B) :- method_invocation(id, _, A, B).
 primary_no_new_array(id, A, B) :- method_reference(id, A, B).
 
 .decl class_literal(id: id, a: number, b: number)
@@ -1919,45 +1906,45 @@ array_access(nil, A, E) :-
     expression(_, C, D),
     token_right_square_bracket(D, E).
 
-.decl method_invocation(id: id, a: number, b: number)
-method_invocation(nil, A, E) :-
+.decl method_invocation(id: id, arguments: id_list, a: number, b: number)
+method_invocation(["method_invocation", A, E], args, A, E) :-
     method_name(_, A, B),
     token_left_paren(B, C),
-    argument_list?(_, C, D),
+    argument_list?(args, C, D),
     token_right_paren(D, E).
-method_invocation(nil, A, H) :-
+method_invocation(["method_invocation", A, H], args, A, H) :-
     type_name(_, A, B),
     token_dot(B, C),
     type_arguments?(_, C, D),
     identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(_, F, G),
+    argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation(nil, A, H) :-
+method_invocation(["method_invocation", A, H], args, A, H) :-
     expression_name(_, A, B),
     token_dot(B, C),
     type_arguments?(_, C, D),
     identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(_, F, G),
+    argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation(nil, A, H) :-
+method_invocation(["method_invocation", A, H], args, A, H) :-
     primary(_, A, B),
     token_dot(B, C),
     type_arguments?(_, C, D),
     identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(_, F, G),
+    argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation(nil, A, H) :-
+method_invocation(["method_invocation", A, H], args, A, H) :-
     token_super(A, B),
     token_dot(B, C),
     type_arguments?(_, C, D),
     identifier(_, D, E),
     token_left_paren(E, F),
-    argument_list?(_, F, G),
+    argument_list?(args, F, G),
     token_right_paren(G, H).
-method_invocation(nil, A, J) :-
+method_invocation(["method_invocation", A, H], args, A, J) :-
     type_name(_, A, B),
     token_dot(B, C),
     token_super(C, D),
@@ -1965,7 +1952,7 @@ method_invocation(nil, A, J) :-
     type_arguments?(_, E, F),
     identifier(_, F, G),
     token_left_paren(G, H),
-    argument_list?(_, H, I),
+    argument_list?(args, H, I),
     token_right_paren(I, J).
 
 .decl argument_list?(ids: id_list, a: number, b: number)
@@ -2312,6 +2299,10 @@ in_tree_list(imports),
 in_tree_list(decls) :-
     ordinary_compilation_unit(unit, _, imports, decls, _, _),
     in_tree(unit).
+
+in_tree_list(args) :-
+    method_invocation(id, args, _, _),
+    in_tree(id).
 
 in_tree_list(statements) :-
     block(id, statements, _, _),
