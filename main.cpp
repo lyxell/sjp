@@ -17,8 +17,9 @@ int main(int argc, char** argv) {
     std::cout << "Time difference:"
         << std::chrono::duration_cast<std::chrono::milliseconds>(t3-t1).count() << " milliseconds" << std::endl;
     std::cout << "Parsed " << parser.num_asts() << " ASTs" << std::endl;
+    /*
     for (auto& [t, a, b] : parser.get_tuples(filename)) {
         std::cout << t << " " << a << " " << b << std::endl;
-    }
+    }*/
     return 0;
 }

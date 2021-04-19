@@ -29,8 +29,81 @@
 #include <cassert>
 #include <souffle/SouffleInterface.h>
 #include <tuple>
+#include "sjp.hpp"
 
 namespace sjp {
+
+    parser::parser() {
+        program = souffle::ProgramFactory::newInstance("parser");
+        assert(program != NULL);
+    }
+
+    void parser::add_file(const char* filename) {
+        std::ifstream t(filename);
+        add_string(filename,
+            std::string((std::istreambuf_iterator<char>(t)),
+            std::istreambuf_iterator<char>()).c_str());
+    }
+
+    void parser::add_string(const char* filename, const char* content) {
+        auto [tokens, tl, i32_value, token_type] = lex_string(content);
+        token_limits.emplace(filename, tl);
+        souffle::Relation* relation = program->getRelation("token");
+        assert(relation != NULL);
+        for (int32_t i = 0; i < tokens.size(); i++) {
+            souffle::tuple tuple(relation);
+            tuple << tokens[i] << i;
+            relation->insert(tuple);
+        }
+        relation = program->getRelation("num_tokens");
+        assert(relation != NULL);
+        souffle::tuple tuple(relation);
+        tuple << (int32_t) tokens.size();
+        relation->insert(tuple);
+        relation = program->getRelation("token_type");
+        assert(relation != NULL);
+        for (auto& [id, type] : token_type) {
+            souffle::tuple tuple(relation);
+            tuple << (int32_t) id << type;
+            relation->insert(tuple);
+        }
+    }
+
+    void parser::parse() {
+        program->run();
+        program->printAll();
+    }
+
+    std::vector<std::tuple<std::string,int,int>>
+    parser::get_tuples(const char* filename) {
+        std::vector<std::tuple<std::string,int,int>> result;
+        auto& limits = token_limits[filename];
+        souffle::Relation* relation = program->getRelation("in_tree");
+        for (auto &output : *relation) {
+            int record_reference;
+            output >> record_reference;
+            auto record = program->getRecordTable().unpack(record_reference, 3);
+            if (!record) continue;
+            int symbol_reference = *record;
+            
+            result.emplace_back(
+                program->getSymbolTable().decode(symbol_reference),
+                limits[record[1]].first,
+                limits[record[2]-1].second);
+        }
+        return result;
+    }
+
+    size_t parser::num_asts() {
+        souffle::Relation* relation = program->getRelation("root");
+        assert(relation != NULL);
+        return relation->size();
+        return 0;
+    }
+
+    parser::~parser() {
+        delete program;
+    }
 
     /**
      * Expects a null-terminated string.
@@ -111,76 +184,5 @@ namespace sjp {
         }
         return {tokens, token_limits, i32_value, token_type};
     }
-
-    class parser {
-        souffle::SouffleProgram *program;
-        std::unordered_map<std::string, std::unordered_map<size_t, std::pair<size_t, size_t>>> token_limits;
-    public:
-        parser() {
-            program = souffle::ProgramFactory::newInstance("parser");
-            assert(program != NULL);
-        }
-        void add_file(const char* filename) {
-            std::ifstream t(filename);
-            add_string(filename,
-                std::string((std::istreambuf_iterator<char>(t)),
-                std::istreambuf_iterator<char>()).c_str());
-        }
-        void add_string(const char* filename, const char* content) {
-            auto [tokens, tl, i32_value, token_type] = lex_string(content);
-            token_limits.emplace(filename, tl);
-            souffle::Relation* relation = program->getRelation("token");
-            assert(relation != NULL);
-            for (int32_t i = 0; i < tokens.size(); i++) {
-                souffle::tuple tuple(relation);
-                tuple << tokens[i] << i;
-                relation->insert(tuple);
-            }
-            relation = program->getRelation("num_tokens");
-            assert(relation != NULL);
-            souffle::tuple tuple(relation);
-            tuple << (int32_t) tokens.size();
-            relation->insert(tuple);
-            relation = program->getRelation("token_type");
-            assert(relation != NULL);
-            for (auto& [id, type] : token_type) {
-                souffle::tuple tuple(relation);
-                tuple << (int32_t) id << type;
-                relation->insert(tuple);
-            }
-        }
-        void parse() {
-            program->run();
-            program->printAll();
-        }
-        std::vector<std::tuple<std::string,int,int>>
-        get_tuples(const char* filename) {
-            std::vector<std::tuple<std::string,int,int>> result;
-            auto& limits = token_limits[filename];
-            souffle::Relation* relation = program->getRelation("in_tree");
-            for (auto &output : *relation) {
-                int record_reference;
-                output >> record_reference;
-                auto record = program->getRecordTable().unpack(record_reference, 3);
-                if (!record) continue;
-                int symbol_reference = *record;
-                
-                result.emplace_back(
-                    program->getSymbolTable().decode(symbol_reference),
-                    limits[record[1]].first,
-                    limits[record[2]-1].second);
-            }
-            return result;
-        }
-        size_t num_asts() {
-            souffle::Relation* relation = program->getRelation("root");
-            assert(relation != NULL);
-            return relation->size();
-            return 0;
-        }
-        ~parser() {
-            delete program;
-        }
-    };
-
 }
+
