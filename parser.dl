@@ -532,67 +532,67 @@ identifier(t, A, B) :- token_identifier(t, A, B).
 OPTIONAL(identifier?, identifier)
 
 .decl literal(id: id, a: number, b: number)
-literal(["literal", A, B], A, B) :- token_literal_integer(_, A, B).
+literal(["integer_literal", A, B], A, B) :- token_literal_integer(_, A, B).
 
 /**
  * Types, Values and Variables
  * See §4 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl type(s: Type, a: number, b: number)
+.decl type(id: id, a: number, b: number)
 type(e, A, B) :- primitive_type(e, A, B).
 type(e, A, B) :- reference_type(e, A, B).
 
-.decl primitive_type(s: Type, a: number, b: number)
+.decl primitive_type(id: id, a: number, b: number)
 primitive_type(e, A, B) :- numeric_type(e, A, B).
-primitive_type($Boolean, A, B) :- token_boolean(A, B).
+primitive_type(["boolean_type", A, B], A, B) :- token_boolean(A, B).
 // TODO annotations
 
-.decl numeric_type(s: Type, a: number, b: number)
-numeric_type(e, A, B) :- integral_type(e, A, B).
-numeric_type(e, A, B) :- floating_point_type(e, A, B).
+.decl numeric_type(id: id, a: number, b: number)
+numeric_type(id, A, B) :- integral_type(id, A, B).
+numeric_type(id, A, B) :- floating_point_type(id, A, B).
 
-.decl integral_type(t: Type, a: number, b: number)
-integral_type($Byte,  A, B) :- token_byte(A, B).
-integral_type($Short, A, B) :- token_short(A, B).
-integral_type($Int,   A, B) :- token_int(A, B).
-integral_type($Long,  A, B) :- token_long(A, B).
-integral_type($Char,  A, B) :- token_char(A, B).
+.decl integral_type(id: id, a: number, b: number)
+integral_type(["byte_type", A, B],  A, B) :- token_byte(A, B).
+integral_type(["short_type", A, B], A, B) :- token_short(A, B).
+integral_type(["int_type", A, B],   A, B) :- token_int(A, B).
+integral_type(["long_type", A, B],  A, B) :- token_long(A, B).
+integral_type(["char_type", A, B],  A, B) :- token_char(A, B).
 
-.decl floating_point_type(t: Type, a: number, b: number)
-floating_point_type($Float,  A, B) :- token_float(A, B).
-floating_point_type($Double, A, B) :- token_double(A, B).
+.decl floating_point_type(id: id, a: number, b: number)
+floating_point_type(["float_type", A, B],  A, B) :- token_float(A, B).
+floating_point_type(["double_type", A, B], A, B) :- token_double(A, B).
 
-.decl reference_type(t: Type, a: number, b: number)
+.decl reference_type(id: id, a: number, b: number)
 reference_type(t, A, B) :- class_or_interface_type(t, A, B).
 reference_type(t, A, B) :- array_type(t, A, B).
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
 // the Java grammar specification. The same derivation is handled by
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
-.decl class_or_interface_type(t: Type, a: number, b: number)
+.decl class_or_interface_type(id: id, a: number, b: number)
 class_or_interface_type(t, A, B) :- class_type(t, A, B).
 class_or_interface_type(t, A, B) :- interface_type(t, A, B).
 
-.decl class_type(t: Type, a: number, b: number)
-class_type($ClassType(anns, id, args), A, D) :-
-    annotations?(anns, A, B),
-    type_identifier(id, B, C),
-    type_arguments?(args, C, D).
-class_type($ClassType(anns, id, args), A, F) :-
-    package_name(pn, A, B), // TODO: handle this
+.decl class_type(id: id, a: number, b: number)
+class_type(nil, A, D) :-
+    annotations?(_, A, B),
+    type_identifier(_, B, C),
+    type_arguments?(_, C, D).
+class_type(nil, A, F) :-
+    package_name(_, A, B), // TODO: handle this
     token_dot(B, C),
-    annotations?(anns, C, D),
-    type_identifier(id, D, E),
-    type_arguments?(args, E, F).
-class_type($ClassType(anns, id, args), A, F) :-
-    class_or_interface_type(pn, A, B), // TODO: handle this
+    annotations?(_, C, D),
+    type_identifier(_, D, E),
+    type_arguments?(_, E, F).
+class_type(nil, A, F) :-
+    class_or_interface_type(_, A, B), // TODO: handle this
     token_dot(B, C),
-    annotations?(anns, C, D),
-    type_identifier(id, D, E),
-    type_arguments?(args, E, F).
+    annotations?(_, C, D),
+    type_identifier(_, D, E),
+    type_arguments?(_, E, F).
 
-.decl interface_type(t: Type, a: number, b: number)
+.decl interface_type(id: id, a: number, b: number)
 interface_type(t, A, B) :- class_type(t, A, B).
 
 .decl type_variable(t: Type, a: number, b: number)
@@ -600,11 +600,11 @@ type_variable($TypeVariable(id, a), A, B) :-
     annotations?(a, A, B),
     type_identifier(id, A, B).
 
-.decl array_type(t: Type, a: number, b: number)
-array_type($ArrayType(b, d), A, C) :- primitive_type(b, A, B), dims(d, B, C).
-array_type($ArrayType(b, d), A, C) :-
-    class_or_interface_type(b, A, B),
-    dims(d, B, C).
+.decl array_type(id: id, a: number, b: number)
+array_type(["array_type", A, C], A, C) :- primitive_type(_, A, B), dims(_, B, C).
+array_type(["array_type", A, C], A, C) :-
+    class_or_interface_type(_, A, B),
+    dims(_, B, C).
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
 // the Java specification. The same derivation is handled by
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
@@ -623,11 +623,11 @@ dim($Dimension(a), A, D) :-
     token_left_square_bracket(B, C),
     token_right_square_bracket(C, D).
 
-.decl type_parameter(t: Type, a: number, b: number)
-type_parameter($TypeParameter(mods, id, bound), A, D) :-
-    type_parameter_modifiers?(mods, A, B),
-    type_identifier(id, B, C),
-    type_bound?(bound, C, D).
+.decl type_parameter(id: id, a: number, b: number)
+type_parameter(nil, A, D) :-
+    type_parameter_modifiers?(_, A, B),
+    type_identifier(_, B, C),
+    type_bound?(_, C, D).
 
 .decl type_parameter_modifier(t: Modifier, a: number, b: number)
 type_parameter_modifier($AnnotationModifier(t), A, B) :- annotation(t, A, B).
@@ -635,58 +635,58 @@ type_parameter_modifier($AnnotationModifier(t), A, B) :- annotation(t, A, B).
 .decl type_parameter_modifiers?(t: ModifierList, a: number, b: number)
 ZERO_OR_MORE(type_parameter_modifiers?, type_parameter_modifier)
 
-.decl type_bound(t: TypeBound, a: number, b: number)
-type_bound($TypeBound(t, a), A, D) :-
+.decl type_bound(id: id, a: number, b: number)
+type_bound(nil, A, D) :-
     token_extends(A, B),
-    class_or_interface_type(t, B, C),
-    additional_bounds?(a, C, D).
+    class_or_interface_type(_, B, C),
+    additional_bounds?(_, C, D).
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
 // the Java grammar specification. The same derivation is handled by
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
-.decl type_bound?(t: TypeBoundOptional, a: number, b: number)
-OPTIONAL(type_bound?, type_bound)
+.decl type_bound?(id: id, a: number, b: number)
+ID_OPTIONAL(type_bound?, type_bound)
 
-.decl additional_bound(t: Type, a: number, b: number)
-additional_bound(t, A, C) :-
+.decl additional_bound(id: id, a: number, b: number)
+additional_bound(id, A, C) :-
     token_ampersand(A, B),
-    interface_type(t, B, C).
+    interface_type(id, B, C).
 
-.decl additional_bounds?(t: TypeList, a: number, b: number)
+.decl additional_bounds?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(additional_bounds?, additional_bound)
 
-.decl type_arguments(e: TypeList, a: number, b: number)
+.decl type_arguments(ids: id_list, a: number, b: number)
 type_arguments(e, A, D) :-
     token_less_than(A, B),
     type_argument_list(e, B, C),
     token_greater_than(C, D).
 
-.decl type_arguments?(e: TypeList, a: number, b: number)
+.decl type_arguments?(ids: id_list, a: number, b: number)
 type_arguments?(nil, A, A) :- any_position(A).
 type_arguments?(x, A, B) :- type_arguments(x, A, B).
 
-.decl type_argument_list(e: TypeList, a: number, b: number)
+.decl type_argument_list(ids: id_list, a: number, b: number)
 type_argument_list([x, nil], A, B) :- type_argument(x, A, B).
 type_argument_list([x, xs], A, C) :-
     type_argument(x, A, B),
     type_argument_list(xs, B, C).
 
-.decl type_argument(e: Type, a: number, b: number)
+.decl type_argument(id: id, a: number, b: number)
 type_argument(e, A, B) :- reference_type(e, A, B).
 
-.decl wildcard(e: Type, a: number, b: number)
-wildcard($Wildcard(anns, bounds), A, D) :-
-    annotations?(anns, A, B),
+.decl wildcard(id: id, a: number, b: number)
+wildcard(nil, A, D) :-
+    annotations?(_, A, B),
     token_question_mark(B, C),
-    wildcard_bounds(bounds, C, D).
+    wildcard_bounds(_, C, D).
 
-.decl wildcard_bounds(e: WildcardBounds, a: number, b: number)
-wildcard_bounds($WildcardBoundsExtends(t), A, C) :-
+.decl wildcard_bounds(id: id, a: number, b: number)
+wildcard_bounds(nil, A, C) :-
     token_extends(A, B),
-    reference_type(t, B, C).
-wildcard_bounds($WildcardBoundsSuper(t), A, C) :-
+    reference_type(_, B, C).
+wildcard_bounds(nil, A, C) :-
     token_super(A, B),
-    reference_type(t, B, C).
+    reference_type(_, B, C).
 
 /**
  * Names
@@ -932,35 +932,35 @@ class_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
 class_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 class_modifier(["strictfp_modifier", A, B], A, B) :- token_strictfp(A, B).
 
-.decl type_parameters(s: TypeList, a: number, b: number)
+.decl type_parameters(ids: id_list, a: number, b: number)
 type_parameters(nil, A, A) :- any_position(A).
 type_parameters(l, A, D) :-
     token_less_than(A, B),
     type_parameter_list(l, B, C),
     token_greater_than(C, D).
 
-.decl type_parameter_list(s: TypeList, a: number, b: number)
+.decl type_parameter_list(ids: id_list, a: number, b: number)
 type_parameter_list([e, nil], A, B) :- type_parameter(e, A, B).
 type_parameter_list([e, tail], A, D) :-
     type_parameter(e, A, B),
     token_comma(B, C),
     type_parameter_list(tail, C, D).
 
-.decl superclass(t: Type, a: number, b: number)
-superclass(t, A, C) :-
+.decl superclass(id: id, a: number, b: number)
+superclass(id, A, C) :-
     token_extends(A, B),
-    class_type(t, B, C).
+    class_type(id, B, C).
 
-.decl superclass?(t: TypeOptional, a: number, b: number)
-OPTIONAL(superclass?, superclass)
+.decl superclass?(id: id, a: number, b: number)
+ID_OPTIONAL(superclass?, superclass)
 
-.decl superinterfaces(t: TypeList, a: number, b: number)
-superinterfaces(t, A, C) :-
+.decl superinterfaces(ids: id_list, a: number, b: number)
+superinterfaces(ids, A, C) :-
     token_implements(A, B),
-    interface_type_list(t, B, C).
+    interface_type_list(ids, B, C).
 
 
-.decl interface_type_list(t: TypeList, a: number, b: number)
+.decl interface_type_list(ids: id_list, a: number, b: number)
 interface_type_list([x, nil], A, B) :- interface_type(x, A, B).
 interface_type_list([x, xs], A, D) :-
     interface_type(x, A, B),
@@ -1038,55 +1038,55 @@ variable_declarator_id(nil, A, C) :-
 variable_initializer(id, A, B) :- expression(id, A, B).
 variable_initializer(id, A, B) :- array_initializer(id, A, B).
 
-.decl unann_type(t: Type, a: number, b: number)
-unann_type(e, A, B) :- unann_primitive_type(e, A, B).
-unann_type(e, A, B) :- unann_reference_type(e, A, B).
+.decl unann_type(id: id, a: number, b: number)
+unann_type(id, A, B) :- unann_primitive_type(id, A, B).
+unann_type(id, A, B) :- unann_reference_type(id, A, B).
 
-.decl unann_primitive_type(t: Type, a: number, b: number)
-unann_primitive_type($Boolean, A, B) :- token_boolean(A, B).
+.decl unann_primitive_type(id: id, a: number, b: number)
+unann_primitive_type(["boolean_type", A, B], A, B) :- token_boolean(A, B).
 unann_primitive_type(e, A, B) :- numeric_type(e, A, B).
 
-.decl unann_reference_type(t: Type, a: number, b: number)
-unann_reference_type(t, A, B) :- unann_class_or_interface_type(t, A, B).
-unann_reference_type(t, A, B) :- unann_array_type(t, A, B).
+.decl unann_reference_type(id: id, a: number, b: number)
+unann_reference_type(id, A, B) :- unann_class_or_interface_type(id, A, B).
+unann_reference_type(id, A, B) :- unann_array_type(id, A, B).
 // Note: the derivation of UnannTypeVariable is omitted to handle an ambiguity
 // in the Java specification. The same derivation is handled by
 // UnannClassOrInterfaceType → UnannClassType -> TypeIdentifier
 
-.decl unann_class_or_interface_type(t: Type, a: number, b: number)
-unann_class_or_interface_type(t, A, B) :- unann_class_type(t, A, B).
-unann_class_or_interface_type(t, A, B) :- unann_interface_type(t, A, B).
+.decl unann_class_or_interface_type(id: id, a: number, b: number)
+unann_class_or_interface_type(id, A, B) :- unann_class_type(id, A, B).
+unann_class_or_interface_type(id, A, B) :- unann_interface_type(id, A, B).
 
-.decl unann_class_type(t: Type, a: number, b: number)
-unann_class_type($ClassType(nil, id, args), A, C) :-
-    type_identifier(id, A, B),
-    type_arguments?(args, B, C).
-unann_class_type($ClassType(anns, id, args), A, F) :-
-    package_name(pn, A, B), // TODO: handle this
+.decl unann_class_type(id: id, a: number, b: number)
+unann_class_type(nil, A, C) :-
+    type_identifier(_, A, B),
+    type_arguments?(_, B, C).
+unann_class_type(nil, A, F) :-
+    package_name(_, A, B),
     token_dot(B, C),
-    annotations?(anns, C, D),
-    type_identifier(id, D, E),
-    type_arguments?(args, E, F).
-unann_class_type($ClassType(anns, id, args), A, F) :-
-    unann_class_or_interface_type(pn, A, B), // TODO: handle this
+    annotations?(_, C, D),
+    type_identifier(_, D, E),
+    type_arguments?(_, E, F).
+unann_class_type(nil, A, F) :-
+    unann_class_or_interface_type(_, A, B),
     token_dot(B, C),
-    annotations?(anns, C, D),
-    type_identifier(id, D, E),
-    type_arguments?(args, E, F).
+    annotations?(_, C, D),
+    type_identifier(_, D, E),
+    type_arguments?(_, E, F).
 
-.decl unann_interface_type(t: Type, a: number, b: number)
-unann_interface_type(t, A, B) :- unann_class_type(t, A, B).
+.decl unann_interface_type(id: id, a: number, b: number)
+unann_interface_type(id, A, B) :- unann_class_type(id, A, B).
 
 .decl unann_type_variable(t: Type, a: number, b: number)
 unann_type_variable($TypeVariable(id, nil), A, B) :- type_identifier(id, A, B).
 
-.decl unann_array_type(t: Type, a: number, b: number)
-unann_array_type($ArrayType(t, d), A, C) :-
-    primitive_type(t, A, B),
-    dims(d, B, C).
-unann_array_type($ArrayType(t, d), A, C) :-
-    unann_class_or_interface_type(t, A, B),
-    dims(d, B, C).
+.decl unann_array_type(id: id, a: number, b: number)
+unann_array_type(["array_type", A, C], A, C) :-
+    primitive_type(_, A, B),
+    dims(_, B, C).
+unann_array_type(["array_type", A, C], A, C) :-
+    unann_class_or_interface_type(_, A, B),
+    dims(_, B, C).
 // Note: the derivation of UnannTypeVariable is omitted to handle an ambiguity
 // in the Java specification. The same derivation is handled by
 // UnannClassOrInterfaceType → UnannClassType -> TypeIdentifier
@@ -1118,7 +1118,7 @@ method_header(["method_header", A, D], res, A, D) :-
     throws?(_, C, D).
 
 .decl result(id: id, a: number, b: number)
-//result(t, A, B) :- unann_type(t, A, B).
+result(t, A, B) :- unann_type(t, A, B).
 result(["void_type", A, B], A, B) :- token_void(A, B).
 
 .decl method_declarator(id: id, a: number, b: number)
@@ -1183,24 +1183,24 @@ variable_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 .decl variable_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(variable_modifiers?, variable_modifier)
 
-.decl throws(e: TypeList, a: number, b: number)
-throws(e, A, C) :-
+.decl throws(ids: id_list, a: number, b: number)
+throws(ids, A, C) :-
     token_throws(A, B),
-    exception_type_list(e, B, C).
+    exception_type_list(ids, B, C).
 
-.decl throws?(e: TypeList, a: number, b: number)
+.decl throws?(ids: id_list, a: number, b: number)
 throws?(nil, A, A) :- any_position(A).
 throws?(x,   A, B) :- throws(x, A, B).
 
-.decl exception_type_list(e: TypeList, a: number, b: number)
+.decl exception_type_list(ids: id_list, a: number, b: number)
 exception_type_list([x, nil], A, B) :- exception_type(x, A, B).
 exception_type_list([x, xs], A, D) :-
     exception_type(x, A, B),
     token_comma(B, C),
     exception_type_list(xs, C, D).
 
-.decl exception_type(t: Type, a: number, b: number)
-exception_type(t, A, B) :- class_type(t, A, B).
+.decl exception_type(id: id, a: number, b: number)
+exception_type(id, A, B) :- class_type(id, A, B).
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
 // the Java specification. The same derivation is handled by
 // ClassType → {Annotation} TypeIdentifier
@@ -1486,9 +1486,9 @@ local_variable_declaration(["local_variable_declaration", A, D], mods, declarato
     local_variable_type(_, B, C),
     variable_declarator_list(declarators, C, D).
 
-.decl local_variable_type(t: Type, a: number, b: number)
-local_variable_type(t, A, B) :- unann_type(t, A, B).
-local_variable_type($Var, A, B) :- token_var(A, B).
+.decl local_variable_type(id: id, a: number, b: number)
+local_variable_type(id, A, B) :- unann_type(id, A, B).
+local_variable_type(["var_type", A, B], A, B) :- token_var(A, B).
 
 .decl statement(id: id, a: number, b: number)
 statement(id, A, B) :- statement_without_trailing_substatement(id, A, B).
@@ -1787,13 +1787,13 @@ catch_formal_parameter(nil, A, D) :-
     catch_type(_, B, C),
     variable_declarator_id(_, C, D).
 
-.decl catch_type(t: TypeList, a: number, b: number)
+.decl catch_type(ids: id_list, a: number, b: number)
 catch_type([x, nil], A, B) :- unann_class_type(x, A, B).
 catch_type([x, xs], A, C) :-
     unann_class_type(x, A, B),
     catch_type_tail(xs, B, C).
 
-.decl catch_type_tail(t: TypeList, a: number, b: number)
+.decl catch_type_tail(ids: id_list, a: number, b: number)
 catch_type_tail(nil, A, A) :- any_position(A).
 catch_type_tail([x, xs], A, D) :-
     token_vertical_bar(A, B),
@@ -1881,7 +1881,7 @@ class_or_interface_type_to_instantiate(nil, A, D) :-
     // TODO ...
     type_arguments_or_diamond(_, C, D).
 
-.decl type_arguments_or_diamond(e: TypeList, a: number, b: number)
+.decl type_arguments_or_diamond(ids: id_list, a: number, b: number)
 type_arguments_or_diamond(nil, A, C) :-
     token_less_than(A, B),
     token_greater_than(B, C).
@@ -2069,9 +2069,9 @@ lambda_parameter(nil, A, D) :-
 lambda_parameter(nil, A, B) :-
     variable_arity_parameter(_, A, B).
 
-.decl lambda_parameter_type(t: Type, a: number, b: number)
+.decl lambda_parameter_type(id: id, a: number, b: number)
 lambda_parameter_type(t, A, B) :- unann_type(t, A, B).
-lambda_parameter_type($Var, A, B) :- token_var(A, B).
+lambda_parameter_type(["var_type", A, B], A, B) :- token_var(A, B).
 
 .decl lambda_body(e: LambdaBody, a: number, b: number)
 //lambda_body($LambdaBodyExpr(e), A, B) :- expression(e, A, B).
