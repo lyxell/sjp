@@ -496,11 +496,11 @@ any_position(n) :- num_tokens(n).
 type_identifier(t, A, B) :- token_identifier(t, A, B).
 // TODO not var or yield
 
-.decl identifier(s: Identifier, a: number, b: number)
-identifier(t, A, B) :- token_identifier(t, A, B).
+.decl identifier(id: id, a: number, b: number)
+identifier(["identifier", A, B], A, B) :- token_identifier(t, A, B).
 
-.decl identifier?(s: IdentifierOptional, a: number, b: number)
-OPTIONAL(identifier?, identifier)
+.decl identifier?(id: id, a: number, b: number)
+ID_OPTIONAL(identifier?, identifier)
 
 .decl literal(id: id, a: number, b: number)
 literal(["integer_literal", A, B], A, B) :- token_literal_integer(_, A, B).
@@ -567,8 +567,8 @@ class_type(nil, A, F) :-
 interface_type(t, A, B) :- class_type(t, A, B).
 
 .decl type_variable(t: Type, a: number, b: number)
-type_variable($TypeVariable(id, a), A, B) :-
-    annotations?(a, A, B),
+type_variable($TypeVariable(id, nil), A, B) :-
+    annotations?(_, A, B),
     type_identifier(id, A, B).
 
 .decl array_type(id: id, a: number, b: number)
@@ -589,8 +589,8 @@ dims?(nil, A, A) :- any_position(A).
 dims?(x,   A, B) :- dims(x, A, B).
 
 .decl dim(t: Dimension, a: number, b: number)
-dim($Dimension(a), A, D) :-
-    annotations?(a, A, B),
+dim($Dimension(nil), A, D) :-
+    annotations?(_, A, B),
     token_left_square_bracket(B, C),
     token_right_square_bracket(C, D).
 
@@ -600,10 +600,10 @@ type_parameter(nil, A, D) :-
     type_identifier(_, B, C),
     type_bound?(_, C, D).
 
-.decl type_parameter_modifier(t: Modifier, a: number, b: number)
-type_parameter_modifier($AnnotationModifier(t), A, B) :- annotation(t, A, B).
+.decl type_parameter_modifier(id: id, a: number, b: number)
+type_parameter_modifier(["annotation_modifier", A, B], A, B) :- annotation(t, A, B).
 
-.decl type_parameter_modifiers?(t: ModifierList, a: number, b: number)
+.decl type_parameter_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(type_parameter_modifiers?, type_parameter_modifier)
 
 .decl type_bound(id: id, a: number, b: number)
@@ -664,14 +664,14 @@ wildcard_bounds(nil, A, C) :-
  * See §6 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl module_name(s: IdentifierList, a: number, b: number)
+.decl module_name(ids: id_list, a: number, b: number)
 module_name([x, nil], A, B) :- identifier(x, A, B).
 module_name([x, xs], A, D) :-
     module_name(xs, A, B),
     token_dot(B, C),
     identifier(x, C, D).
 
-.decl package_name(s: IdentifierList, a: number, b: number)
+.decl package_name(ids: id_list, a: number, b: number)
 package_name([x, nil], A, B) :- identifier(x, A, B).
 package_name([x, xs], A, D) :-
     package_name(xs, A, B),
@@ -749,17 +749,17 @@ package_declaration(["package_declaration", A, E], A, E) :-
 .decl package_declaration?(id: id, a: number, b: number)
 ID_OPTIONAL(package_declaration?, package_declaration)
 
-.decl package_declaration_identifiers(e: IdentifierList, a: number, b: number)
+.decl package_declaration_identifiers(id: id_list, a: number, b: number)
 package_declaration_identifiers([x, nil], A, B) :- identifier(x, A, B).
 package_declaration_identifiers([x, xs], A, D) :-
     identifier(x, A, B),
     token_dot(B, C),
     package_declaration_identifiers(xs, C, D).
 
-.decl package_modifier(e: Modifier, a: number, b: number)
-package_modifier($AnnotationModifier(e), A, B) :- annotation(e, A, B).
+.decl package_modifier(id: id, a: number, b: number)
+package_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
 
-.decl package_modifiers?(e: ModifierList, a: number, b: number)
+.decl package_modifiers?(id: id_list, a: number, b: number)
 ZERO_OR_MORE(package_modifiers?, package_modifier)
 
 .decl import_declaration(id: id, a: number, b: number)
@@ -813,28 +813,28 @@ ZERO_OR_MORE(type_declarations?, type_declaration)
 .decl module_declaration(s: Declaration, a: number, b: number)
 
 .decl module_directive(s: ModuleDirective, a: number, b: number)
-module_directive($ModuleDirectiveRequires(mods, ids), A, E) :-
+module_directive($ModuleDirectiveRequires(nil, nil), A, E) :-
     token_requires(A, B),
-    requires_modifiers?(mods, B, C),
-    module_name(ids, C, D),
+    requires_modifiers?(_, B, C),
+    module_name(_, C, D),
     token_semicolon(D, E).
-module_directive($ModuleDirectiveExports(ids, nil), A, D) :-
+module_directive($ModuleDirectiveExports(nil, nil), A, D) :-
     token_exports(A, B),
-    package_name(ids, B, C),
+    package_name(_, B, C),
     token_semicolon(C, D).
-module_directive($ModuleDirectiveExports(ids, to), A, F) :-
+module_directive($ModuleDirectiveExports(nil, to), A, F) :-
     token_exports(A, B),
-    package_name(ids, B, C),
+    package_name(_, B, C),
     token_to(C, D),
     module_directive_module_name_list(to, D, E),
     token_semicolon(E, F).
-module_directive($ModuleDirectiveOpens(ids, nil), A, D) :-
+module_directive($ModuleDirectiveOpens(nil, nil), A, D) :-
     token_opens(A, B),
-    package_name(ids, B, C),
+    package_name(_, B, C),
     token_semicolon(C, D).
-module_directive($ModuleDirectiveOpens(ids, to), A, F) :-
+module_directive($ModuleDirectiveOpens(nil, to), A, F) :-
     token_opens(A, B),
-    package_name(ids, B, C),
+    package_name(_, B, C),
     token_to(C, D),
     module_directive_module_name_list(to, D, E),
     token_semicolon(E, F).
@@ -853,11 +853,11 @@ module_directive($ModuleDirectiveProvides(t, ts), A, F) :-
 ZERO_OR_MORE(module_directives?, module_directive)
 
 .decl module_directive_module_name_list(s: IdentifierListList, a: number, b: number)
-module_directive_module_name_list([x, nil], A, B) :- module_name(x, A, B).
-module_directive_module_name_list([x, xs], A, D) :-
-    module_name(x, A, B),
-    token_comma(B, C),
-    module_directive_module_name_list(xs, C, D).
+//module_directive_module_name_list([x, nil], A, B) :- module_name(x, A, B).
+//module_directive_module_name_list([x, xs], A, D) :-
+//    module_name(x, A, B),
+//    token_comma(B, C),
+//    module_directive_module_name_list(xs, C, D).
 
 .decl module_directive_type_name_list(s: IdentifierListList, a: number, b: number)
 module_directive_type_name_list([x, nil], A, B) :- type_name(x, A, B).
@@ -971,17 +971,17 @@ field_declaration(["field_declaration", A, E], A, E) :-
     variable_declarator_list(_, C, D),
     token_semicolon(D, E).
 
-.decl field_modifier(s: Modifier, a: number, b: number)
-field_modifier($AnnotationModifier(a),  A, B) :- annotation(a, A, B).
-field_modifier($PublicModifier,                 A, B) :- token_public(A, B).
-field_modifier($ProtectedModifier,              A, B) :- token_protected(A, B).
-field_modifier($PrivateModifier,                A, B) :- token_private(A, B).
-field_modifier($StaticModifier,                 A, B) :- token_static(A, B).
-field_modifier($FinalModifier,                  A, B) :- token_final(A, B).
-field_modifier($TransientModifier,              A, B) :- token_transient(A, B).
-field_modifier($VolatileModifier,               A, B) :- token_volatile(A, B).
+.decl field_modifier(id: id, a: number, b: number)
+field_modifier(["annotation_modifier", A, B],  A, B) :- annotation(a, A, B).
+field_modifier(["public_modifier", A, B],      A, B) :- token_public(A, B).
+field_modifier(["protected_modifier", A, B],              A, B) :- token_protected(A, B).
+field_modifier(["private_modifier", A, B],                A, B) :- token_private(A, B).
+field_modifier(["static_modifier", A, B],                 A, B) :- token_static(A, B).
+field_modifier(["final_modifier", A, B],                  A, B) :- token_final(A, B).
+field_modifier(["transient_modifier", A, B],              A, B) :- token_transient(A, B).
+field_modifier(["volatile_modifier", A, B],               A, B) :- token_volatile(A, B).
 
-.decl field_modifiers?(s: ModifierList, a: number, b: number)
+.decl field_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(field_modifiers?, field_modifier)
 
 .decl variable_declarator_list(id: id_list, a: number, b: number)
@@ -1108,16 +1108,16 @@ method_declarator(nil, A, F) :-
     token_right_paren(D, E),
     dims?(_, E, F).
 
-.decl receiver_parameter(s: ReceiverParameter, a: number, b: number)
-receiver_parameter($ReceiverParameter(anns), A, F) :-
-    annotations?(anns, A, B),
-    unann_type(t, B, C),
-    identifier(id, C, D),
+.decl receiver_parameter(id: id, a: number, b: number)
+receiver_parameter(nil, A, F) :-
+    annotations?(nil, A, B),
+    unann_type(_, B, C),
+    identifier(_, C, D),
     token_dot(D, E),
     token_this(E, F).
-receiver_parameter($ReceiverParameter(anns), A, D) :-
-    annotations?(anns, A, B),
-    unann_type(t, B, C),
+receiver_parameter(nil, A, D) :-
+    annotations?(_, A, B),
+    unann_type(_, B, C),
     token_this(C, D).
 // TODO, fill $ReceiverParameter
 
@@ -1193,11 +1193,11 @@ static_initializer(["static_initializer", A, C], A, C) :-
 
 .decl constructor_declaration(id: id, a: number, b: number)
 
-.decl constructor_modifier(s: Modifier, a: number, b: number)
-constructor_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
-constructor_modifier($PublicModifier, A, B) :- token_public(A, B).
-constructor_modifier($ProtectedModifier, A, B) :- token_protected(A, B).
-constructor_modifier($PrivateModifier, A, B) :- token_private(A, B).
+.decl constructor_modifier(id: id, a: number, b: number)
+constructor_modifier(["annotation_modifier", A, B], A, B) :- annotation(a, A, B).
+constructor_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
+constructor_modifier(["protected_modifier", A, B], A, B) :- token_protected(A, B).
+constructor_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
 
 .decl constructor_declarator(e: ConstructorDeclarator, a: number, b: number)
 
@@ -1210,29 +1210,29 @@ simple_type_name(e, A, B) :- type_identifier(e, A, B).
 
 .decl enum_declaration(id: id, a: number, b: number)
 
-.decl enum_body(s: EnumBody, a: number, b: number)
-enum_body($EnumBody(con, nil), A, F) :-
+.decl enum_body(id: id, a: number, b: number)
+enum_body(nil, A, F) :-
     token_left_curly_bracket(A, B),
-    enum_constant_list?(con, B, C),
+    enum_constant_list?(_, B, C),
     token_comma?(C, D),
     enum_body_declarations?(_, D, E),
     token_right_curly_bracket(E, F).
 
-.decl enum_constant_list(e: EnumConstantList, a: number, b: number)
+.decl enum_constant_list(id: id_list, a: number, b: number)
 enum_constant_list([x, nil], A, B) :- enum_constant(x, A, B).
 enum_constant_list([x, xs], A, D) :-
     enum_constant(x, A, B),
     token_comma(B, C),
     enum_constant_list(xs, C, D).
 
-.decl enum_constant_list?(e: EnumConstantList, a: number, b: number)
+.decl enum_constant_list?(id: id_list, a: number, b: number)
 enum_constant_list?(nil, A, A) :- any_position(A).
 enum_constant_list?(x, A, B) :- enum_constant_list(x, A, B).
 
-.decl enum_constant(e: EnumConstant, a: number, b: number)
-enum_constant($EnumConstant(mods, id, nil), A, D) :-
-    enum_constant_modifiers?(mods, A, B),
-    identifier(id, B, C),
+.decl enum_constant(id: id, a: number, b: number)
+enum_constant(nil, A, D) :-
+    enum_constant_modifiers?(_, A, B),
+    identifier(_, B, C),
     class_body?(_, C, D).
 //enum_constant($EnumConstant(mods, id, args, nil), A, G) :-
 //    enum_constant_modifiers?(mods, A, B),
@@ -1242,10 +1242,10 @@ enum_constant($EnumConstant(mods, id, nil), A, D) :-
 //    token_right_paren(E, F),
 //    class_body?(_, F, G).
 
-.decl enum_constant_modifier(e: Modifier, a: number, b: number)
-enum_constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
+.decl enum_constant_modifier(id: id, a: number, b: number)
+enum_constant_modifier(["annotation_modifier", A, B], A, B) :- annotation(a, A, B).
 
-.decl enum_constant_modifiers?(e: ModifierList, a: number, b: number)
+.decl enum_constant_modifiers?(id: id_list, a: number, b: number)
 ZERO_OR_MORE(enum_constant_modifiers?, enum_constant_modifier)
 
 .decl enum_body_declarations(ids: id_list, a: number, b: number)
@@ -1287,22 +1287,22 @@ ZERO_OR_MORE(interface_modifiers?, interface_modifier)
 
 .decl constant_declaration(id: id, a: number, b: number)
 
-.decl constant_modifier(m: Modifier, a: number, b: number)
-constant_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
-constant_modifier($PublicModifier, A, B) :- token_public(A, B).
-constant_modifier($StaticModifier, A, B) :- token_static(A, B).
-constant_modifier($FinalModifier, A, B) :- token_final(A, B).
+.decl constant_modifier(id: id, a: number, b: number)
+constant_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
+constant_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
+constant_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
+constant_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 
 .decl interface_method_declaration(a: number, b: number)
 
-.decl interface_method_modifier(m: Modifier, a: number, b: number)
-interface_method_modifier($AnnotationModifier(a), A, B) :- annotation(a, A, B).
-interface_method_modifier($PublicModifier, A, B) :- token_public(A, B).
-interface_method_modifier($PrivateModifier, A, B) :- token_private(A, B).
-interface_method_modifier($AbstractModifier, A, B) :- token_abstract(A, B).
-interface_method_modifier($DefaultModifier, A, B) :- token_default(A, B).
-interface_method_modifier($StaticModifier, A, B) :- token_static(A, B).
-interface_method_modifier($StrictfpModifier, A, B) :- token_strictfp(A, B).
+.decl interface_method_modifier(id: id, a: number, b: number)
+interface_method_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
+interface_method_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
+interface_method_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
+interface_method_modifier(["abstract_modifier", A, B], A, B) :- token_abstract(A, B).
+interface_method_modifier(["default_modifier", A, B], A, B) :- token_default(A, B).
+interface_method_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
+interface_method_modifier(["strictfp_modifier", A, B], A, B) :- token_strictfp(A, B).
 
 .decl annotation_type_declaration(id: id, a: number, b: number)
 annotation_type_declaration(["annotation_type_declaration", A, F], A, F) :-
@@ -1343,36 +1343,36 @@ default_value(e, A, C) :-
     token_default(A, B),
     element_value(e, B, C).
 
-.decl annotation(e: Annotation, a: number, b: number)
+.decl annotation(id: id, a: number, b: number)
 annotation(e, A, B) :- normal_annotation(e, A, B).
 
-.decl annotations?(e: AnnotationList, a: number, b: number)
+.decl annotations?(id: id_list, a: number, b: number)
 ZERO_OR_MORE(annotations?, annotation)
 
-.decl normal_annotation(e: Annotation, a: number, b: number)
-normal_annotation($Annotation(name, pairs), A, F) :-
+.decl normal_annotation(id: id, a: number, b: number)
+normal_annotation(nil, A, F) :-
     token_at(A, B),
-    type_name(name, B, C),
+    type_name(_, B, C),
     token_left_paren(C, D),
-    element_value_pair_list?(pairs, D, E),
+    element_value_pair_list?(_, D, E),
     token_right_paren(E, F).
 
-.decl element_value_pair_list(e: ElementValuePairList, a: number, b: number)
+.decl element_value_pair_list(id: id_list, a: number, b: number)
 element_value_pair_list([x, nil], A, B) :- element_value_pair(x, A, B).
 element_value_pair_list([x, xs], A, D) :-
     element_value_pair(x, A, B),
     token_comma(B, C),
     element_value_pair_list(xs, C, D).
 
-.decl element_value_pair_list?(e: ElementValuePairList, a: number, b: number)
+.decl element_value_pair_list?(id: id_list, a: number, b: number)
 element_value_pair_list?(nil, A, A) :- any_position(A).
 element_value_pair_list?(x, A, B) :- element_value_pair_list(x, A, B).
 
-.decl element_value_pair(e: ElementValuePair, a: number, b: number)
-element_value_pair($ElementValuePair(id, val), A, D) :-
-    identifier(id, A, B),
+.decl element_value_pair(id: id, a: number, b: number)
+element_value_pair(nil, A, D) :-
+    identifier(_, A, B),
     token_equal_sign(B, C),
-    element_value(val, C, D).
+    element_value(_, C, D).
 
 .decl element_value(e: ElementValue, a: number, b: number)
 //element_value($ElementValueExpression(e), A, B) :- conditional_expression(e, A, B).
