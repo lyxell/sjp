@@ -257,7 +257,6 @@ any_position(n) :- num_tokens(n).
 
 .decl type_identifier(id: id, a: number, b: number)
 type_identifier(["type_identifier", A, B], A, B) :- token_identifier(_, A, B).
-// TODO not var or yield
 
 .decl identifier(id: id, a: number, b: number)
 identifier(["identifier", A, B], A, B) :- token_identifier(_, A, B).
@@ -527,7 +526,7 @@ package_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
 ZERO_OR_MORE(package_modifiers?, package_modifier)
 
 .decl import_declaration(id: id, a: number, b: number)
-import_declaration(id, A, B) :- single_type_import_declaration(id, A, B).
+import_declaration(id, A, B) :- single_type_import_declaration(id, _, A, B).
 import_declaration(id, A, B) :- type_import_on_demand_declaration(id, A, B).
 import_declaration(id, A, B) :- single_static_import_declaration(id, A, B).
 import_declaration(id, A, B) :- static_import_on_demand_declaration(id, A, B).
@@ -535,11 +534,11 @@ import_declaration(id, A, B) :- static_import_on_demand_declaration(id, A, B).
 .decl import_declarations?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(import_declarations?, import_declaration)
 
-.decl single_type_import_declaration(id: id, a: number, b: number)
-single_type_import_declaration(["single_type_import_declaration", A, D],
+.decl single_type_import_declaration(id: id, name: id, a: number, b: number)
+single_type_import_declaration(["single_type_import_declaration", A, D], name,
                                A, D) :-
     token_import(A, B),
-    type_name(_, B, C),
+    type_name(name, B, C),
     token_semicolon(C, D).
 
 .decl type_import_on_demand_declaration(id: id, a: number, b: number)
@@ -1632,17 +1631,18 @@ primary_no_new_array(id, A, B) :- method_reference(id, A, B).
 
 .decl class_instance_creation_expression(id: id, a: number, b: number)
 class_instance_creation_expression(id, A, B) :-
-    unqualified_class_instance_creation_expression(id, A, B).
+    unqualified_class_instance_creation_expression(id, _, A, B).
 // TODO ...
 
 .decl unqualified_class_instance_creation_expression(id: id,
+                                                     args: id,
                                                      a: number, b: number)
-unqualified_class_instance_creation_expression(nil, A, H) :-
+unqualified_class_instance_creation_expression(["unqualified_class_instance_creation_expression", A, H], args, A, H) :-
     token_new(A, B),
     type_arguments?(_, B, C),
     class_or_interface_type_to_instantiate(_, C, D),
     token_left_paren(D, E),
-    argument_list?(_, E, F),
+    argument_list?(args, E, F),
     token_right_paren(F, G),
     class_body?(_, G, H).
 
@@ -1678,7 +1678,7 @@ array_access(nil, A, E) :-
     expression(_, C, D),
     token_right_square_bracket(D, E).
 
-.decl method_invocation(id: id, arguments: id_list, a: number, b: number)
+.decl method_invocation(id: id, arguments: id, a: number, b: number)
 method_invocation(["method_invocation", A, E], args, A, E) :-
     method_name(_, A, B),
     token_left_paren(B, C),
@@ -1727,16 +1727,16 @@ method_invocation(["method_invocation", A, H], args, A, J) :-
     argument_list?(args, H, I),
     token_right_paren(I, J).
 
-.decl argument_list?(ids: id_list, a: number, b: number)
+.decl argument_list?(id: id, a: number, b: number)
 argument_list?(nil, A, A) :- any_position(A).
-argument_list?(e, A, B) :- argument_list(e, A, B).
+argument_list?(id, A, B) :- argument_list(id, _, A, B).
 
-.decl argument_list(ids: id_list, a: number, b: number)
-argument_list([x, nil], A, B) :- expression(x, A, B).
-argument_list([x, xs], A, D) :-
+.decl argument_list(id: id, children: id_list, a: number, b: number)
+argument_list(["argument_list", A, B], [x, nil], A, B) :- expression(x, A, B).
+argument_list(["argument_list", A, D], [x, xs], A, D) :-
     expression(x, A, B),
     token_comma(B, C),
-    argument_list(xs, C, D).
+    argument_list(_, xs, C, D).
 
 .decl method_reference(id: id, a: number, b: number)
 method_reference(["method_reference", A, F], A, F) :-
@@ -2130,6 +2130,10 @@ in_tree(id) :- in_tree_list([id, _]).
 .decl in_tree_list(ids: id_list)
 in_tree_list(tail) :- in_tree_list([_, tail]).
 
+in_tree(name) :-
+    single_type_import_declaration(id, name, _, _),
+    in_tree(id).
+
 in_tree_list(mods),
 in_tree(header),
 in_tree(body) :-
@@ -2162,7 +2166,7 @@ in_tree_list(decls) :-
     ordinary_compilation_unit(unit, package_decl, imports, decls, _, _),
     in_tree(unit).
 
-in_tree_list(args) :-
+in_tree(args) :-
     method_invocation(id, args, _, _),
     in_tree(id).
 
@@ -2179,6 +2183,10 @@ in_tree_list(mods),
 in_tree(type),
 in_tree_list(declarators) :-
     local_variable_declaration(id, mods, type, declarators, _, _),
+    in_tree(id).
+
+in_tree_list(children) :-
+    argument_list(id, children, _, _),
     in_tree(id).
 
 .output token
