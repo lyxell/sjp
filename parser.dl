@@ -31,11 +31,6 @@
 .type id = [type: symbol, from: number, to: number]
 .type id_list = [head: id, tail: id_list]
 
-.type Identifier <: symbol
-.type IdentifierList = [head: Identifier, tail: IdentifierList]
-.type IdentifierListList = [head: IdentifierList, tail: IdentifierListList]
-.type IdentifierOptional = [id: Identifier]
-
 /**
  * Tokens
  **************************************************************************/
@@ -437,10 +432,10 @@ wildcard_bounds(nil, A, C) :-
  * See §6 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl module_name(ids: id_list, a: number, b: number)
-module_name([x, nil], A, B) :- identifier(x, A, B).
-module_name([x, xs], A, D) :-
-    module_name(xs, A, B),
+.decl module_name(id: id, children: id_list, a: number, b: number)
+module_name(["module_name", A, B], [x, nil], A, B) :- identifier(x, A, B).
+module_name(["module_name", A, D], [x, xs], A, D) :-
+    module_name(_, xs, A, B),
     token_dot(B, C),
     identifier(x, C, D).
 
@@ -591,7 +586,7 @@ ZERO_OR_MORE(type_declarations?, type_declaration)
 module_directive(["module_directive", A, E], A, E) :-
     token_requires(A, B),
     requires_modifiers?(_, B, C),
-    module_name(_, C, D),
+    module_name(_, _, C, D),
     token_semicolon(D, E).
 module_directive(["module_directive", A, D], A, D) :-
     token_exports(A, B),
@@ -601,7 +596,7 @@ module_directive(["module_directive", A, F], A, F) :-
     token_exports(A, B),
     package_name(_, B, C),
     token_to(C, D),
-    module_directive_module_name_list(to, D, E),
+    module_directive_module_name_list(_, _, D, E),
     token_semicolon(E, F).
 module_directive(["module_directive", A, D], A, D) :-
     token_opens(A, B),
@@ -611,7 +606,7 @@ module_directive(["module_directive", A, F], A, F) :-
     token_opens(A, B),
     package_name(_, B, C),
     token_to(C, D),
-    module_directive_module_name_list(to, D, E),
+    module_directive_module_name_list(_, _, D, E),
     token_semicolon(E, F).
 module_directive(["module_directive", A, D], A, D) :-
     token_uses(A, B),
@@ -621,27 +616,32 @@ module_directive(["module_directive", A, F], A, F) :-
     token_provides(A, B),
     type_name(_, B, C),
     token_with(C, D),
-    module_directive_type_name_list(_, D, E),
+    module_directive_type_name_list(_, _, D, E),
     token_semicolon(E, F).
 
 .decl module_directives?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(module_directives?, module_directive)
 
-.decl module_directive_module_name_list(s: IdentifierListList, a: number,
-                                        b: number)
-//module_directive_module_name_list([x, nil], A, B) :- module_name(x, A, B).
-//module_directive_module_name_list([x, xs], A, D) :-
-//    module_name(x, A, B),
-//    token_comma(B, C),
-//    module_directive_module_name_list(xs, C, D).
+.decl module_directive_module_name_list(id: id, children: id_list,
+                                        a: number, b: number)
+module_directive_module_name_list(["module_directive_module_name_list", A, B],
+                                  [x, nil], A, B) :-
+    module_name(x, _, A, B).
+module_directive_module_name_list(["module_directive_module_name_list", A, B],
+                                  [x, xs], A, D) :-
+    module_name(x, _, A, B),
+    token_comma(B, C),
+    module_directive_module_name_list(_, xs, C, D).
 
-.decl module_directive_type_name_list(s: IdentifierListList, a: number,
-                                      b: number)
-//module_directive_type_name_list([x, nil], A, B) :- type_name(x, A, B).
-//module_directive_type_name_list([x, xs], A, B) :-
-//    type_name(x, A, B),
-//    token_comma(B, C),
-//    module_directive_type_name_list(xs, C, D).
+.decl module_directive_type_name_list(id: id, children: id_list,
+                                      a: number, b: number)
+module_directive_type_name_list(["module_directive_type_name_list", A, B],
+                                [x, nil], A, B) :- type_name(x, A, B).
+module_directive_type_name_list(["module_directive_type_name_list", A, D],
+                                [x, xs], A, D) :-
+    type_name(x, A, B),
+    token_comma(B, C),
+    module_directive_type_name_list(_, xs, C, D).
 
 .decl requires_modifier(id: id, a: number, b: number)
 requires_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
@@ -1241,15 +1241,15 @@ block_statement(id, A, B) :- statement(id, A, B).
 
 .decl local_variable_declaration_statement(id: id, a: number, b: number)
 local_variable_declaration_statement(id, A, C) :-
-    local_variable_declaration(id, _, _, A, B),
+    local_variable_declaration(id, _, _, _, A, B),
     token_semicolon(B, C).
 
-.decl local_variable_declaration(id: id, mods: id_list,
+.decl local_variable_declaration(id: id, mods: id_list, type: id,
                                  declarators: id_list, a: number, b: number)
-local_variable_declaration(["local_variable_declaration", A, D], mods,
+local_variable_declaration(["local_variable_declaration", A, D], mods, type,
                            declarators, A, D) :-
     variable_modifiers?(mods, A, B),
-    local_variable_type(_, B, C),
+    local_variable_type(type, B, C),
     variable_declarator_list(declarators, C, D).
 
 .decl local_variable_type(id: id, a: number, b: number)
@@ -1472,7 +1472,7 @@ basic_for_statement(["for_statement", A, J], A, J) :-
 
 .decl for_init(id: id, a: number, b: number)
 for_init(["for_init", A, B], A, B) :- statement_expression_list(_, A, B).
-for_init(["for_init", A, B], A, B) :- local_variable_declaration(_, _, _, A, B).
+for_init(["for_init", A, B], A, B) :- local_variable_declaration(_, _, _, _, A, B).
 
 .decl for_init?(id: id, a: number, b: number)
 ID_OPTIONAL(for_init?, for_init)
@@ -2178,8 +2178,9 @@ in_tree_list(mods) :-
     in_tree(decl).
 
 in_tree_list(mods),
+in_tree(type),
 in_tree_list(declarators) :-
-    local_variable_declaration(id, mods, declarators, _, _),
+    local_variable_declaration(id, mods, type, declarators, _, _),
     in_tree(id).
 
 .output token
