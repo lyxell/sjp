@@ -26,8 +26,6 @@
  * Types
  **************************************************************************/
 
-/* Identifiers */
-
 .type id = [type: symbol, from: number, to: number]
 .type id_list = [head: id, tail: id_list]
 
