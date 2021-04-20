@@ -6,3 +6,4 @@ parser.cpp
 profiler_html
 *.o
 example
+sjp.cpp

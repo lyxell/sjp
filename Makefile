@@ -4,10 +4,7 @@ CXXFLAGS=-std=c++17 -O2 -D__EMBEDDED_SOUFFLE__
 
 all: sjp.o parser.o
 
-parser.o: parser.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-sjp.o: sjp.cpp
+%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 parser.cpp: parser.dl
@@ -26,4 +23,4 @@ example: sjp.o parser.o
 .PHONY: clean
 
 clean:
-	rm -rf sjp.o parser.o
+	rm -rf sjp.o parser.o example sjp.cpp parser.cpp
