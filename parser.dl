@@ -160,10 +160,6 @@
                        | LambdaParametersIdentifierList {ids: IdentifierList}
                        | LambdaParametersLambdaParameterList {params: LambdaParameterList}
 
-.type LeftHandSide = LeftHandSideName { e: IdentifierList }
-                   | LeftHandSideFieldAccess {}
-                   | LeftHandSideArrayAccess {}
-
 .type MethodInvocationSubject =
       MethodInvocationIdentifier { id: Identifier }
     | MethodInvocationIdentifiers { ids: IdentifierList, args: TypeList, id: Identifier}
@@ -182,8 +178,6 @@
 
 .type Statement
 
-.type StatementList = [head: Statement, tail: StatementList]
-
 .type Resource = ResourceInitialization {mods: ModifierList,
                                          type: Type,
                                          id: Identifier}
@@ -193,14 +187,6 @@
 
 .type ForInit = ForInit {}
 .type ForInitOptional = [e: ForInit]
-
-.type CatchFormalParameter =
-      CatchFormalParameter {mods: ModifierList, types: TypeList, decl: VariableDeclaratorId}
-.type CatchClause = CatchClause {param: CatchFormalParameter, b: Statement}
-.type CatchClauseList = [
-    head: CatchClause,
-    tail: CatchClauseList
-]
 
 .type ForUpdate = ForUpdate {}
 .type ForUpdateOptional = [e: ForUpdate]
@@ -221,23 +207,8 @@
  * Types
  */
 
-.type Type = TypeParameter  {modifiers: ModifierList,
-                             id: Identifier,
-                             bound: TypeBoundOptional}
-           | Boolean        {}
-           | Byte           {}
-           | Short          {}
-           | Int            {}
-           | Long           {}
-           | Var            {}
-           | Void           {}
-           | TypeVariable   {id: Identifier, annotations: AnnotationList}
-           | Char           {}
-           | Float          {}
-           | ArrayType      {type: Type, dims: DimensionList}
-           | Double         {}
-           | Wildcard       {annotations: AnnotationList, bounds: WildcardBounds}
-           | ClassType      {annotations: AnnotationList, id: Identifier, typeargs: TypeList}
+.type Type = TypeVariable   {id: Identifier, annotations: AnnotationList}
+
 .type TypeList = [head: Type, tail: TypeList]
 .type TypeOptional = [t: Type]
 .type TypeBound = TypeBound {t: Type, additional: TypeList}
@@ -1767,13 +1738,13 @@ throw_statement(["throw_statement", A, D], A, D) :-
 //    catches(c, C, D).
 // TODO ...
 
-.decl catches(e: CatchClauseList, a: number, b: number)
+.decl catches(ids: id_list, a: number, b: number)
 catches([x, nil], A, B) :- catch_clause(x, A, B).
 catches([x, xs], A, C) :-
     catch_clause(x, A, B),
     catches(xs, B, C).
 
-.decl catch_clause(e: CatchClause, a: number, b: number)
+.decl catch_clause(id: id, a: number, b: number)
 //catch_clause($CatchClause(param, b), A, F) :-
 //    token_catch(A, B),
 //    token_left_paren(B, C),
