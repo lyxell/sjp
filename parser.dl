@@ -1741,19 +1741,19 @@ argument_list([x, xs], A, D) :-
     argument_list(xs, C, D).
 
 .decl method_reference(id: id, a: number, b: number)
-method_reference(nil, A, F) :-
+method_reference(["method_reference", A, F], A, F) :-
     expression_name(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
     identifier(_, E, F).
-method_reference(nil, A, F) :-
+method_reference(["method_reference", A, F], A, F) :-
     primary(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
     identifier(_, E, F).
-method_reference(nil, A, F) :-
+method_reference(["method_reference", A, F], A, F) :-
     reference_type(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
@@ -1762,22 +1762,22 @@ method_reference(nil, A, F) :-
 // TODO ...
 
 .decl array_creation_expression(id: id, a: number, b: number)
-array_creation_expression(nil, A, E) :-
+array_creation_expression(["array_creation_expression", A, E], A, E) :-
     token_new(A, B),
     primitive_type(_, B, C),
     dim_exprs(_, C, D),
     dims?(_, D, E).
-array_creation_expression(nil, A, E) :-
+array_creation_expression(["array_creation_expression", A, E], A, E) :-
     token_new(A, B),
     class_or_interface_type(_, B, C),
     dim_exprs(_, C, D),
     dims?(_, D, E).
-array_creation_expression(nil, A, E) :-
+array_creation_expression(["array_creation_expression", A, E], A, E) :-
     token_new(A, B),
     primitive_type(_, B, C),
     dims(_, C, D),
     array_initializer(_, D, E).
-array_creation_expression(nil, A, E) :-
+array_creation_expression(["array_creation_expression", A, E], A, E) :-
     token_new(A, B),
     class_or_interface_type(_, B, C),
     dims(_, C, D),
