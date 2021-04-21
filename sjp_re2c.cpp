@@ -38,6 +38,11 @@ namespace sjp {
         assert(program != NULL);
     }
 
+    parser::parser(const char* program_name) {
+        program = souffle::ProgramFactory::newInstance(program_name);
+        assert(program != NULL);
+    }
+
     void parser::add_file(const char* filename) {
         std::ifstream t(filename);
         add_string(filename,
