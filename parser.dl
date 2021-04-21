@@ -1014,13 +1014,6 @@ enum_constant(nil, A, D) :-
     enum_constant_modifiers?(_, A, B),
     identifier(_, B, C),
     class_body?(_, C, D).
-//enum_constant($EnumConstant(mods, id, args, nil), A, G) :-
-//    enum_constant_modifiers?(mods, A, B),
-//    identifier(id, B, C),
-//    token_left_paren(C, D),
-//    argument_list?(args, D, E),
-//    token_right_paren(E, F),
-//    class_body?(_, F, G).
 
 .decl enum_constant_modifier(id: id, a: number, b: number)
 enum_constant_modifier(["annotation_modifier", A, B], A, B) :-
@@ -1375,27 +1368,10 @@ switch_block([rule, rules], A, E) :-
 ZERO_OR_MORE(switch_rules?, switch_rule)
 
 .decl switch_rule(id: id, a: number, b: number)
-//switch_rule($SwitchRuleExpr(label, expr), A, E) :-
-//    switch_label(label, A, B),
-//    token_arrow(B, C),
-//    expression(expr, C, D),
-//    token_semicolon(D, E).
-//switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
-//    switch_label(label, A, B),
-//    token_arrow(B, C),
-//    block(stmt, C, D).
-//switch_rule($SwitchRuleBlock(label, stmt), A, D) :-
-//    switch_label(label, A, B),
-//    token_arrow(B, C),
-//    throw_statement(stmt, C, D).
 
 .decl switch_block_statement_group(a: number, b: number)
 
 .decl switch_label(id: id, a: number, b: number)
-//switch_label($SwitchDefault, A, B) :- token_default(A, B).
-//switch_label($SwitchCase(exprs), A, C) :-
-//    token_case(A, B),
-//    case_constants(exprs, B, C).
 
 .decl case_constants(ids: id_list, a: number, b: number)
 case_constants([x, nil], A, B) :- case_constant(x, A, B).
@@ -1523,19 +1499,8 @@ throw_statement(["throw_statement", A, D], A, D) :-
     token_semicolon(C, D).
 
 .decl synchronized_statement(id: id, a: number, b: number)
-//synchronized_statement($SynchronizedStatement(e, s), A, F) :-
-//    token_synchronized(A, B),
-//    token_left_paren(B, C),
-//    expression(e, C, D),
-//    token_right_paren(D, E),
-//    block(s, E, F).
 
 .decl try_statement(id: id, a: number, b: number)
-//try_statement($TryStatement(s, c), A, D) :-
-//    token_try(A, B),
-//    block(s, B, C),
-//    catches(c, C, D).
-// TODO ...
 
 .decl catches(ids: id_list, a: number, b: number)
 catches([x, nil], A, B) :- catch_clause(x, A, B).
@@ -1544,12 +1509,6 @@ catches([x, xs], A, C) :-
     catches(xs, B, C).
 
 .decl catch_clause(id: id, a: number, b: number)
-//catch_clause($CatchClause(param, b), A, F) :-
-//    token_catch(A, B),
-//    token_left_paren(B, C),
-//    catch_formal_parameter(param, C, D),
-//    token_right_paren(D, E),
-//    block(b, E, F).
 
 .decl catch_formal_parameter(id: id, a: number, b: number)
 catch_formal_parameter(nil, A, D) :-
@@ -1593,14 +1552,6 @@ resource_list([x, xs], A, D) :-
     resource_list(xs, C, D).
 
 .decl resource(id: id, a: number, b: number)
-//resource($ResourceInitialization(mods, type, id, expr), A, F) :-
-//    variable_modifiers?(mods, A, B),
-//    local_variable_type(type, B, C),
-//    identifier(id, C, D),
-//    token_equal_sign(D, E),
-//    expression(expr, E, F).
-//resource($ResourceAccess(e), A, B) :-
-//    variable_access(e, A, B).
 
 .decl variable_access(id: id, a: number, b: number)
 
