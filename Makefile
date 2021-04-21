@@ -1,11 +1,9 @@
-.PHONY: run
+EXE = example
+OBJS = sjp.o parser.o
 
 CXXFLAGS=-std=c++17 -O2 -D__EMBEDDED_SOUFFLE__
 
-all: sjp.o parser.o
-
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+all: $(OBJS)
 
 parser.cpp: parser.dl
 	souffle --no-warn \
@@ -17,10 +15,10 @@ parser.cpp: parser.dl
 sjp.cpp: sjp_re2c.cpp
 	re2c -W --input-encoding utf8 -i $< -o $@
 
-example: sjp.o parser.o
-	$(CXX) $(CXXFLAGS) sjp.o parser.o main.cpp -o $@
+$(EXE): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(EXE).cpp -o $@
 
 .PHONY: clean
 
 clean:
-	rm -rf sjp.o parser.o example sjp.cpp parser.cpp
+	rm -rf $(OBJS) $(EXE) sjp.cpp parser.cpp
