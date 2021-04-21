@@ -69,12 +69,12 @@ namespace sjp {
         }
     }
 
-    void parser::parse() {
+    void parser::run() {
         program->run();
     }
 
     std::vector<std::tuple<std::string,int,int>>
-    parser::get_tuples(const char* filename) {
+    parser::get_ast_nodes(const char* filename) {
         std::vector<std::tuple<std::string,int,int>> result;
         auto& limits = token_limits[filename];
         souffle::Relation* relation = program->getRelation("in_tree");
@@ -91,13 +91,6 @@ namespace sjp {
                 limits[record[2]-1].second);
         }
         return result;
-    }
-
-    size_t parser::num_asts() {
-        souffle::Relation* relation = program->getRelation("root");
-        assert(relation != NULL);
-        return relation->size();
-        return 0;
     }
 
     parser::~parser() {

@@ -25,10 +25,9 @@ namespace sjp {
         parser();
         void add_file(const char* filename);
         void add_string(const char* filename, const char* content);
-        void parse();
+        void run();
         std::vector<std::tuple<std::string,int,int>>
-        get_tuples(const char* filename);
-        size_t num_asts();
+        get_ast_nodes(const char* filename);
         ~parser();
     };
 }
