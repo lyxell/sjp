@@ -71,7 +71,6 @@ namespace sjp {
 
     void parser::parse() {
         program->run();
-        program->printAll();
     }
 
     std::vector<std::tuple<std::string,int,int>>
