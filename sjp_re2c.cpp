@@ -33,6 +33,32 @@
 
 namespace sjp {
 
+    tree_node::tree_node(std::tuple<std::string,int,int> tuple)
+        : name(std::get<0>(tuple)),
+          start_token(std::get<1>(tuple)),
+          end_token(std::get<2>(tuple)) {}
+
+    std::vector<std::shared_ptr<tree_node>>
+    tree_node::get_children() {
+        return children;
+    }
+
+    std::string tree_node::get_name() {
+        return name;
+    }
+
+    int tree_node::get_start_token() {
+        return start_token;
+    }
+
+    int tree_node::get_end_token() {
+        return end_token;
+    }
+
+    void tree_node::add_child(std::shared_ptr<tree_node> child) {
+        return children.push_back(child);
+    }
+
     parser::parser() {
         program = souffle::ProgramFactory::newInstance("parser");
         assert(program != NULL);
@@ -78,6 +104,36 @@ namespace sjp {
         program->run();
     }
 
+    std::shared_ptr<tree_node>
+    parser::get_ast(const char* filename) {
+        if (asts.find(filename) != asts.end())
+            return asts[filename];
+        auto nodes = get_ast_nodes(filename);
+        auto contains = [](std::shared_ptr<tree_node> a,
+                           std::shared_ptr<tree_node> b) {
+            return a->get_start_token() <= b->get_start_token() &&
+                   a->get_end_token()   >= b->get_end_token();
+        };
+        std::sort(nodes.begin(), nodes.end(),
+                [](std::tuple<std::string,int,int> a,
+                   std::tuple<std::string,int,int> b) {
+            return std::pair(std::get<1>(a), std::get<2>(b)) <
+                   std::pair(std::get<1>(b), std::get<2>(a));
+        });
+        if (!nodes.size()) return nullptr;
+        std::shared_ptr<tree_node> root =
+            std::make_shared<tree_node>(nodes[0]);
+        std::vector<std::shared_ptr<tree_node>> stack {root};
+        for (size_t i = 1; i < nodes.size(); i++) {
+            auto child = std::make_shared<tree_node>(nodes[i]);
+            while (!contains(stack.back(), child)) stack.pop_back();
+            stack.back()->add_child(child);
+            stack.push_back(child);
+        }
+        asts[filename] = root;
+        return root;
+    }
+
     std::vector<std::tuple<std::string,int,int>>
     parser::get_ast_nodes(const char* filename) {
         std::vector<std::tuple<std::string,int,int>> result;
@@ -89,7 +145,6 @@ namespace sjp {
             auto record = program->getRecordTable().unpack(record_reference, 3);
             if (!record) continue;
             int symbol_reference = *record;
-            
             result.emplace_back(
                 program->getSymbolTable().decode(symbol_reference),
                 limits[record[1]].first,
@@ -109,7 +164,7 @@ namespace sjp {
                std::unordered_map<size_t, std::pair<size_t, size_t>>,
                std::unordered_map<size_t,int32_t>,
                std::unordered_map<size_t, std::string>>
-    lex_string(const char *content) {
+    parser::lex_string(const char *content) {
         std::vector<std::string> tokens;
         std::unordered_map<size_t, std::pair<size_t, size_t>> token_limits;
         std::unordered_map<size_t, int32_t> i32_value;

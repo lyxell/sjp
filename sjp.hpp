@@ -9,11 +9,20 @@
 
 namespace sjp {
 
-    std::tuple<std::vector<std::string>,
-               std::unordered_map<size_t, std::pair<size_t, size_t>>,
-               std::unordered_map<size_t,int32_t>,
-               std::unordered_map<size_t, std::string>>
-    lex_string(const char *content);
+    class tree_node {
+    private:
+        std::string name;
+        int start_token;
+        int end_token;
+        std::vector<std::shared_ptr<tree_node>> children;
+    public:
+        tree_node(std::tuple<std::string,int,int>);
+        std::string get_name();
+        int get_start_token();
+        int get_end_token();
+        std::vector<std::shared_ptr<tree_node>> get_children();
+        void add_child(std::shared_ptr<tree_node>);
+    };
 
     class parser {
     private:
@@ -21,6 +30,12 @@ namespace sjp {
         std::unordered_map<std::string,
             std::unordered_map<size_t, std::pair<size_t, size_t>>>
                 token_limits;
+        std::unordered_map<std::string, std::shared_ptr<tree_node>> asts;
+        std::tuple<std::vector<std::string>,
+                   std::unordered_map<size_t, std::pair<size_t, size_t>>,
+                   std::unordered_map<size_t,int32_t>,
+                   std::unordered_map<size_t, std::string>>
+        lex_string(const char *content);
     public:
         parser();
         parser(const char* program_name);
@@ -30,5 +45,7 @@ namespace sjp {
         void run();
         std::vector<std::tuple<std::string,int,int>>
         get_ast_nodes(const char* filename);
+        std::shared_ptr<tree_node>
+        get_ast(const char* filename);
     };
 }
