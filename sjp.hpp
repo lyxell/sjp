@@ -43,8 +43,11 @@ namespace sjp {
         void add_file(const char* filename);
         void add_string(const char* filename, const char* content);
         void run();
+        souffle::Relation* get_relation(const char* relation_name);
         std::vector<std::tuple<std::string,int,int>>
         get_ast_nodes(const char* filename);
+        std::tuple<std::string,int,int>
+        get_ast_node_from_id(const char* filename, int id);
         std::shared_ptr<tree_node>
         get_ast(const char* filename);
     };

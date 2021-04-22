@@ -134,21 +134,33 @@ namespace sjp {
         return root;
     }
 
+    souffle::Relation*
+    parser::get_relation(const char* relation_name) {
+        return program->getRelation(relation_name);
+    }
+
+    std::tuple<std::string,int,int>
+    parser::get_ast_node_from_id(const char* filename, int id) {
+        auto& limits = token_limits[filename];
+        auto record = program->getRecordTable().unpack(id, 3);
+        assert(record != NULL);
+        return std::tuple(
+                program->getSymbolTable().decode(record[0]),
+                limits[record[1]].first,
+                limits[record[2]-1].second);
+    }
+
     std::vector<std::tuple<std::string,int,int>>
     parser::get_ast_nodes(const char* filename) {
         std::vector<std::tuple<std::string,int,int>> result;
-        auto& limits = token_limits[filename];
-        souffle::Relation* relation = program->getRelation("in_tree");
+        souffle::Relation* relation = get_relation("in_tree");
+        assert(relation != NULL);
         for (auto &output : *relation) {
-            int record_reference;
-            output >> record_reference;
-            auto record = program->getRecordTable().unpack(record_reference, 3);
-            if (!record) continue;
-            int symbol_reference = *record;
-            result.emplace_back(
-                program->getSymbolTable().decode(symbol_reference),
-                limits[record[1]].first,
-                limits[record[2]-1].second);
+            int id;
+            output >> id;
+            // Skip nil
+            if (id == 0) continue;
+            result.push_back(get_ast_node_from_id(filename, id));
         }
         return result;
     }
