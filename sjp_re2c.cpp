@@ -182,24 +182,36 @@ namespace sjp {
         std::unordered_map<size_t, int32_t> i32_value;
         std::unordered_map<size_t, std::string> token_type;
         const char* YYCURSOR = content;
+        const char* YYMARKER;
         while (1) {
             const char *YYSTART = YYCURSOR;
             /*!re2c
             re2c:define:YYCTYPE = char;
             re2c:yyfill:enable = 0;
             re2c:flags:case-ranges = 1;
+
+            '"' [^\x00"]* '"' {
+                tokens.push_back(std::string(YYSTART, YYCURSOR));
+                token_type.emplace(tokens.size()-1, "string");
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
+                continue;
+            }
           
             "abstract" | "assert" | "boolean" | "break" | "byte" | "case" |
             "catch" | "char" | "class" | "const" | "continue" | "default" |
-            "do" | "double" | "else" | "enum" | "extends" | "final" | "finally" |
-            "float" | "for" | "goto" | "if" | "implements" | "import" |
-            "instanceof" | "int" | "interface" | "long" | "native" | "new" |
-            "package" | "private" | "protected" | "public" | "return" | "short" |
-            "static" | "strictfp" | "super" | "switch" | "synchronized" | "this" |
-            "throw" | "throws" | "transient" | "try" | "void" | "volatile" |
-            "while" {
+            "do" | "double" | "else" | "enum" | "extends" | "final" |
+            "finally" | "float" | "for" | "goto" | "if" | "implements" |
+            "import" | "instanceof" | "int" | "interface" | "long" |
+            "native" | "new" | "package" | "private" | "protected" |
+            "public" | "return" | "short" | "static" | "strictfp" |
+            "super" | "switch" | "synchronized" | "this" | "throw" |
+            "throws" | "transient" | "try" | "void" | "volatile" | "while" {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens.size()-1] = {YYSTART - content, YYCURSOR - content};
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
                 continue;
             }
             [ \t\v\n\r] {
@@ -207,38 +219,50 @@ namespace sjp {
             }
             "{" | "}" | "(" | ")" | "[" | "]" {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens.size()-1] = {YYSTART - content, YYCURSOR - content};
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
                 continue;
             }
             "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
             ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
             "*"  | "/"  | "%" {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens.size()-1] = {YYSTART - content, YYCURSOR - content};
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
                 continue;
             }
             "="  | "+="  | "-="  | "*="   | "/=" | "&=" | "|=" | "^=" |
             "%=" | "<<=" | ">>=" | ">>>=" {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens.size()-1] = {YYSTART - content, YYCURSOR - content};
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
                 continue;
             }
             "0" | [1-9][0-9]* {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
                 i32_value.emplace(tokens.size()-1, std::stoi(tokens.back()));
                 token_type.emplace(tokens.size()-1, "integer");
-                token_limits[tokens.size()-1] = {YYSTART - content, YYCURSOR - content};
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
                 continue;
             }
             ";" | "," | "." {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens.size()-1] = {YYSTART - content, YYCURSOR - content};
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
                 continue;
             }
             [a-zA-Z_][a-zA-Z_0-9]* {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
                 token_type.emplace(tokens.size()-1, "identifier");
-                token_limits[tokens.size()-1] = {YYSTART - content, YYCURSOR - content};
+                token_limits[tokens.size()-1] = {
+                    YYSTART - content,
+                    YYCURSOR - content};
                 continue;
             }
             * {

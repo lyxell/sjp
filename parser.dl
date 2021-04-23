@@ -99,6 +99,10 @@
       token_dot(A, A + 1) :- token(".", A).
 .decl token_package(a: number, b: number)
       token_package(A, A + 1) :- token("package", A).
+.decl token_literal_string(s: symbol, a: number, b: number)
+      token_literal_string(s, A, A + 1) :-
+      token_type(A, "string"),
+      token(s, A).
 .decl token_literal_integer(s: symbol, a: number, b: number)
       token_literal_integer(s, A, A + 1) :-
       token_type(A, "integer"),
@@ -265,12 +269,17 @@ identifier(["identifier", A, B], str, A, B) :- token_identifier(str, A, B).
 identifier?(nil, A, A) :- any_position(A).
 identifier?(nil, A, B) :- identifier(id, _, A, B).
 
+.decl string_literal(id: id, str: symbol, a: number, b: number)
+string_literal(["string_literal", A, B], str, A, B)
+    :- token_literal_string(str, A, B).
+
 .decl integer_literal(id: id, str: symbol, a: number, b: number)
 integer_literal(["integer_literal", A, B], str, A, B)
     :- token_literal_integer(str, A, B).
 
 .decl literal(id: id, a: number, b: number)
 literal(id, A, B) :- integer_literal(id, _, A, B).
+literal(id, A, B) :- string_literal(id, _, A, B).
 
 /**
  * Types, Values and Variables
