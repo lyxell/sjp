@@ -256,13 +256,14 @@ any_position(n) :- num_tokens(n).
  **************************************************************************/
 
 .decl type_identifier(id: id, a: number, b: number)
-type_identifier(["type_identifier", A, B], A, B) :- token_identifier(_, A, B).
+type_identifier(id, A, B) :- identifier(id, _, A, B).
 
-.decl identifier(id: id, a: number, b: number)
-identifier(["identifier", A, B], A, B) :- token_identifier(_, A, B).
+.decl identifier(id: id, str: symbol, a: number, b: number)
+identifier(["identifier", A, B], str, A, B) :- token_identifier(str, A, B).
 
 .decl identifier?(id: id, a: number, b: number)
-ID_OPTIONAL(identifier?, identifier)
+identifier?(nil, A, A) :- any_position(A).
+identifier?(nil, A, B) :- identifier(id, _, A, B).
 
 .decl integer_literal(id: id, str: symbol, a: number, b: number)
 integer_literal(["integer_literal", A, B], str, A, B)
@@ -434,18 +435,18 @@ wildcard_bounds(nil, A, C) :-
  **************************************************************************/
 
 .decl module_name(id: id, children: id_list, a: number, b: number)
-module_name(["module_name", A, B], [x, nil], A, B) :- identifier(x, A, B).
+module_name(["module_name", A, B], [x, nil], A, B) :- identifier(x, _, A, B).
 module_name(["module_name", A, D], [x, xs], A, D) :-
     module_name(_, xs, A, B),
     token_dot(B, C),
-    identifier(x, C, D).
+    identifier(x, _, C, D).
 
 .decl package_name(ids: id_list, a: number, b: number)
-package_name([x, nil], A, B) :- identifier(x, A, B).
+package_name([x, nil], A, B) :- identifier(x, _, A, B).
 package_name([x, xs], A, D) :-
     package_name(xs, A, B),
     token_dot(B, C),
-    identifier(x, C, D).
+    identifier(x, _, C, D).
 
 .decl type_name(id: id, a: number, b: number)
 type_name(["type_name", A, B], A, B) :- type_identifier(_, A, B).
@@ -455,15 +456,15 @@ type_name(["type_name", A, D], A, D) :-
     type_identifier(_, C, D).
 
 .decl expression_name(id: id, children: id_list, a: number, b: number)
-expression_name(["expression_name", A, B], [["identifier", A, B], nil], A, B) :- token_identifier(_, A, B).
-expression_name(["expression_name", A, D], [["identifier", C, D], tail], A, D) :-
-    ambiguous_name(tail, A, B),
+expression_name(["expression_name", A, B], [id, nil], A, B) :-
+    identifier(id, _, A, B).
+expression_name(["expression_name", A, D], [id, tail], A, D) :-
+    expression_name(_, tail, A, B),
     token_dot(B, C),
-    token_identifier(id, C, D).
+    identifier(id, _, C, D).
 
 .decl method_name(id: id, a: number, b: number)
-method_name(["method_name", A, B], A, B) :- token_identifier(_, A, B).
-// ... TODO: not yield
+method_name(id, A, B) :- identifier(id, str, A, B), str != "yield".
 
 .decl package_or_type_name(id: id, a: number, b: number)
 package_or_type_name(["package_or_type_name", A, B], A, B) :-
@@ -473,12 +474,12 @@ package_or_type_name(["package_or_type_name", A, D], A, D) :-
     token_dot(B, C),
     token_identifier(_, C, D).
 
-.decl ambiguous_name(ids: id_list, a: number, b: number)
-ambiguous_name([["identifier", A, B], nil], A, B) :- token_identifier(x, A, B).
-ambiguous_name([["identifier", C, D], xs], A, D) :-
-    ambiguous_name(xs, A, B),
+.decl ambiguous_name(id: id, ids: id_list, a: number, b: number)
+ambiguous_name(["ambiguous_name", A, B], [id, nil], A, B) :- identifier(id, _, A, B).
+ambiguous_name(["ambiguous_name", A, D], [id, xs], A, D) :-
+    ambiguous_name(_, xs, A, B),
     token_dot(B, C),
-    token_identifier(x, C, D).
+    identifier(id, _, C, D).
 
 /**
  * Packages and Modules
@@ -517,9 +518,9 @@ package_declaration(["package_declaration", A, E], A, E) :-
 ID_OPTIONAL(package_declaration?, package_declaration)
 
 .decl package_declaration_identifiers(id: id_list, a: number, b: number)
-package_declaration_identifiers([x, nil], A, B) :- identifier(x, A, B).
+package_declaration_identifiers([x, nil], A, B) :- identifier(x, _, A, B).
 package_declaration_identifiers([x, xs], A, D) :-
-    identifier(x, A, B),
+    identifier(x, _, A, B),
     token_dot(B, C),
     package_declaration_identifiers(xs, C, D).
 
@@ -561,7 +562,7 @@ single_static_import_declaration(["single_static_import_declaration", A, G],
     token_static(B, C),
     type_name(_, C, D),
     token_dot(D, E),
-    identifier(_, E, F),
+    identifier(_, _, E, F),
     token_semicolon(F, G).
 
 .decl static_import_on_demand_declaration(id: id, a: number, b: number)
@@ -780,9 +781,9 @@ variable_declarator(["variable_declarator", A, D], name, initializer, A, D) :-
     variable_initializer(initializer, C, D).
 
 .decl variable_declarator_id(id: id, a: number, b: number)
-variable_declarator_id(id, A, B) :- identifier(id, A, B).
+variable_declarator_id(id, A, B) :- identifier(id, _, A, B).
 variable_declarator_id(id, A, C) :-
-    identifier(id, A, B),
+    identifier(id, _, A, B),
     dims(_, B, C).
 
 .decl variable_initializer(id: id, a: number, b: number)
@@ -877,7 +878,7 @@ result(["void_type", A, B], A, B) :- token_void(A, B).
 
 .decl method_declarator(id: id, name: id, params: id_list, a: number, b: number)
 method_declarator(["method_declarator", A, H], name, params, A, H) :-
-    identifier(name, A, B),
+    identifier(name, _, A, B),
     token_left_paren(B, C),
     receiver_parameter(_, C, D),
     token_comma(D, E),
@@ -885,7 +886,7 @@ method_declarator(["method_declarator", A, H], name, params, A, H) :-
     token_right_paren(F, G),
     dims?(_, G, H).
 method_declarator(["method_declarator", A, F], name, params, A, F) :-
-    identifier(name, A, B),
+    identifier(name, _, A, B),
     token_left_paren(B, C),
     formal_parameter_list?(params, C, D),
     token_right_paren(D, E),
@@ -895,7 +896,7 @@ method_declarator(["method_declarator", A, F], name, params, A, F) :-
 receiver_parameter(["receiver_parameter", A, F], A, F) :-
     annotations?(nil, A, B),
     unann_type(_, B, C),
-    identifier(_, C, D),
+    identifier(_, _, C, D),
     token_dot(D, E),
     token_this(E, F).
 receiver_parameter(["receiver_parameter", A, D], A, D) :-
@@ -927,7 +928,7 @@ variable_arity_parameter(nil, A, F) :-
     unann_type(_, B, C),
     annotations?(_, C, D),
     token_ellipsis(D, E),
-    identifier(_, E, F).
+    identifier(_, _, E, F).
 
 .decl variable_modifier(id: id, a: number, b: number)
 variable_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
@@ -1016,7 +1017,7 @@ enum_constant_list?(x, A, B) :- enum_constant_list(x, A, B).
 .decl enum_constant(id: id, a: number, b: number)
 enum_constant(nil, A, D) :-
     enum_constant_modifiers?(_, A, B),
-    identifier(_, B, C),
+    identifier(_, _, B, C),
     class_body?(_, C, D).
 
 .decl enum_constant_modifier(id: id, a: number, b: number)
@@ -1160,7 +1161,7 @@ element_value_pair_list?(x, A, B) :- element_value_pair_list(x, A, B).
 
 .decl element_value_pair(id: id, a: number, b: number)
 element_value_pair(nil, A, D) :-
-    identifier(_, A, B),
+    identifier(_, _, A, B),
     token_equal_sign(B, C),
     element_value(_, C, D).
 
@@ -1604,7 +1605,7 @@ unqualified_class_instance_creation_expression(["unqualified_class_instance_crea
 .decl class_or_interface_type_to_instantiate(id: id, a: number, b: number)
 class_or_interface_type_to_instantiate(nil, A, D) :-
     annotations?(_, A, B),
-    identifier(_, B, C),
+    identifier(_, _, B, C),
     // TODO ...
     type_arguments_or_diamond(_, C, D).
 
@@ -1618,7 +1619,7 @@ type_arguments_or_diamond(t, A, B) :- type_arguments(t, A, B).
 field_access(nil, A, D) :-
     primary(_, A, B),
     token_dot(B, C),
-    identifier(_, C, D).
+    identifier(_, _, C, D).
 // TODO ...
 
 .decl array_access(id: id, a: number, b: number)
@@ -1653,7 +1654,7 @@ method_invocation(["method_invocation", A, H], name, method, args, A, H) :-
     expression_name(name, _, A, B),
     token_dot(B, C),
     type_arguments?(_, C, D),
-    identifier(method, D, E),
+    identifier(method, _, D, E),
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
@@ -1661,7 +1662,7 @@ method_invocation(["method_invocation", A, H], name, method, args, A, H) :-
     primary(name, A, B),
     token_dot(B, C),
     type_arguments?(_, C, D),
-    identifier(method, D, E),
+    identifier(method, _, D, E),
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
@@ -1669,7 +1670,7 @@ method_invocation(["method_invocation", A, H], nil, method, args, A, H) :-
     token_super(A, B),
     token_dot(B, C),
     type_arguments?(_, C, D),
-    identifier(method, D, E),
+    identifier(method, _, D, E),
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
@@ -1679,7 +1680,7 @@ method_invocation(["method_invocation", A, J], name, method, args, A, J) :-
     token_super(C, D),
     token_dot(D, E),
     type_arguments?(_, E, F),
-    identifier(method, F, G),
+    identifier(method, _, F, G),
     token_left_paren(G, H),
     argument_list?(args, H, I),
     token_right_paren(I, J).
@@ -1701,19 +1702,19 @@ method_reference(["method_reference", A, F], A, F) :-
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
-    identifier(_, E, F).
+    identifier(_, _, E, F).
 method_reference(["method_reference", A, F], A, F) :-
     primary(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
-    identifier(_, E, F).
+    identifier(_, _, E, F).
 method_reference(["method_reference", A, F], A, F) :-
     reference_type(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
-    identifier(_, E, F).
+    identifier(_, _, E, F).
 // TODO ...
 
 .decl array_creation_expression(id: id, a: number, b: number)
@@ -1766,7 +1767,7 @@ lambda_expression(["lambda_expression", A, D], A, D) :-
 
 .decl lambda_parameters(id: id, a: number, b: number)
 lambda_parameters(nil, A, B) :-
-    identifier(_, A, B).
+    identifier(_, _, A, B).
 lambda_parameters(nil, A, D) :-
     token_left_paren(A, B),
     lambda_parameter_list_first_option(_, B, C),
@@ -1778,9 +1779,9 @@ lambda_parameters(nil, A, D) :-
 
 /* Note: Rule lambda_parameter_list is handled by the two following rules */
 .decl lambda_parameter_list_first_option(ids: id_list, a: number, b: number)
-lambda_parameter_list_first_option([x, nil], A, B) :- identifier(x, A, B).
+lambda_parameter_list_first_option([x, nil], A, B) :- identifier(x, _, A, B).
 lambda_parameter_list_first_option([x, xs], A, D) :-
-    identifier(x, A, B),
+    identifier(x, _, A, B),
     token_comma(B, C),
     lambda_parameter_list_first_option(xs, C, D).
 .decl lambda_parameter_list_second_option(ids: id_list, a: number, b: number)
@@ -2131,6 +2132,10 @@ in_tree(args) :-
 
 in_tree_list(statements) :-
     block(id, statements, _, _),
+    in_tree(id).
+
+in_tree_list(children) :-
+    expression_name(id, children, _, _),
     in_tree(id).
 
 in_tree_list(cb),
