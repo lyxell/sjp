@@ -264,12 +264,12 @@ identifier(["identifier", A, B], A, B) :- token_identifier(_, A, B).
 .decl identifier?(id: id, a: number, b: number)
 ID_OPTIONAL(identifier?, identifier)
 
-.decl integer_literal(id: id, a: number, b: number)
-integer_literal(["integer_literal", A, B], A, B)
-    :- token_literal_integer(_, A, B).
+.decl integer_literal(id: id, str: symbol, a: number, b: number)
+integer_literal(["integer_literal", A, B], str, A, B)
+    :- token_literal_integer(str, A, B).
 
 .decl literal(id: id, a: number, b: number)
-literal(id, A, B) :- integer_literal(id, A, B).
+literal(id, A, B) :- integer_literal(id, _, A, B).
 
 /**
  * Types, Values and Variables
