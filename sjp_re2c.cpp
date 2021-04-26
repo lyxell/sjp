@@ -188,7 +188,6 @@ namespace sjp {
             /*!re2c
             re2c:define:YYCTYPE = char;
             re2c:yyfill:enable = 0;
-            re2c:flags:case-ranges = 1;
 
             '"' [^\x00"]* '"' {
                 tokens.push_back(std::string(YYSTART, YYCURSOR));
