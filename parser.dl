@@ -223,21 +223,25 @@ any_position(n) :- num_tokens(n).
 
 #define ZERO_OR_MORE(take_many, take_one) \
     take_many(nil, A, A) :- any_position(A). \
-    take_many([x, xs], A, C) :- take_many(xs, B, C), take_one(x, A, B).
+    take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
+
+#define ONE_OR_MORE(take_many, take_one) \
+    take_many([x, nil], A, B) :- take_one(x, A, B). \
+    take_many([x, xs], A, C) :- take_one(x, A, B), take_many(xs, B, C).
+
+#define ONE_OR_MORE_SEPARATED_BY(take_many, take_one, separator) \
+    take_many([x, nil], A, B) :- take_one(x, A, B). \
+    take_many([x, xs], A, D) :- take_one(x, A, B), separator(B, C), take_many(xs, C, D).
 
 #define OPTIONAL(take_zero_or_one, take_one) \
-    take_zero_or_one(nil, A, A) :- any_position(A). \
-    take_zero_or_one([x], A, B) :- take_one(x, A, B).
-
-#define ID_OPTIONAL(take_zero_or_one, take_one) \
     take_zero_or_one(nil, A, A) :- any_position(A). \
     take_zero_or_one(x, A, B) :- take_one(x, A, B).
 
 #define INFIX(node, rule_name, current_level, next_level, symbol) \
-    .decl rule_name(id: id, left: id, right: id, a: number, b: number) \
+    .decl rule_name(id: id, a: number, b: number) \
     parent_of(id, "left", left), \
     parent_of(id, "right", right), \
-    rule_name(id, left, right, A, C) :- \
+    rule_name(id, A, C) :- \
         id = [node, A, C], \
         current_level(left, A, B), \
         token(symbol, B), \
@@ -349,27 +353,25 @@ type_variable(["type_variable", A, B], A, C) :-
 .decl array_type(id: id, a: number, b: number)
 
 parent_of(id, "type", type),
-parent_of(id, "dimensions", dims),
+parent_of_list(id, "dimensions", dims),
 array_type(id, A, C) :-
     id = ["array_type", A, C],
     primitive_type(type, A, B),
-    dims(dims, _, B, C).
+    dims(dims, B, C).
 
 array_type(["array_type", A, C], A, C) :-
     class_or_interface_type(_, A, B),
-    dims(_, _, B, C).
+    dims(_, B, C).
 
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
 // the Java specification. The same derivation is handled by
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
-.decl dims(id: id, ids: id_list, a: number, b: number)
-dims(["dimensions", A, B], [x, nil], A, B) :- dim(x, A, B).
-dims(["dimensions", A, C], [x, xs],  A, C) :- dim(x, A, B), dims(_, xs, B, C).
+.decl dims(ids: id_list, a: number, b: number)
+ONE_OR_MORE(dims, dim)
 
-.decl dims?(id: id, a: number, b: number)
-dims?(nil, A, A) :- any_position(A).
-dims?(id, A, B) :- dims(id, _, A, B).
+.decl dims?(ids: id_list, a: number, b: number)
+OPTIONAL(dims?, dims)
 
 .decl dim(id: id, a: number, b: number)
 dim(["dimension", A, D], A, D) :-
@@ -384,8 +386,7 @@ type_parameter(nil, A, D) :-
     type_bound?(_, C, D).
 
 .decl type_parameter_modifier(id: id, a: number, b: number)
-type_parameter_modifier(["annotation_modifier", A, B], A, B) :-
-    annotation(t, A, B).
+type_parameter_modifier(id, A, B) :- annotation(id, A, B).
 
 .decl type_parameter_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(type_parameter_modifiers?, type_parameter_modifier)
@@ -400,7 +401,7 @@ type_bound(nil, A, D) :-
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
 
 .decl type_bound?(id: id, a: number, b: number)
-ID_OPTIONAL(type_bound?, type_bound)
+OPTIONAL(type_bound?, type_bound)
 
 .decl additional_bound(id: id, a: number, b: number)
 additional_bound(id, A, C) :-
@@ -410,22 +411,17 @@ additional_bound(id, A, C) :-
 .decl additional_bounds?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(additional_bounds?, additional_bound)
 
-.decl type_arguments(id: id, ids: id_list, a: number, b: number)
-type_arguments(id, ids, A, D) :-
-    id = ["type_arguments", A, D],
+.decl type_arguments(ids: id_list, a: number, b: number)
+type_arguments(ids, A, D) :-
     token_less_than(A, B),
     type_argument_list(ids, B, C),
     token_greater_than(C, D).
 
-.decl type_arguments?(id: id, a: number, b: number)
-type_arguments?(nil, A, A) :- any_position(A).
-type_arguments?(id, A, B) :- type_arguments(id, _, A, B).
+.decl type_arguments?(ids: id_list, a: number, b: number)
+OPTIONAL(type_arguments?, type_arguments)
 
 .decl type_argument_list(ids: id_list, a: number, b: number)
-type_argument_list([x, nil], A, B) :- type_argument(x, A, B).
-type_argument_list([x, xs], A, C) :-
-    type_argument(x, A, B),
-    type_argument_list(xs, B, C).
+ONE_OR_MORE(type_argument_list, type_argument)
 
 .decl type_argument(id: id, a: number, b: number)
 type_argument(e, A, B) :- reference_type(e, A, B).
@@ -536,7 +532,7 @@ package_declaration(["package_declaration", A, E], A, E) :-
     token_semicolon(D, E).
 
 .decl package_declaration?(id: id, a: number, b: number)
-ID_OPTIONAL(package_declaration?, package_declaration)
+OPTIONAL(package_declaration?, package_declaration)
 
 .decl package_declaration_identifiers(id: id_list, a: number, b: number)
 package_declaration_identifiers([x, nil], A, B) :- identifier(x, _, A, B).
@@ -546,7 +542,7 @@ package_declaration_identifiers([x, xs], A, D) :-
     package_declaration_identifiers(xs, C, D).
 
 .decl package_modifier(id: id, a: number, b: number)
-package_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
+package_modifier(id, A, B) :- annotation(id, A, B).
 
 .decl package_modifiers?(id: id_list, a: number, b: number)
 ZERO_OR_MORE(package_modifiers?, package_modifier)
@@ -714,7 +710,7 @@ normal_class_declaration(id, A, F) :-
 ZERO_OR_MORE(class_modifiers?, class_modifier)
 
 .decl class_modifier(s: id, a: number, b: number)
-class_modifier(["annotation_modifier", A, B],  A, B) :- annotation(_, A, B).
+class_modifier(id,  A, B) :- annotation(id, A, B).
 class_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
 class_modifier(["protected_modifier", A, B],  A, B) :- token_protected(A, B).
 class_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
@@ -731,11 +727,7 @@ type_parameters(l, A, D) :-
     token_greater_than(C, D).
 
 .decl type_parameter_list(ids: id_list, a: number, b: number)
-type_parameter_list([e, nil], A, B) :- type_parameter(e, A, B).
-type_parameter_list([e, tail], A, D) :-
-    type_parameter(e, A, B),
-    token_comma(B, C),
-    type_parameter_list(tail, C, D).
+ONE_OR_MORE_SEPARATED_BY(type_parameter_list, type_parameter, token_comma)
 
 .decl superclass(id: id, a: number, b: number)
 superclass(id, A, C) :-
@@ -743,7 +735,7 @@ superclass(id, A, C) :-
     class_type(id, B, C).
 
 .decl superclass?(id: id, a: number, b: number)
-ID_OPTIONAL(superclass?, superclass)
+OPTIONAL(superclass?, superclass)
 
 .decl superinterfaces(ids: id_list, a: number, b: number)
 superinterfaces(ids, A, C) :-
@@ -751,11 +743,7 @@ superinterfaces(ids, A, C) :-
     interface_type_list(ids, B, C).
 
 .decl interface_type_list(ids: id_list, a: number, b: number)
-interface_type_list([x, nil], A, B) :- interface_type(x, A, B).
-interface_type_list([x, xs], A, D) :-
-    interface_type(x, A, B),
-    token_comma(B, C),
-    interface_type_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(interface_type_list, interface_type, token_comma)
 
 .decl class_body(id: id_list, a: number, b: number)
 class_body(declarations, A, D) :-
@@ -764,8 +752,7 @@ class_body(declarations, A, D) :-
     token_right_curly_bracket(C, D).
 
 .decl class_body?(s: id_list, a: number, b: number)
-class_body?(nil, A, A) :- any_position(A).
-class_body?(x, A, B) :- class_body(x, A, B).
+OPTIONAL(class_body?, class_body)
 
 .decl class_body_declarations?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(class_body_declarations?, class_body_declaration)
@@ -784,18 +771,18 @@ class_member_declaration(id, A, B) :- interface_declaration(id, A, B).
 class_member_declaration(nil, A, B) :- token_semicolon(A, B).
 
 .decl field_declaration(id: id, a: number, b: number)
-parent_of(id, "modifiers", mods),
+parent_of_list(id, "modifiers", mods),
 parent_of(id, "type", type),
-parent_of(id, "declarations", decls),
+parent_of_list(id, "declarations", decls),
 field_declaration(id, A, E) :-
     id = ["field_declaration", A, E],
-    field_modifiers?(mods, _, A, B),
+    field_modifiers?(mods, A, B),
     unann_type(type, B, C),
-    variable_declarator_list(decls, _, C, D),
+    variable_declarator_list(decls, C, D),
     token_semicolon(D, E).
 
 .decl field_modifier(id: id, a: number, b: number)
-field_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
+field_modifier(id, A, B) :- annotation(id, A, B).
 field_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
 field_modifier(["protected_modifier", A, B], A, B) :- token_protected(A, B).
 field_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
@@ -804,27 +791,17 @@ field_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 field_modifier(["transient_modifier", A, B], A, B) :- token_transient(A, B).
 field_modifier(["volatile_modifier", A, B], A, B) :- token_volatile(A, B).
 
-.decl field_modifiers?(id: id, ids: id_list, a: number, b: number)
-field_modifiers?(nil, nil, A, A) :- any_position(A).
-field_modifiers?(["modifiers", A, C], [x, xs], A, C) :-
-    field_modifier(x, A, B),
-    field_modifiers?(_, xs, B, C).
+.decl field_modifiers?(ids: id_list, a: number, b: number)
+ZERO_OR_MORE(field_modifiers?, field_modifier)
 
-.decl variable_declarator_list(id: id, ids: id_list, a: number, b: number)
-variable_declarator_list(["variable_declarator_list", A, B], [x, nil], A, B) :-
-    variable_declarator(x, A, B).
-variable_declarator_list(["variable_declarator_list", A, D], [x, xs], A, D) :-
-    variable_declarator(x, A, B),
-    token_comma(B, C),
-    variable_declarator_list(_, xs, C, D).
+.decl variable_declarator_list(ids: id_list, a: number, b: number)
+ONE_OR_MORE_SEPARATED_BY(variable_declarator_list, variable_declarator, token_comma)
 
 .decl variable_declarator(id: id, a: number, b: number)
-
 parent_of(id, "name", name),
 variable_declarator(id, A, B) :-
     id = ["variable_declarator", A, B],
     variable_declarator_id(name, A, B).
-
 parent_of(id, "name", name),
 parent_of(id, "initializer", initializer),
 variable_declarator(id, A, D) :-
@@ -837,7 +814,7 @@ variable_declarator(id, A, D) :-
 variable_declarator_id(id, A, B) :- identifier(id, _, A, B).
 variable_declarator_id(id, A, C) :-
     identifier(id, _, A, B),
-    dims(_, _, B, C).
+    dims(_, B, C).
 
 .decl variable_initializer(id: id, a: number, b: number)
 variable_initializer(id, A, B) :- expression(id, A, B).
@@ -887,20 +864,18 @@ unann_type_variable(["type_variable", A, B], A, B) :-
     type_identifier(_, A, B).
 
 .decl unann_array_type(id: id, a: number, b: number)
-
 parent_of(id, "type", type),
-parent_of(id, "dimensions", dims),
+parent_of_list(id, "dimensions", dims),
 unann_array_type(id, A, C) :-
     id = ["array_type", A, C],
     primitive_type(type, A, B),
-    dims(dims, _, B, C).
-
+    dims(dims, B, C).
 parent_of(id, "type", type),
-parent_of(id, "dimensions", dims),
+parent_of_list(id, "dimensions", dims),
 unann_array_type(id, A, C) :-
     id = ["array_type", A, C],
     unann_class_or_interface_type(type, A, B),
-    dims(dims, _, B, C).
+    dims(dims, B, C).
 
 // Note: the derivation of UnannTypeVariable is omitted to handle an ambiguity
 // in the Java specification. The same derivation is handled by
@@ -917,10 +892,7 @@ method_declaration(id, A, D) :-
     method_body(body, C, D).
 
 .decl method_modifiers?(ids: id_list, a: number, b: number)
-method_modifiers?(nil, A, A) :- any_position(A).
-method_modifiers?([x, xs], A, C) :-
-    method_modifier(x, A, B),
-    method_modifiers?(xs, B, C).
+ZERO_OR_MORE(method_modifiers?, method_modifier)
 
 .decl method_modifier(id: id, a: number, b: number)
 method_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
@@ -949,11 +921,10 @@ result(t, A, B) :- unann_type(t, A, B).
 result(["void_type", A, B], A, B) :- token_void(A, B).
 
 .decl method_declarator(id: id, a: number, b: number)
-
 parent_of(id, "name", name),
 parent_of(id, "receiver", receiver),
 parent_of_list(id, "params", params),
-parent_of(id, "dimensions", dims),
+parent_of_list(id, "dimensions", dims),
 method_declarator(id, A, H) :-
     id = ["method_declarator", A, H],
     identifier(name, _, A, B),
@@ -963,11 +934,10 @@ method_declarator(id, A, H) :-
     formal_parameter_list?(params, E, F),
     token_right_paren(F, G),
     dims?(dims, G, H).
-
 parent_of(id, "name", name),
 parent_of(id, "receiver", nil),
 parent_of_list(id, "params", params),
-parent_of(id, "dimensions", dims),
+parent_of_list(id, "dimensions", dims),
 method_declarator(id, A, F) :-
     id = ["method_declarator", A, F],
     identifier(name, _, A, B),
@@ -989,15 +959,10 @@ receiver_parameter(["receiver_parameter", A, D], A, D) :-
     token_this(C, D).
 
 .decl formal_parameter_list(ids: id_list, a: number, b: number)
-formal_parameter_list([x, nil], A, B) :- formal_parameter(x, A, B).
-formal_parameter_list([x, xs], A, D) :-
-    formal_parameter(x, A, B),
-    token_comma(B, C),
-    formal_parameter_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(formal_parameter_list, formal_parameter, token_comma)
 
 .decl formal_parameter_list?(ids: id_list, a: number, b: number)
-formal_parameter_list?(nil, A, A) :- any_position(A).
-formal_parameter_list?(x, A, B) :- formal_parameter_list(x, A, B).
+OPTIONAL(formal_parameter_list?, formal_parameter_list)
 
 .decl formal_parameter(id: id, a: number, b: number)
 formal_parameter(nil, A, D) :-
@@ -1015,28 +980,24 @@ variable_arity_parameter(nil, A, F) :-
     identifier(_, _, E, F).
 
 .decl variable_modifier(id: id, a: number, b: number)
-variable_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
+variable_modifier(id, A, B) :- annotation(id, A, B).
 variable_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 
 .decl variable_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(variable_modifiers?, variable_modifier)
 
-.decl throws(id: id, ids: id_list, a: number, b: number)
-throws(id, ids, A, C) :-
+.decl throws(id: id, a: number, b: number)
+parent_of_list(id, "exceptions", ids),
+throws(id, A, C) :-
     id = ["throws", A, C],
     token_throws(A, B),
     exception_type_list(ids, B, C).
 
 .decl throws?(id: id, a: number, b: number)
-throws?(nil, A, A) :- any_position(A).
-throws?(x,   A, B) :- throws(x, _, A, B).
+OPTIONAL(throws?, throws)
 
 .decl exception_type_list(ids: id_list, a: number, b: number)
-exception_type_list([x, nil], A, B) :- exception_type(x, A, B).
-exception_type_list([x, xs], A, D) :-
-    exception_type(x, A, B),
-    token_comma(B, C),
-    exception_type_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(exception_type_list, exception_type, token_comma)
 
 .decl exception_type(id: id, a: number, b: number)
 exception_type(id, A, B) :- class_type(id, A, B).
@@ -1045,10 +1006,8 @@ exception_type(id, A, B) :- class_type(id, A, B).
 // ClassType → {Annotation} TypeIdentifier
 
 .decl method_body(id: id, a: number, b: number)
-method_body(id, A, B) :-
-    block(id, A, B).
-method_body(nil, A, B) :-
-    token_semicolon(A, B).
+method_body(id, A, B) :- block(id, A, B).
+method_body(nil, A, B) :- token_semicolon(A, B).
 
 .decl instance_initializer(id: id, a: number, b: number)
 instance_initializer(["instance_initializer", A, B], A, B)
@@ -1062,8 +1021,7 @@ static_initializer(["static_initializer", A, C], A, C) :-
 .decl constructor_declaration(id: id, a: number, b: number)
 
 .decl constructor_modifier(id: id, a: number, b: number)
-constructor_modifier(["annotation_modifier", A, B], A, B) :-
-    annotation(a, A, B).
+constructor_modifier(id, A, B) :- annotation(id, A, B).
 constructor_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
 constructor_modifier(["protected_modifier", A, B], A, B) :-
     token_protected(A, B).
@@ -1089,15 +1047,10 @@ enum_body(nil, A, F) :-
     token_right_curly_bracket(E, F).
 
 .decl enum_constant_list(id: id_list, a: number, b: number)
-enum_constant_list([x, nil], A, B) :- enum_constant(x, A, B).
-enum_constant_list([x, xs], A, D) :-
-    enum_constant(x, A, B),
-    token_comma(B, C),
-    enum_constant_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(enum_constant_list, enum_constant, token_comma)
 
 .decl enum_constant_list?(id: id_list, a: number, b: number)
-enum_constant_list?(nil, A, A) :- any_position(A).
-enum_constant_list?(x, A, B) :- enum_constant_list(x, A, B).
+OPTIONAL(enum_constant_list?, enum_constant_list)
 
 .decl enum_constant(id: id, a: number, b: number)
 enum_constant(nil, A, D) :-
@@ -1106,8 +1059,7 @@ enum_constant(nil, A, D) :-
     class_body?(_, C, D).
 
 .decl enum_constant_modifier(id: id, a: number, b: number)
-enum_constant_modifier(["annotation_modifier", A, B], A, B) :-
-    annotation(a, A, B).
+enum_constant_modifier(id, A, B) :- annotation(id, A, B).
 
 .decl enum_constant_modifiers?(id: id_list, a: number, b: number)
 ZERO_OR_MORE(enum_constant_modifiers?, enum_constant_modifier)
@@ -1118,8 +1070,7 @@ enum_body_declarations(ids, A, C) :-
     class_body_declarations?(ids, B, C).
 
 .decl enum_body_declarations?(e: id_list, a: number, b: number)
-enum_body_declarations?(nil, A, A) :- any_position(A).
-enum_body_declarations?(ids, A, B) :- enum_body_declarations(ids, A, B).
+OPTIONAL(enum_body_declarations?, enum_body_declarations)
 
 /**
  * Interfaces
@@ -1152,7 +1103,7 @@ ZERO_OR_MORE(interface_modifiers?, interface_modifier)
 .decl constant_declaration(id: id, a: number, b: number)
 
 .decl constant_modifier(id: id, a: number, b: number)
-constant_modifier(["annotation_modifier", A, B], A, B) :- annotation(_, A, B).
+constant_modifier(id, A, B) :- annotation(id, A, B).
 constant_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
 constant_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
 constant_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
@@ -1160,8 +1111,7 @@ constant_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 .decl interface_method_declaration(a: number, b: number)
 
 .decl interface_method_modifier(id: id, a: number, b: number)
-interface_method_modifier(["annotation_modifier", A, B], A, B) :-
-    annotation(_, A, B).
+interface_method_modifier(id, A, B) :- annotation(id, A, B).
 interface_method_modifier(["public_modifier", A, B], A, B) :-
     token_public(A, B).
 interface_method_modifier(["private_modifier", A, B], A, B) :-
@@ -1226,7 +1176,8 @@ annotation(e, A, B) :- normal_annotation(e, A, B).
 ZERO_OR_MORE(annotations?, annotation)
 
 .decl normal_annotation(id: id, a: number, b: number)
-normal_annotation(nil, A, F) :-
+normal_annotation(id, A, F) :-
+    id = ["annotation", A, F],
     token_at(A, B),
     type_name(_, B, C),
     token_left_paren(C, D),
@@ -1234,18 +1185,16 @@ normal_annotation(nil, A, F) :-
     token_right_paren(E, F).
 
 .decl element_value_pair_list(id: id_list, a: number, b: number)
-element_value_pair_list([x, nil], A, B) :- element_value_pair(x, A, B).
-element_value_pair_list([x, xs], A, D) :-
-    element_value_pair(x, A, B),
-    token_comma(B, C),
-    element_value_pair_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(element_value_pair_list,
+                         element_value_pair,
+                         token_comma)
 
 .decl element_value_pair_list?(id: id_list, a: number, b: number)
-element_value_pair_list?(nil, A, A) :- any_position(A).
-element_value_pair_list?(x, A, B) :- element_value_pair_list(x, A, B).
+OPTIONAL(element_value_pair_list?, element_value_pair_list)
 
 .decl element_value_pair(id: id, a: number, b: number)
-element_value_pair(nil, A, D) :-
+element_value_pair(id, A, D) :-
+    id = ["element_value_pair", A, D],
     identifier(_, _, A, B),
     token_equal_sign(B, C),
     element_value(_, C, D).
@@ -1253,22 +1202,17 @@ element_value_pair(nil, A, D) :-
 .decl element_value(id: id, a: number, b: number)
 
 .decl element_value_array_initializer(ids: id_list, a: number, b: number)
-element_value_array_initializer(e, A, E) :-
+element_value_array_initializer(ids, A, E) :-
     token_left_curly_bracket(A, B),
-    element_value_list?(e, B, C),
+    element_value_list?(ids, B, C),
     token_comma?(C, D),
     token_right_curly_bracket(D, E).
 
 .decl element_value_list(ids: id_list, a: number, b: number)
-element_value_list([x, nil], A, B) :- element_value(x, A, B).
-element_value_list([x, xs], A, D) :-
-    element_value(x, A, B),
-    token_comma(B, C),
-    element_value_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(element_value_list, element_value, token_comma)
 
 .decl element_value_list?(ids: id_list, a: number, b: number)
-element_value_list?(nil, A, A) :- any_position(A).
-element_value_list?(x, A, B) :- element_value_list(x, A, B).
+OPTIONAL(element_value_list?, element_value_list)
 
 .decl marker_annotation(id: id, a: number, b: number)
 marker_annotation(e, A, C) :-
@@ -1290,15 +1234,10 @@ array_initializer(["array_initializer_expression", A, E], A, E) :-
     token_right_curly_bracket(D, E).
 
 .decl variable_initializer_list(ids: id_list, a: number, b: number)
-variable_initializer_list([x, nil], A, B) :- variable_initializer(x, A, B).
-variable_initializer_list([x, xs], A, D) :-
-    variable_initializer(x, A, B),
-    token_comma(B, C),
-    variable_initializer_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(variable_initializer_list, variable_initializer, token_comma)
 
 .decl variable_initializer_list?(ids: id_list, a: number, b: number)
-variable_initializer_list?(nil, A, A) :- any_position(A).
-variable_initializer_list?(x, A, B) :- variable_initializer_list(x, A, B).
+OPTIONAL(variable_initializer_list?, variable_initializer_list)
 
 /**
  * Blocks and Statements
@@ -1329,12 +1268,12 @@ local_variable_declaration_statement(id, A, C) :-
 .decl local_variable_declaration(id: id, a: number, b: number)
 parent_of_list(id, "modifiers", mods),
 parent_of(id, "type", type),
-parent_of(id, "declarations", decls),
+parent_of_list(id, "declarations", decls),
 local_variable_declaration(id, A, D) :-
     id = ["local_variable_declaration", A, D],
     variable_modifiers?(mods, A, B),
     local_variable_type(type, B, C),
-    variable_declarator_list(decls, _, C, D).
+    variable_declarator_list(decls, C, D).
 
 .decl local_variable_type(id: id, a: number, b: number)
 local_variable_type(id, A, B) :- unann_type(id, A, B).
@@ -1572,7 +1511,7 @@ for_init(id, A, B) :-
     local_variable_declaration(id, A, B).
 
 .decl for_init?(id: id, a: number, b: number)
-ID_OPTIONAL(for_init?, for_init)
+OPTIONAL(for_init?, for_init)
 
 .decl for_update(id: id, a: number, b: number)
 for_update(id, A, B) :- statement_expression_list(id, _, A, B).
@@ -1631,10 +1570,7 @@ throw_statement(["throw_statement", A, D], A, D) :-
 .decl try_statement(id: id, a: number, b: number)
 
 .decl catches(ids: id_list, a: number, b: number)
-catches([x, nil], A, B) :- catch_clause(x, A, B).
-catches([x, xs], A, C) :-
-    catch_clause(x, A, B),
-    catches(xs, B, C).
+ONE_OR_MORE(catches, catch_clause)
 
 .decl catch_clause(id: id, a: number, b: number)
 
@@ -1673,11 +1609,7 @@ resource_specification(e, A, E) :-
     token_right_paren(D, E).
 
 .decl resource_list(ids: id_list, a: number, b: number)
-resource_list([x, nil], A, B) :- resource(x, A, B).
-resource_list([x, xs], A, D) :-
-    resource(x, A, B),
-    token_semicolon(B, C),
-    resource_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(resource_list, resource, token_semicolon)
 
 .decl resource(id: id, a: number, b: number)
 
@@ -1731,11 +1663,11 @@ class_or_interface_type_to_instantiate(nil, A, D) :-
     // TODO ...
     type_arguments_or_diamond(_, C, D).
 
-.decl type_arguments_or_diamond(id: id, a: number, b: number)
+.decl type_arguments_or_diamond(ids: id_list, a: number, b: number)
 type_arguments_or_diamond(nil, A, C) :-
     token_less_than(A, B),
     token_greater_than(B, C).
-type_arguments_or_diamond(id, A, B) :- type_arguments(id, _, A, B).
+type_arguments_or_diamond(ids, A, B) :- type_arguments(ids, A, B).
 
 .decl field_access(id: id, a: number, b: number)
 field_access(nil, A, D) :-
@@ -1772,7 +1704,7 @@ method_invocation(id, A, E) :-
     token_right_paren(D, E).
 
 parent_of(id, "subject", subject),
-parent_of(id, "type_arguments", typeargs),
+parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
 parent_of_list(id, "arguments", args),
 method_invocation(id, A, H) :-
@@ -1786,7 +1718,7 @@ method_invocation(id, A, H) :-
     token_right_paren(G, H).
 
 parent_of(id, "subject", subject),
-parent_of(id, "type_arguments", typeargs),
+parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
 parent_of_list(id, "arguments", args),
 method_invocation(id, A, H) :-
@@ -1800,7 +1732,7 @@ method_invocation(id, A, H) :-
     token_right_paren(G, H).
 
 parent_of(id, "subject", nil),
-parent_of(id, "type_arguments", typeargs),
+parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
 parent_of_list(id, "arguments", args),
 method_invocation(id, A, H) :-
@@ -1814,7 +1746,7 @@ method_invocation(id, A, H) :-
     token_right_paren(G, H).
 
 parent_of(id, "subject", subject),
-parent_of(id, "type_arguments", typeargs),
+parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
 parent_of_list(id, "arguments", args),
 method_invocation(id, A, J) :-
@@ -1829,16 +1761,11 @@ method_invocation(id, A, J) :-
     argument_list?(args, H, I),
     token_right_paren(I, J).
 
-.decl argument_list?(ids: id_list, a: number, b: number)
-argument_list?(nil, A, A) :- any_position(A).
-argument_list?(id, A, B) :- argument_list(id, A, B).
-
 .decl argument_list(ids: id_list, a: number, b: number)
-argument_list([x, nil], A, B) :- expression(x, A, B).
-argument_list([x, xs], A, D) :-
-    expression(x, A, B),
-    token_comma(B, C),
-    argument_list(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(argument_list, expression, token_comma)
+
+.decl argument_list?(ids: id_list, a: number, b: number)
+OPTIONAL(argument_list?, argument_list)
 
 .decl method_reference(id: id, a: number, b: number)
 method_reference(["method_reference", A, F], A, F) :-
@@ -1878,26 +1805,26 @@ array_creation_expression(id, A, E) :-
     id = ["array_creation_expression", A, E],
     token_new(A, B),
     primitive_type(_, B, C),
-    dims(_, _, C, D),
+    dims(_, C, D),
     array_initializer(_, D, E).
 array_creation_expression(id, A, E) :-
     id = ["array_creation_expression", A, E],
     token_new(A, B),
     class_or_interface_type(_, B, C),
-    dims(_, _, C, D),
+    dims(_, C, D),
     array_initializer(_, D, E).
 
 .decl dim_exprs(ids: id_list, a: number, b: number)
-dim_exprs([x, nil], A, B) :- dim_expr(x, A, B).
-dim_exprs([x, xs], A, C) :-
-    dim_expr(x, A, B),
-    dim_exprs(xs, B, C).
+ONE_OR_MORE(dim_exprs, dim_expr)
 
 .decl dim_expr(id: id, a: number, b: number)
-dim_expr(nil, A, E) :-
-    annotations?(_, A, B),
+parent_of_list(id, "annotations", annotations),
+parent_of(id, "expression", expr),
+dim_expr(id, A, E) :-
+    id = ["dim_expr", A, E],
+    annotations?(annotations, A, B),
     token_left_square_bracket(B, C),
-    expression(_, C, D),
+    expression(expr, C, D),
     token_right_square_bracket(D, E).
 
 .decl expression(id: id, a: number, b: number)
@@ -1905,13 +1832,16 @@ expression(id, A, B) :- lambda_expression(id, A, B).
 expression(id, A, B) :- assignment_expression(id, A, B).
 
 .decl expression?(id: id, a: number, b: number)
-ID_OPTIONAL(expression?, expression)
+OPTIONAL(expression?, expression)
 
 .decl lambda_expression(id: id, a: number, b: number)
-lambda_expression(["lambda_expression", A, D], A, D) :-
-    lambda_parameters(_, A, B),
+parent_of(id, "parameters", parameters),
+parent_of(id, "body", body),
+lambda_expression(id, A, D) :-
+    id = ["lambda_expression", A, D],
+    lambda_parameters(parameters, A, B),
     token_arrow(B, C),
-    lambda_body(_, C, D).
+    lambda_body(body, C, D).
 
 .decl lambda_parameters(id: id, a: number, b: number)
 lambda_parameters(nil, A, B) :-
@@ -2013,7 +1943,7 @@ INFIX("or_expression",
 .decl conditional_and_expression(id: id, a: number, b: number)
 conditional_and_expression(id, A, B) :- inclusive_or_expression(id, A, B).
 conditional_and_expression(id, A, B) :-
-    conditional_and_expression_impl(id, _, _, A, B).
+    conditional_and_expression_impl(id, A, B).
 
 INFIX("conditional_and_expression",
       conditional_and_expression_impl,
@@ -2024,7 +1954,7 @@ INFIX("conditional_and_expression",
 .decl inclusive_or_expression(id: id, a: number, b: number)
 inclusive_or_expression(id, A, B) :- exclusive_or_expression(id, A, B).
 inclusive_or_expression(id, A, B) :-
-    bitwise_inclusive_or_expression(id, _, _, A, B).
+    bitwise_inclusive_or_expression(id, A, B).
 
 INFIX("bitwise_inclusive_or_expression",
       bitwise_inclusive_or_expression,
@@ -2036,7 +1966,7 @@ INFIX("bitwise_inclusive_or_expression",
 exclusive_or_expression(id, A, B) :-
     and_expression(id, A, B).
 exclusive_or_expression(id, A, B) :-
-    bitwise_exclusive_or_expression(id, _, _, A, B).
+    bitwise_exclusive_or_expression(id, A, B).
 
 INFIX("bitwise_exclusive_or_expression",
       bitwise_exclusive_or_expression,
@@ -2046,7 +1976,7 @@ INFIX("bitwise_exclusive_or_expression",
 
 .decl and_expression(id: id, a: number, b: number)
 and_expression(id, A, B) :- equality_expression(id, A, B).
-and_expression(id, A, B) :- and_expression_impl(id, _, _, A, B).
+and_expression(id, A, B) :- and_expression_impl(id, A, B).
 
 INFIX("and_expression",
       and_expression_impl,
@@ -2056,8 +1986,8 @@ INFIX("and_expression",
 
 .decl equality_expression(id: id, a: number, b: number)
 equality_expression(id, A, B) :- relational_expression(id, A, B).
-equality_expression(id, A, B) :- equals_expression(id, _, _, A, B).
-equality_expression(id, A, B) :- not_equals_expression(id, _, _, A, B).
+equality_expression(id, A, B) :- equals_expression(id, A, B).
+equality_expression(id, A, B) :- not_equals_expression(id, A, B).
 
 INFIX("equals_expression",
       equals_expression,
@@ -2075,9 +2005,9 @@ relational_expression(e, A, B) :- shift_expression(e, A, B).
 
 .decl shift_expression(id: id, a: number, b: number)
 shift_expression(id, A, B) :- additive_expression(id, A, B).
-shift_expression(id, A, B) :- shift_left_expression(id, _, _, A, B).
-shift_expression(id, A, B) :- shift_right_expression(id, _, _, A, B).
-shift_expression(id, A, B) :- shift_right_unsigned_expression(id, _, _, A, B).
+shift_expression(id, A, B) :- shift_left_expression(id, A, B).
+shift_expression(id, A, B) :- shift_right_expression(id, A, B).
+shift_expression(id, A, B) :- shift_right_unsigned_expression(id, A, B).
 
 INFIX("shift_left_expression",
       shift_left_expression,
@@ -2097,8 +2027,8 @@ INFIX("shift_right_unsigned_expression",
 
 .decl additive_expression(id: id, a: number, b: number)
 additive_expression(id, A, B) :- multiplicative_expression(id, A, B).
-additive_expression(id, A, B) :- addition_expression(id, _, _, A, B).
-additive_expression(id, A, B) :- subtraction_expression(id, _, _, A, B).
+additive_expression(id, A, B) :- addition_expression(id, A, B).
+additive_expression(id, A, B) :- subtraction_expression(id, A, B).
 
 INFIX("addition_expression",
       addition_expression,
@@ -2114,9 +2044,9 @@ INFIX("subtraction_expression",
 .decl multiplicative_expression(id: id, a: number, b: number)
 multiplicative_expression(id, A, B) :- unary_expression(id, A, B).
 multiplicative_expression(id, A, B) :-
-    multiplication_expression(id, _, _, A, B).
-multiplicative_expression(id, A, B) :- division_expression(id, _, _, A, B).
-multiplicative_expression(id, A, B) :- modulo_expression(id, _, _, A, B).
+    multiplication_expression(id, A, B).
+multiplicative_expression(id, A, B) :- division_expression(id, A, B).
+multiplicative_expression(id, A, B) :- modulo_expression(id, A, B).
 
 INFIX("multiplication_expression",
       multiplication_expression,
