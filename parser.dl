@@ -30,191 +30,7 @@
 .type id_list = [head: id, tail: id_list]
 
 /**
- * Tokens
- **************************************************************************/
-
-.input token
-.decl token(s: symbol, n: number)
-
-.input token_type
-.decl token_type(n: number, s: symbol)
-
-.input num_tokens
-.decl num_tokens(n: number)
-
-.decl token_implements(a: number, b: number)
-      token_implements(A, A + 1) :- token("implements", A).
-.decl token_requires(a: number, b: number)
-      token_requires(A, A + 1) :- token("requires", A).
-.decl token_transitive(a: number, b: number)
-      token_transitive(A, A + 1) :- token("transitive", A).
-.decl token_exports(a: number, b: number)
-      token_exports(A, A + 1) :- token("exports", A).
-.decl token_provides(a: number, b: number)
-      token_provides(A, A + 1) :- token("provides", A).
-.decl token_to(a: number, b: number)
-      token_to(A, A + 1) :- token("to", A).
-.decl token_uses(a: number, b: number)
-      token_uses(A, A + 1) :- token("uses", A).
-.decl token_opens(a: number, b: number)
-      token_opens(A, A + 1) :- token("opens", A).
-.decl token_with(a: number, b: number)
-      token_with(A, A + 1) :- token("with", A).
-.decl token_try(a: number, b: number)
-      token_try(A, A + 1) :- token("try", A).
-.decl token_new(a: number, b: number)
-      token_new(A, A + 1) :- token("new", A).
-.decl token_super(a: number, b: number)
-      token_super(A, A + 1) :- token("super", A).
-.decl token_ellipsis(a: number, b: number)
-      token_ellipsis(A, A + 1) :- token("...", A).
-.decl token_ampersand(a: number, b: number)
-      token_ampersand(A, A + 1) :- token("&", A).
-.decl token_equal_sign(a: number, b: number)
-      token_equal_sign(A, A + 1) :- token("=", A).
-.decl token_vertical_bar(a: number, b: number)
-      token_vertical_bar(A, A + 1) :- token("|", A).
-.decl token_catch(a: number, b: number)
-      token_catch(A, A + 1) :- token("catch", A).
-.decl token_for(a: number, b: number)
-      token_for(A, A + 1) :- token("for", A).
-.decl token_semicolon(a: number, b: number)
-      token_semicolon(A, A + 1) :- token(";", A).
-.decl token_semicolon?(a: number, b: number)
-      token_semicolon?(A, A) :- any_position(A).
-      token_semicolon?(A, B) :- token_semicolon(A, B).
-.decl token_finally(a: number, b: number)
-      token_finally(A, A + 1) :- token("finally", A).
-.decl token_byte(a: number, b: number)
-      token_byte(A, A + 1) :- token("byte", A).
-.decl token_long(a: number, b: number)
-      token_long(A, A + 1) :- token("long", A).
-.decl token_short(a: number, b: number)
-      token_short(A, A + 1) :- token("short", A).
-.decl token_int(a: number, b: number)
-      token_int(A, A + 1) :- token("int", A).
-.decl token_public(a: number, b: number)
-      token_public(A, A + 1) :- token("public", A).
-.decl token_dot(a: number, b: number)
-      token_dot(A, A + 1) :- token(".", A).
-.decl token_package(a: number, b: number)
-      token_package(A, A + 1) :- token("package", A).
-.decl token_literal_string(s: symbol, a: number, b: number)
-      token_literal_string(s, A, A + 1) :-
-      token_type(A, "string"),
-      token(s, A).
-.decl token_literal_integer(s: symbol, a: number, b: number)
-      token_literal_integer(s, A, A + 1) :-
-      token_type(A, "integer"),
-      token(s, A).
-.decl token_identifier(s: symbol, a: number, b: number)
-      token_identifier(s, A, A + 1) :-
-      token_type(A, "identifier"),
-      token(s, A).
-.decl token_left_paren(a: number, b: number)
-      token_left_paren(A, A + 1) :- token("(", A).
-.decl token_right_paren(a: number, b: number)
-      token_right_paren(A, A + 1) :- token(")", A).
-.decl token_left_square_bracket(a: number, b: number)
-      token_left_square_bracket(A, A + 1) :- token("[", A).
-.decl token_right_square_bracket(a: number, b: number)
-      token_right_square_bracket(A, A + 1) :- token("]", A).
-.decl token_left_curly_bracket(a: number, b: number)
-      token_left_curly_bracket(A, A + 1) :- token("{", A).
-.decl token_right_curly_bracket(a: number, b: number)
-      token_right_curly_bracket(A, A + 1) :- token("}", A).
-.decl token_less_than(a: number, b: number)
-      token_less_than(A, A + 1) :- token("<", A).
-.decl token_greater_than(a: number, b: number)
-      token_greater_than(A, A + 1) :- token(">", A).
-.decl token_asterisk(a: number, b: number)
-      token_asterisk(A, A + 1) :- token("*", A).
-.decl token_import(a: number, b: number)
-      token_import(A, A + 1) :- token("import", A).
-.decl token_comma(a: number, b: number)
-      token_comma(A, A + 1) :- token(",", A).
-.decl token_comma?(a: number, b: number)
-      token_comma?(A, A) :- any_position(A).
-      token_comma?(A, B) :- token_comma(A, B).
-.decl token_interface(a: number, b: number)
-      token_interface(A, A + 1) :- token("interface", A).
-.decl token_class(a: number, b: number)
-      token_class(A, A + 1) :- token("class", A).
-.decl token_extends(a: number, b: number)
-      token_extends(A, A + 1) :- token("extends", A).
-.decl token_float(a: number, b: number)
-      token_float(A, A + 1) :- token("float", A).
-.decl token_double(a: number, b: number)
-      token_double(A, A + 1) :- token("double", A).
-.decl token_boolean(a: number, b: number)
-      token_boolean(A, A + 1) :- token("boolean", A).
-.decl token_return(a: number, b: number)
-      token_return(A, A + 1) :- token("return", A).
-.decl token_switch(a: number, b: number)
-      token_switch(A, A + 1) :- token("switch", A).
-.decl token_colon(a: number, b: number)
-      token_colon(A, A + 1) :- token(":", A).
-.decl token_var(a: number, b: number)
-      token_var(A, A + 1) :- token("var", A).
-.decl token_do(a: number, b: number)
-      token_do(A, A + 1) :- token("do", A).
-.decl token_while(a: number, b: number)
-      token_while(A, A + 1) :- token("while", A).
-.decl token_continue(a: number, b: number)
-      token_continue(A, A + 1) :- token("continue", A).
-.decl token_synchronized(a: number, b: number)
-      token_synchronized(A, A + 1) :- token("synchronized", A).
-.decl token_native(a: number, b: number)
-      token_native(A, A + 1) :- token("native", A).
-.decl token_break(a: number, b: number)
-      token_break(A, A + 1) :- token("break", A).
-.decl token_case(a: number, b: number)
-      token_case(A, A + 1) :- token("case", A).
-.decl token_yield(a: number, b: number)
-      token_yield(A, A + 1) :- token("yield", A).
-.decl token_throws(a: number, b: number)
-      token_throws(A, A + 1) :- token("throws", A).
-.decl token_throw(a: number, b: number)
-      token_throw(A, A + 1) :- token("throw", A).
-.decl token_arrow(a: number, b: number)
-      token_arrow(A, A + 1) :- token("->", A).
-.decl token_if(a: number, b: number)
-      token_if(A, A + 1) :- token("if", A).
-.decl token_else(a: number, b: number)
-      token_else(A, A + 1) :- token("else", A).
-.decl token_assert(a: number, b: number)
-      token_assert(A, A + 1) :- token("assert", A).
-.decl token_static(a: number, b: number)
-      token_static(A, A + 1) :- token("static", A).
-.decl token_transient(a: number, b: number)
-      token_transient(A, A + 1) :- token("transient", A).
-.decl token_volatile(a: number, b: number)
-      token_volatile(A, A + 1) :- token("volatile", A).
-.decl token_question_mark(a: number, b: number)
-      token_question_mark(A, A + 1) :- token("?", A).
-.decl token_at(a: number, b: number)
-      token_at(A, A + 1) :- token("@", A).
-.decl token_this(a: number, b: number)
-      token_this(A, A + 1) :- token("this", A).
-.decl token_void(a: number, b: number)
-      token_void(A, A + 1) :- token("void", A).
-.decl token_strictfp(a: number, b: number)
-      token_strictfp(A, A + 1) :- token("strictfp", A).
-.decl token_default(a: number, b: number)
-      token_default(A, A + 1) :- token("default", A).
-.decl token_private(a: number, b: number)
-      token_private(A, A + 1) :- token("private", A).
-.decl token_final(a: number, b: number)
-      token_final(A, A + 1) :- token("final", A).
-.decl token_abstract(a: number, b: number)
-      token_abstract(A, A + 1) :- token("abstract", A).
-.decl token_protected(a: number, b: number)
-      token_protected(A, A + 1) :- token("protected", A).
-.decl token_char(a: number, b: number)
-      token_char(A, A + 1) :- token("char", A).
-
-/**
- * Helper functions
+ * Helper functions and macros
  **************************************************************************/
 
 .decl any_position(n: number)
@@ -256,6 +72,119 @@ any_position(n) :- num_tokens(n).
     current_level([node, A, B], A, B + 1) :- \
         next_level(_, A, B), \
         token(symbol, B).
+
+#define DEFINE_TOKEN(name, str) \
+    .decl name(a: number, b: number) \
+    name(A, A + 1) :- token(str, A).
+
+/**
+ * Tokens
+ **************************************************************************/
+
+.input token
+.decl token(s: symbol, n: number)
+
+.input token_type
+.decl token_type(n: number, s: symbol)
+
+.input num_tokens
+.decl num_tokens(n: number)
+
+DEFINE_TOKEN(token_abstract,            "abstract")
+DEFINE_TOKEN(token_ampersand,           "&")
+DEFINE_TOKEN(token_arrow,               "->")
+DEFINE_TOKEN(token_assert,              "assert")
+DEFINE_TOKEN(token_asterisk,            "*")
+DEFINE_TOKEN(token_at,                  "@")
+DEFINE_TOKEN(token_boolean,             "boolean")
+DEFINE_TOKEN(token_break,               "break")
+DEFINE_TOKEN(token_byte,                "byte")
+DEFINE_TOKEN(token_case,                "case")
+DEFINE_TOKEN(token_catch,               "catch")
+DEFINE_TOKEN(token_char,                "char")
+DEFINE_TOKEN(token_class,               "class")
+DEFINE_TOKEN(token_colon,               ":")
+DEFINE_TOKEN(token_comma,               ",")
+DEFINE_TOKEN(token_continue,            "continue")
+DEFINE_TOKEN(token_default,             "default")
+DEFINE_TOKEN(token_do,                  "do")
+DEFINE_TOKEN(token_dot,                 ".")
+DEFINE_TOKEN(token_double,              "double")
+DEFINE_TOKEN(token_ellipsis,            "...")
+DEFINE_TOKEN(token_else,                "else")
+DEFINE_TOKEN(token_equal_sign,          "=")
+DEFINE_TOKEN(token_exports,             "exports")
+DEFINE_TOKEN(token_extends,             "extends")
+DEFINE_TOKEN(token_final,               "final")
+DEFINE_TOKEN(token_finally,             "finally")
+DEFINE_TOKEN(token_float,               "float")
+DEFINE_TOKEN(token_for,                 "for")
+DEFINE_TOKEN(token_greater_than,        ">")
+DEFINE_TOKEN(token_if,                  "if")
+DEFINE_TOKEN(token_implements,          "implements")
+DEFINE_TOKEN(token_import,              "import")
+DEFINE_TOKEN(token_int,                 "int")
+DEFINE_TOKEN(token_interface,           "interface")
+DEFINE_TOKEN(token_left_curly_bracket,  "{")
+DEFINE_TOKEN(token_left_paren,          "(")
+DEFINE_TOKEN(token_left_square_bracket, "[")
+DEFINE_TOKEN(token_less_than,           "<")
+DEFINE_TOKEN(token_long,                "long")
+DEFINE_TOKEN(token_native,              "native")
+DEFINE_TOKEN(token_new,                 "new")
+DEFINE_TOKEN(token_opens,               "opens")
+DEFINE_TOKEN(token_package,             "package")
+DEFINE_TOKEN(token_private,             "private")
+DEFINE_TOKEN(token_protected,           "protected")
+DEFINE_TOKEN(token_provides,            "provides")
+DEFINE_TOKEN(token_public,              "public")
+DEFINE_TOKEN(token_question_mark,       "?")
+DEFINE_TOKEN(token_requires,            "requires")
+DEFINE_TOKEN(token_return,              "return")
+DEFINE_TOKEN(token_right_curly_bracket, "}")
+DEFINE_TOKEN(token_right_paren,         ")")
+DEFINE_TOKEN(token_right_square_bracket,"]")
+DEFINE_TOKEN(token_semicolon,           ";")
+DEFINE_TOKEN(token_short,               "short")
+DEFINE_TOKEN(token_static,              "static")
+DEFINE_TOKEN(token_strictfp,            "strictfp")
+DEFINE_TOKEN(token_super,               "super")
+DEFINE_TOKEN(token_switch,              "switch")
+DEFINE_TOKEN(token_synchronized,        "synchronized")
+DEFINE_TOKEN(token_this,                "this")
+DEFINE_TOKEN(token_throw,               "throw")
+DEFINE_TOKEN(token_throws,              "throws")
+DEFINE_TOKEN(token_to,                  "to")
+DEFINE_TOKEN(token_transient,           "transient")
+DEFINE_TOKEN(token_transitive,          "transitive")
+DEFINE_TOKEN(token_try,                 "try")
+DEFINE_TOKEN(token_uses,                "uses")
+DEFINE_TOKEN(token_var,                 "var")
+DEFINE_TOKEN(token_vertical_bar,        "|")
+DEFINE_TOKEN(token_void,                "void")
+DEFINE_TOKEN(token_volatile,            "volatile")
+DEFINE_TOKEN(token_while,               "while")
+DEFINE_TOKEN(token_with,                "with")
+DEFINE_TOKEN(token_yield,               "yield")
+
+.decl token_comma?(a: number, b: number)
+      token_comma?(A, A) :- any_position(A).
+      token_comma?(A, B) :- token_comma(A, B).
+.decl token_semicolon?(a: number, b: number)
+      token_semicolon?(A, A) :- any_position(A).
+      token_semicolon?(A, B) :- token_semicolon(A, B).
+.decl token_literal_string(s: symbol, a: number, b: number)
+      token_literal_string(s, A, A + 1) :-
+      token_type(A, "string"),
+      token(s, A).
+.decl token_literal_integer(s: symbol, a: number, b: number)
+      token_literal_integer(s, A, A + 1) :-
+      token_type(A, "integer"),
+      token(s, A).
+.decl token_identifier(s: symbol, a: number, b: number)
+      token_identifier(s, A, A + 1) :-
+      token_type(A, "identifier"),
+      token(s, A).
 
 /**
  * Lexical structure
@@ -467,12 +396,10 @@ type_name(["type_name", A, D], A, D) :-
     type_identifier(_, C, D).
 
 .decl expression_name(id: id, a: number, b: number)
-
 parent_of_list(id, "identifiers", [x, nil]),
 expression_name(id, A, B) :-
     id = ["expression_name", A, B],
     identifier(x, _, A, B).
-
 parent_of_list(id, "identifiers", [x, xs]),
 expression_name(id, A, D) :-
     id = ["expression_name", A, D],
