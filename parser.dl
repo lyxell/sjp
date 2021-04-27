@@ -254,17 +254,20 @@ class_or_interface_type(t, A, B) :- class_type(t, A, B).
 class_or_interface_type(t, A, B) :- interface_type(t, A, B).
 
 .decl class_type(id: id, a: number, b: number)
-class_type(nil, A, D) :-
+class_type(id, A, D) :-
+    id = ["class_type", A, D],
     annotations?(_, A, B),
     type_identifier(_, B, C),
     type_arguments?(_, C, D).
-class_type(nil, A, F) :-
+class_type(id, A, F) :-
+    id = ["class_type", A, F],
     package_name(_, A, B),
     token_dot(B, C),
     annotations?(_, C, D),
     type_identifier(_, D, E),
     type_arguments?(_, E, F).
-class_type(nil, A, F) :-
+class_type(id, A, F) :-
+    id = ["class_type", A, F],
     class_or_interface_type(_, A, B),
     token_dot(B, C),
     annotations?(_, C, D),
@@ -350,10 +353,11 @@ type_arguments(ids, A, D) :-
 OPTIONAL(type_arguments?, type_arguments)
 
 .decl type_argument_list(ids: id_list, a: number, b: number)
-ONE_OR_MORE(type_argument_list, type_argument)
+ONE_OR_MORE_SEPARATED_BY(type_argument_list, type_argument, token_comma)
 
 .decl type_argument(id: id, a: number, b: number)
-type_argument(e, A, B) :- reference_type(e, A, B).
+type_argument(id, A, B) :- reference_type(id, A, B).
+type_argument(id, A, B) :- wildcard(id, A, B).
 
 .decl wildcard(id: id, a: number, b: number)
 wildcard(nil, A, D) :-
@@ -767,21 +771,35 @@ unann_class_or_interface_type(id, A, B) :- unann_class_type(id, A, B).
 unann_class_or_interface_type(id, A, B) :- unann_interface_type(id, A, B).
 
 .decl unann_class_type(id: id, a: number, b: number)
-unann_class_type(nil, A, C) :-
-    type_identifier(_, A, B),
-    type_arguments?(_, B, C).
+parent_of_list(id, "type_arguments", typeargs),
+parent_of_list(id, "annotations", nil),
+parent_of(id, "name", name),
+unann_class_type(id, A, C) :-
+    id = ["class_type", A, C],
+    type_identifier(name, A, B),
+    type_arguments?(typeargs, B, C).
+
+parent_of_list(id, "type_arguments", typeargs),
+parent_of_list(id, "annotations", annotations),
+parent_of(id, "name", name),
 unann_class_type(nil, A, F) :-
+    id = ["class_type", A, F],
     package_name(_, A, B),
     token_dot(B, C),
-    annotations?(_, C, D),
-    type_identifier(_, D, E),
-    type_arguments?(_, E, F).
+    annotations?(annotations, C, D),
+    type_identifier(name, D, E),
+    type_arguments?(typeargs, E, F).
+
+parent_of_list(id, "type_arguments", typeargs),
+parent_of_list(id, "annotations", annotations),
+parent_of(id, "name", name),
 unann_class_type(nil, A, F) :-
+    id = ["class_type", A, F],
     unann_class_or_interface_type(_, A, B),
     token_dot(B, C),
-    annotations?(_, C, D),
-    type_identifier(_, D, E),
-    type_arguments?(_, E, F).
+    annotations?(annotations, C, D),
+    type_identifier(name, D, E),
+    type_arguments?(typeargs, E, F).
 
 .decl unann_interface_type(id: id, a: number, b: number)
 unann_interface_type(id, A, B) :- unann_class_type(id, A, B).
@@ -892,14 +910,16 @@ ONE_OR_MORE_SEPARATED_BY(formal_parameter_list, formal_parameter, token_comma)
 OPTIONAL(formal_parameter_list?, formal_parameter_list)
 
 .decl formal_parameter(id: id, a: number, b: number)
-formal_parameter(nil, A, D) :-
+formal_parameter(id, A, D) :-
+    id = ["formal_parameter", A, D],
     variable_modifiers?(_, A, B),
     unann_type(_, B, C),
     variable_declarator_id(_, C, D).
 formal_parameter(id, A, B) :- variable_arity_parameter(id, A, B).
 
 .decl variable_arity_parameter(id: id, a: number, b: number)
-variable_arity_parameter(nil, A, F) :-
+variable_arity_parameter(id, A, F) :-
+    id = ["variable_arity_parameter", A, F],
     variable_modifiers?(_, A, B),
     unann_type(_, B, C),
     annotations?(_, C, D),
@@ -2084,26 +2104,9 @@ root(id) :-
     compilation_unit(id, 0, B),
     num_tokens(B).
 
-/* in tree */
-
 .decl parent_of(parent: id, name: symbol, child: id)
 .decl parent_of_list(parent: id, name: symbol, children: id_list)
 
-.decl ast_node(id: id)
-ast_node(id) :- root(id).
-ast_node(child) :- ast_node(parent), parent_of(parent, _, child).
-
-// flattening to copy parent_of_list into parent_of
-.decl parent_of_list_flattened(parent: id, name: symbol, children: id_list)
-parent_of_list_flattened(parent, symb, list) :-
-    parent_of_list(parent, symb, list).
-parent_of_list_flattened(parent, symb, tail) :-
-    parent_of_list_flattened(parent, symb, [_, tail]).
-parent_of(parent, symb, head) :-
-    parent_of_list_flattened(parent, symb, [head, _]).
-parent_of(parent, symb, nil) :-
-    parent_of_list_flattened(parent, symb, nil).
-
 .output parent_of
-.output ast_node
+.output parent_of_list
 .output root

@@ -38,11 +38,6 @@ namespace sjp {
           start_token(std::get<1>(tuple)),
           end_token(std::get<2>(tuple)) {}
 
-    std::map<std::string,std::vector<std::shared_ptr<tree_node>>>
-    tree_node::get_children() {
-        return children;
-    }
-
     std::string tree_node::get_name() {
         return name;
     }
@@ -55,11 +50,27 @@ namespace sjp {
         return end_token;
     }
 
-    void tree_node::add_child(std::string symbol, std::shared_ptr<tree_node> child) {
-        children[symbol].push_back(child);
+    std::map<std::string,std::shared_ptr<tree_node>>
+    tree_node::get_parent_of() {
+        return parent_of;
     }
 
-    parser::parser() : tokens() {
+    void tree_node::set_parent_of(std::string symbol, std::shared_ptr<tree_node> child) {
+        parent_of[symbol] = child;
+    }
+
+    std::map<std::string,std::vector<std::shared_ptr<tree_node>>>
+    tree_node::get_parent_of_list() {
+        return parent_of_list;
+    }
+
+    void tree_node::set_parent_of_list(std::string symbol,
+            std::vector<std::shared_ptr<tree_node>> children) {
+        parent_of_list[symbol] = children;
+    }
+
+
+    parser::parser() {
         program = souffle::ProgramFactory::newInstance("parser");
         assert(program != NULL);
     }
@@ -77,26 +88,22 @@ namespace sjp {
     }
 
     void parser::add_string(const char* filename, const char* content) {
-        auto [tl, i32_value, token_type] = lex_string(filename, content);
-        token_limits.emplace(filename, tl);
-        souffle::Relation* relation = program->getRelation("token");
-        assert(relation != NULL);
+        auto [i32_value, token_type] = lex_string(filename, content);
+        // insert into token relation
         for (int32_t i = 0; i < tokens[filename].size(); i++) {
-            souffle::tuple tuple(relation);
+            souffle::tuple tuple(program->getRelation("token"));
             tuple << tokens[filename][i] << i;
-            relation->insert(tuple);
+            program->getRelation("token")->insert(tuple);
         }
-        relation = program->getRelation("num_tokens");
-        assert(relation != NULL);
-        souffle::tuple tuple(relation);
+        // insert into num_tokens relation
+        souffle::tuple tuple(program->getRelation("num_tokens"));
         tuple << (int32_t) tokens[filename].size();
-        relation->insert(tuple);
-        relation = program->getRelation("token_type");
-        assert(relation != NULL);
+        program->getRelation("num_tokens")->insert(tuple);
+        // insert into token_type relation
         for (auto& [id, type] : token_type) {
-            souffle::tuple tuple(relation);
+            souffle::tuple tuple(program->getRelation("token_type"));
             tuple << (int32_t) id << type;
-            relation->insert(tuple);
+            program->getRelation("token_type")->insert(tuple);
         }
     }
 
@@ -116,73 +123,85 @@ namespace sjp {
         return result;
     }
 
+    std::tuple<std::string, int, int>
+    parser::node_from_id(const char* filename, int id) {
+        auto& limits = token_limits[filename];
+        auto record = program->getRecordTable().unpack(id, 3);
+        assert(limits.find(record[1]) != limits.end());
+        assert(limits.find(record[2]-1) != limits.end());
+        return std::tuple(
+            program->getSymbolTable().decode(record[0]),
+            limits[record[1]].first,
+            limits[record[2]-1].second);
+    }
+
+    std::shared_ptr<tree_node>
+    parser::build_node(const char* filename,
+        std::map<int, std::map<std::string, int>>& parent_of,
+        std::map<int, std::map<std::string, std::vector<int>>>& parent_of_list,
+        int id) {
+        if (id == 0) return nullptr;
+        auto ptr = std::make_shared<tree_node>(node_from_id(filename, id));
+        for (auto [symbol, child] : parent_of[id]) {
+            ptr->set_parent_of(symbol, build_node(filename,
+                                                  parent_of,
+                                                  parent_of_list,
+                                                  child));
+        }
+        for (auto [symbol, children] : parent_of_list[id]) {
+            std::vector<std::shared_ptr<tree_node>> result;
+            for (auto child : children) {
+                result.push_back(build_node(filename,
+                                            parent_of,
+                                            parent_of_list, child));
+            }
+            ptr->set_parent_of_list(symbol, result);
+        }
+        return ptr;
+    }
+
     std::shared_ptr<tree_node>
     parser::get_ast(const char* filename) {
 
-        auto& limits = token_limits[filename];
-
-        souffle::Relation* parent_of_rel = program->getRelation("parent_of");
-        assert(parent_of_rel != NULL);
-        std::map<int, std::vector<std::pair<std::string, int>>> parent_of;
-        for (auto& output : *parent_of_rel) {
-            int child, parent;
+        // load the parent_of relation into memory
+        std::map<int, std::map<std::string, int>> parent_of;
+        for (auto& output : *program->getRelation("parent_of")) {
+            int parent, child;
             std::string symbol;
             output >> parent;
             output >> symbol;
             output >> child;
             assert(parent != 0);
-            parent_of[parent].emplace_back(symbol, child);
+            parent_of[parent][symbol] = child;
         }
 
-        souffle::Relation* ast_node_rel = program->getRelation("ast_node");
-        assert(ast_node_rel != NULL);
-        std::map<int, std::tuple<std::string,int,int>> ast_node;
-        for (auto& output : *ast_node_rel) {
-            int id;
-            output >> id;
-            if (id == 0) continue;
-            auto record = program->getRecordTable().unpack(id, 3);
-            assert(record != NULL);
-            ast_node.emplace(
-                    id,
-                    std::tuple(
-                        program->getSymbolTable().decode(record[0]),
-                        limits[record[1]].first,
-                        limits[record[2]-1].second));
-        }
-
-        souffle::Relation* root_rel = program->getRelation("root");
-        assert(root_rel != NULL);
-
-        std::unordered_map<std::shared_ptr<tree_node>, int> ptr_to_id;
-        std::shared_ptr<tree_node> root = nullptr;
-
-        for (auto& output : *root_rel) {
-            int id;
-            output >> id;
-            root = std::make_shared<tree_node>(ast_node[id]);
-            ptr_to_id[root] = id;
-        }
-
-        std::vector<std::shared_ptr<tree_node>> unpopulated_nodes = {root};
-
-        while (unpopulated_nodes.size()) {
-            auto node = unpopulated_nodes.back();
-            unpopulated_nodes.pop_back();
-            for (auto [symbol, id] : parent_of[ptr_to_id[node]]) {
-                if (id) {
-                    std::shared_ptr<tree_node> ptr =
-                        std::make_shared<tree_node>(ast_node[id]);
-                    ptr_to_id[ptr] = id;
-                    node->add_child(symbol, ptr);
-                    unpopulated_nodes.push_back(ptr);
-                } else {
-                    node->add_child(symbol, nullptr);
-                }
+        // load the parent_of_list relation into memory
+        std::map<int, std::map<std::string, std::vector<int>>> parent_of_list;
+        for (auto& output : *program->getRelation("parent_of_list")) {
+            int parent, list;
+            std::string symbol;
+            output >> parent;
+            output >> symbol;
+            output >> list;
+            assert(parent != 0);
+            std::vector<int> result;
+            while (list != 0) {
+                auto record = program->getRecordTable().unpack(list, 2);
+                result.push_back(record[0]);
+                list = record[1];
             }
+            parent_of_list[parent][symbol] = result;
         }
 
-        return root;
+        // load root relation into memory
+        std::shared_ptr<tree_node> root = nullptr;
+        for (auto& output : *program->getRelation("root")) {
+            int id;
+            output >> id;
+            return build_node(filename, parent_of, parent_of_list, id);
+        }
+        
+        return nullptr;
 
     }
 
@@ -193,12 +212,10 @@ namespace sjp {
     /**
      * Expects a null-terminated string.
      */
-    std::tuple<std::unordered_map<size_t, std::pair<size_t, size_t>>,
-               std::unordered_map<size_t,int32_t>,
+    std::tuple<std::unordered_map<size_t,int32_t>,
                std::unordered_map<size_t, std::string>>
     parser::lex_string(const char* filename, const char *content) {
         assert(filename != NULL);
-        std::unordered_map<size_t, std::pair<size_t, size_t>> token_limits;
         std::unordered_map<size_t, int32_t> i32_value;
         std::unordered_map<size_t, std::string> token_type;
         const char* YYCURSOR = content;
@@ -212,7 +229,7 @@ namespace sjp {
             '"' [^\x00"]* '"' {
                 tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
                 token_type.emplace(tokens[filename].size()-1, "string");
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
@@ -228,7 +245,7 @@ namespace sjp {
             "super" | "switch" | "synchronized" | "this" | "throw" |
             "throws" | "transient" | "try" | "void" | "volatile" | "while" {
                 tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
@@ -238,7 +255,7 @@ namespace sjp {
             }
             "{" | "}" | "(" | ")" | "[" | "]" {
                 tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
@@ -247,7 +264,7 @@ namespace sjp {
             ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
             "*"  | "/"  | "%" {
                 tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
@@ -255,7 +272,7 @@ namespace sjp {
             "="  | "+="  | "-="  | "*="   | "/=" | "&=" | "|=" | "^=" |
             "%=" | "<<=" | ">>=" | ">>>=" {
                 tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
@@ -265,14 +282,14 @@ namespace sjp {
                 i32_value.emplace(tokens[filename].size()-1,
                                   std::stoi(tokens[filename].back()));
                 token_type.emplace(tokens[filename].size()-1, "integer");
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
             }
             ";" | "," | "." {
                 tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
@@ -280,7 +297,7 @@ namespace sjp {
             [a-zA-Z_][a-zA-Z_0-9]* {
                 tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
                 token_type.emplace(tokens[filename].size()-1, "identifier");
-                token_limits[tokens[filename].size()-1] = {
+                token_limits[filename][tokens[filename].size()-1] = {
                     YYSTART - content,
                     YYCURSOR - content};
                 continue;
@@ -290,7 +307,7 @@ namespace sjp {
             }
             */
         }
-        return {token_limits, i32_value, token_type};
+        return {i32_value, token_type};
     }
 }
 

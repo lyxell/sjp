@@ -14,16 +14,20 @@ namespace sjp {
         std::string name;
         int start_token;
         int end_token;
+        std::map<std::string,std::shared_ptr<tree_node>> parent_of;
         std::map<std::string,std::vector<std::shared_ptr<tree_node>>>
-            children;
+            parent_of_list;
     public:
         tree_node(std::tuple<std::string,int,int>);
         std::string get_name();
         int get_start_token();
         int get_end_token();
+        std::map<std::string,std::shared_ptr<tree_node>> get_parent_of();
         std::map<std::string,std::vector<std::shared_ptr<tree_node>>>
-            get_children();
-        void add_child(std::string, std::shared_ptr<tree_node>);
+            get_parent_of_list();
+        void set_parent_of(std::string, std::shared_ptr<tree_node>);
+        void set_parent_of_list(std::string,
+                std::vector<std::shared_ptr<tree_node>>);
     };
 
     class parser {
@@ -34,10 +38,14 @@ namespace sjp {
                 token_limits;
         std::unordered_map<std::string, std::shared_ptr<tree_node>> asts;
         std::unordered_map<std::string, std::vector<std::string>> tokens;
-        std::tuple<std::unordered_map<size_t, std::pair<size_t, size_t>>,
-                   std::unordered_map<size_t,int32_t>,
+        std::tuple<std::unordered_map<size_t,int32_t>,
                    std::unordered_map<size_t, std::string>>
         lex_string(const char* filename, const char *content);
+        std::tuple<std::string, int, int>
+        node_from_id(const char* filename, int id);
+        std::shared_ptr<tree_node>
+        build_node(const char* filename, std::map<int, std::map<std::string, int>>& parent_of,
+            std::map<int, std::map<std::string, std::vector<int>>>& parent_of_list, int id);
     public:
         parser();
         parser(const char* program_name);
