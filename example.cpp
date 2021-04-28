@@ -11,11 +11,15 @@ int main(int argc, char** argv) {
     parser.add_file(filename);
     auto t2 = hclock::now();
     std::cout << "Time difference:"
-        << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << " milliseconds" << std::endl;
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
+                     .count()
+              << " milliseconds" << std::endl;
     parser.parse();
     auto t3 = hclock::now();
     std::cout << "Time difference:"
-        << std::chrono::duration_cast<std::chrono::milliseconds>(t3-t1).count() << " milliseconds" << std::endl;
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t1)
+                     .count()
+              << " milliseconds" << std::endl;
     std::cout << "Parsed " << parser.num_asts() << " ASTs" << std::endl;
     /*
     for (auto& [t, a, b] : parser.get_tuples(filename)) {
