@@ -70,13 +70,12 @@ namespace sjp {
     }
 
 
-    parser::parser() {
-        program = souffle::ProgramFactory::newInstance("parser");
+    parser::parser() : program(souffle::ProgramFactory::newInstance("parser")) {
         assert(program != NULL);
     }
 
-    parser::parser(const char* program_name) {
-        program = souffle::ProgramFactory::newInstance(program_name);
+    parser::parser(const char* program_name)
+        : program(souffle::ProgramFactory::newInstance(program_name)) {
         assert(program != NULL);
     }
 
@@ -203,10 +202,6 @@ namespace sjp {
         
         return nullptr;
 
-    }
-
-    parser::~parser() {
-        delete program;
     }
 
     /**
