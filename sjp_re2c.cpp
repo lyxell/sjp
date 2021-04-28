@@ -29,7 +29,8 @@
 #include <cassert>
 #include <souffle/SouffleInterface.h>
 #include <tuple>
-#include "sjp.hpp"
+
+#include "sjp.h"
 
 namespace sjp {
 
