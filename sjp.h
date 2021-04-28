@@ -20,14 +20,14 @@ class tree_node {
 
   public:
     tree_node(std::tuple<std::string, int, int>);
-    std::string get_name();
-    int get_start_token();
-    int get_end_token();
+    std::string get_name() const;
+    int get_start_token() const;
+    int get_end_token() const;
     std::map<std::string, std::shared_ptr<tree_node>> get_parent_of();
     std::map<std::string, std::vector<std::shared_ptr<tree_node>>>
     get_parent_of_list();
-    void set_parent_of(std::string, std::shared_ptr<tree_node>);
-    void set_parent_of_list(std::string,
+    void set_parent_of(const std::string&, std::shared_ptr<tree_node>);
+    void set_parent_of_list(const std::string&,
                             std::vector<std::shared_ptr<tree_node>>);
 };
 

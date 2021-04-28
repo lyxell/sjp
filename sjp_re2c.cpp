@@ -38,19 +38,19 @@ tree_node::tree_node(std::tuple<std::string, int, int> tuple)
     : name(std::get<0>(tuple)), start_token(std::get<1>(tuple)),
       end_token(std::get<2>(tuple)) {}
 
-std::string tree_node::get_name() { return name; }
+std::string tree_node::get_name() const { return name; }
 
-int tree_node::get_start_token() { return start_token; }
+int tree_node::get_start_token() const { return start_token; }
 
-int tree_node::get_end_token() { return end_token; }
+int tree_node::get_end_token() const { return end_token; }
 
 std::map<std::string, std::shared_ptr<tree_node>> tree_node::get_parent_of() {
     return parent_of;
 }
 
-void tree_node::set_parent_of(std::string symbol,
+void tree_node::set_parent_of(const std::string& symbol,
                               std::shared_ptr<tree_node> child) {
-    parent_of[symbol] = child;
+    parent_of[symbol] = std::move(child);
 }
 
 std::map<std::string, std::vector<std::shared_ptr<tree_node>>>
@@ -59,17 +59,18 @@ tree_node::get_parent_of_list() {
 }
 
 void tree_node::set_parent_of_list(
-    std::string symbol, std::vector<std::shared_ptr<tree_node>> children) {
-    parent_of_list[symbol] = children;
+    const std::string& symbol,
+    std::vector<std::shared_ptr<tree_node>> children) {
+    parent_of_list[symbol] = std::move(children);
 }
 
 parser::parser() : program(souffle::ProgramFactory::newInstance("parser")) {
-    assert(program != NULL);
+    assert(program != nullptr);
 }
 
 parser::parser(const char* program_name)
     : program(souffle::ProgramFactory::newInstance(program_name)) {
-    assert(program != NULL);
+    assert(program != nullptr);
 }
 
 void parser::add_file(const char* filename) {
@@ -115,7 +116,7 @@ parser::get_tokens(const char* filename) {
 std::tuple<std::string, int, int> parser::node_from_id(const char* filename,
                                                        int id) {
     auto& limits = token_limits[filename];
-    auto record = program->getRecordTable().unpack(id, 3);
+    const auto* record = program->getRecordTable().unpack(id, 3);
     assert(limits.find(record[1]) != limits.end());
     assert(limits.find(record[2] - 1) != limits.end());
     return std::tuple(program->getSymbolTable().decode(record[0]),
@@ -126,8 +127,9 @@ std::shared_ptr<tree_node> parser::build_node(
     const char* filename, std::map<int, std::map<std::string, int>>& parent_of,
     std::map<int, std::map<std::string, std::vector<int>>>& parent_of_list,
     int id) {
-    if (id == 0)
+    if (id == 0) {
         return nullptr;
+    }
     auto ptr = std::make_shared<tree_node>(node_from_id(filename, id));
     for (auto [symbol, child] : parent_of[id]) {
         ptr->set_parent_of(
@@ -149,7 +151,8 @@ std::shared_ptr<tree_node> parser::get_ast(const char* filename) {
     // load the parent_of relation into memory
     std::map<int, std::map<std::string, int>> parent_of;
     for (auto& output : *program->getRelation("parent_of")) {
-        int parent, child;
+        int parent;
+        int child;
         std::string symbol;
         output >> parent;
         output >> symbol;
@@ -161,7 +164,8 @@ std::shared_ptr<tree_node> parser::get_ast(const char* filename) {
     // load the parent_of_list relation into memory
     std::map<int, std::map<std::string, std::vector<int>>> parent_of_list;
     for (auto& output : *program->getRelation("parent_of_list")) {
-        int parent, list;
+        int parent;
+        int list;
         std::string symbol;
         output >> parent;
         output >> symbol;
@@ -169,7 +173,7 @@ std::shared_ptr<tree_node> parser::get_ast(const char* filename) {
         assert(parent != 0);
         std::vector<int> result;
         while (list != 0) {
-            auto record = program->getRecordTable().unpack(list, 2);
+            const auto* record = program->getRecordTable().unpack(list, 2);
             result.push_back(record[0]);
             list = record[1];
         }
@@ -193,12 +197,12 @@ std::shared_ptr<tree_node> parser::get_ast(const char* filename) {
 std::tuple<std::unordered_map<size_t, int32_t>,
            std::unordered_map<size_t, std::string>>
 parser::lex_string(const char* filename, const char* content) {
-    assert(filename != NULL);
+    assert(filename != nullptr);
     std::unordered_map<size_t, int32_t> i32_value;
     std::unordered_map<size_t, std::string> token_type;
     const char* YYCURSOR = content;
     const char* YYMARKER;
-    while (1) {
+    while (true) {
         const char* YYSTART = YYCURSOR;
         /*!re2c
         re2c:define:YYCTYPE = char;
