@@ -1,7 +1,7 @@
 EXE = example
 OBJS = sjp.o parser.o
 
-CXXFLAGS=-std=c++17 -O2 -D__EMBEDDED_SOUFFLE__
+CXXFLAGS=-std=c++17 -g -O2 -D__EMBEDDED_SOUFFLE__
 
 all: $(OBJS)
 
