@@ -730,6 +730,7 @@ ONE_OR_MORE_SEPARATED_BY(variable_declarator_list, variable_declarator, token_co
 
 .decl variable_declarator(id: id, a: number, b: number)
 parent_of(id, "name", name),
+parent_of(id, "initializer", nil),
 variable_declarator(id, A, B) :-
     id = ["variable_declarator", A, B],
     variable_declarator_id(name, A, B).
