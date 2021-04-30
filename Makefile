@@ -3,10 +3,16 @@ OBJS = sjp.o parser.o
 
 CXXFLAGS=-std=c++17 -fPIC -fno-gnu-unique -O2 -D__EMBEDDED_SOUFFLE__
 
+SOUFFLE=souffle
+ifdef SOUFFLE_PATH
+	SOUFFLE=$(SOUFFLE_PATH:%/=%)/src/souffle
+	CXXFLAGS+=-I$(SOUFFLE_PATH:%/=%)/src/include
+endif
+
 all: $(OBJS)
 
 parser.cpp: parser.dl
-	souffle --no-warn \
+	$(SOUFFLE) --no-warn \
 			--generate=$@ \
 			--fact-dir=build \
 			--output-dir=build \
