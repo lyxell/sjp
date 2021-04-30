@@ -34,36 +34,6 @@
 
 namespace sjp {
 
-tree_node::tree_node(std::tuple<std::string, int, int> tuple)
-    : name(std::get<0>(tuple)), start_token(std::get<1>(tuple)),
-      end_token(std::get<2>(tuple)) {}
-
-std::string tree_node::get_name() const { return name; }
-
-int tree_node::get_start_token() const { return start_token; }
-
-int tree_node::get_end_token() const { return end_token; }
-
-std::map<std::string, std::shared_ptr<tree_node>> tree_node::get_parent_of() {
-    return parent_of;
-}
-
-void tree_node::set_parent_of(const std::string& symbol,
-                              std::shared_ptr<tree_node> child) {
-    parent_of[symbol] = std::move(child);
-}
-
-std::map<std::string, std::vector<std::shared_ptr<tree_node>>>
-tree_node::get_parent_of_list() {
-    return parent_of_list;
-}
-
-void tree_node::set_parent_of_list(
-    const std::string& symbol,
-    std::vector<std::shared_ptr<tree_node>> children) {
-    parent_of_list[symbol] = std::move(children);
-}
-
 parser::parser() : program(souffle::ProgramFactory::newInstance("parser")) {
     assert(program != nullptr);
 }
@@ -130,10 +100,13 @@ std::shared_ptr<tree_node> parser::build_node(
     if (id == 0) {
         return nullptr;
     }
-    auto ptr = std::make_shared<tree_node>(node_from_id(filename, id));
+    auto [name, start, end] = node_from_id(filename, id);
+    auto ptr = std::make_shared<tree_node>();
+    ptr->name = name;
+    ptr->start_token = start;
+    ptr->end_token = end;
     for (auto [symbol, child] : parent_of[id]) {
-        ptr->set_parent_of(
-            symbol, build_node(filename, parent_of, parent_of_list, child));
+        ptr->parent_of[symbol] = build_node(filename, parent_of, parent_of_list, child);
     }
     for (auto [symbol, children] : parent_of_list[id]) {
         std::vector<std::shared_ptr<tree_node>> result;
@@ -141,7 +114,7 @@ std::shared_ptr<tree_node> parser::build_node(
             result.push_back(
                 build_node(filename, parent_of, parent_of_list, child));
         }
-        ptr->set_parent_of_list(symbol, result);
+        ptr->parent_of_list[symbol] = result;
     }
     return ptr;
 }

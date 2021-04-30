@@ -9,26 +9,13 @@
 
 namespace sjp {
 
-class tree_node {
-  private:
+struct tree_node {
     std::string name;
     int start_token;
     int end_token;
     std::map<std::string, std::shared_ptr<tree_node>> parent_of;
     std::map<std::string, std::vector<std::shared_ptr<tree_node>>>
         parent_of_list;
-
-  public:
-    tree_node(std::tuple<std::string, int, int>);
-    std::string get_name() const;
-    int get_start_token() const;
-    int get_end_token() const;
-    std::map<std::string, std::shared_ptr<tree_node>> get_parent_of();
-    std::map<std::string, std::vector<std::shared_ptr<tree_node>>>
-    get_parent_of_list();
-    void set_parent_of(const std::string&, std::shared_ptr<tree_node>);
-    void set_parent_of_list(const std::string&,
-                            std::vector<std::shared_ptr<tree_node>>);
 };
 
 class parser {
