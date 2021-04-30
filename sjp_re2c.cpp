@@ -217,6 +217,11 @@ parser::lex_string(const char* filename, const char* content) {
             continue;
         }
 
+        // single line comments
+        "//" [^\x00\n]* {
+            continue;
+        }
+
         "abstract" | "assert" | "boolean" | "break" | "byte" | "case" |
         "catch" | "char" | "class" | "const" | "continue" | "default" |
         "do" | "double" | "else" | "enum" | "extends" | "final" |
