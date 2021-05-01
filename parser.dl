@@ -63,8 +63,9 @@ any_position(n) :- num_tokens(n).
         token(symbol, B), \
         next_level(right, B + 1, C).
 
-#define PREFIX(node, current_level, next_level, symbol) \
-    current_level([node, A, B], A, B) :- \
+#define PREFIX(node, rule_name, next_level, symbol) \
+    rule_name(id, A, B) :- \
+        id = [node, A, B], \
         token(symbol, A), \
         next_level(_, A + 1, B).
 
@@ -181,6 +182,10 @@ DEFINE_TOKEN(token_yield,               "yield")
       token_literal_integer(s, A, A + 1) :-
       token_type(A, "integer"),
       token(s, A).
+.decl token_literal_floating_point(s: symbol, a: number, b: number)
+      token_literal_floating_point(s, A, A + 1) :-
+      token_type(A, "float"),
+      token(s, A).
 .decl token_identifier(s: symbol, a: number, b: number)
       token_identifier(s, A, A + 1) :-
       token_type(A, "identifier"),
@@ -209,8 +214,13 @@ string_literal(["string_literal", A, B], str, A, B)
 integer_literal(["integer_literal", A, B], str, A, B)
     :- token_literal_integer(str, A, B).
 
+.decl floating_point_literal(id: id, str: symbol, a: number, b: number)
+floating_point_literal(["floating_point_literal", A, B], str, A, B)
+    :- token_literal_floating_point(str, A, B).
+
 .decl literal(id: id, a: number, b: number)
 literal(id, A, B) :- integer_literal(id, _, A, B).
+literal(id, A, B) :- floating_point_literal(id, _, A, B).
 literal(id, A, B) :- string_literal(id, _, A, B).
 
 /**
@@ -1609,13 +1619,16 @@ class_or_interface_type_to_instantiate(nil, A, D) :-
     annotations?(_, A, B),
     identifier(_, _, B, C),
     // TODO ...
-    type_arguments_or_diamond(_, C, D).
+    type_arguments_or_diamond?(_, C, D).
 
 .decl type_arguments_or_diamond(ids: id_list, a: number, b: number)
 type_arguments_or_diamond(nil, A, C) :-
     token_less_than(A, B),
     token_greater_than(B, C).
 type_arguments_or_diamond(ids, A, B) :- type_arguments(ids, A, B).
+
+.decl type_arguments_or_diamond?(ids: id_list, a: number, b: number)
+OPTIONAL(type_arguments_or_diamond?, type_arguments_or_diamond)
 
 .decl field_access(id: id, a: number, b: number)
 field_access(nil, A, D) :-
@@ -1881,8 +1894,9 @@ conditional_expression(nil, A, F) :-
 
 .decl conditional_or_expression(id: id, a: number, b: number)
 conditional_or_expression(id, A, B) :- conditional_and_expression(id, A, B).
+conditional_or_expression(id, A, B) :- or_expression(id, A, B).
 
-INFIX("or_expression",
+INFIX("conditional_or_expression",
       or_expression,
       conditional_or_expression,
       conditional_and_expression,
@@ -2033,7 +2047,8 @@ PREFIX("pre_decrement_expression",
 
 .decl unary_expression_not_plus_minus(id: id, a: number, b: number)
 unary_expression_not_plus_minus(e, A, B) :- postfix_expression(e, A, B).
-
+unary_expression_not_plus_minus(e, A, B) :- cast_expression(e, A, B).
+unary_expression_not_plus_minus(e, A, B) :- switch_expression(e, A, B).
 PREFIX("bitwise_not_expression",
        unary_expression_not_plus_minus,
        unary_expression,
@@ -2042,9 +2057,6 @@ PREFIX("not_expression",
        unary_expression_not_plus_minus,
        unary_expression,
        "!")
-
-unary_expression_not_plus_minus(e, A, B) :- cast_expression(e, A, B).
-unary_expression_not_plus_minus(e, A, B) :- switch_expression(e, A, B).
 
 .decl postfix_expression(id: id, a: number, b: number)
 postfix_expression(e, A, B) :- primary(e, A, B).

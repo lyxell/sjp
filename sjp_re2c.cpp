@@ -181,6 +181,67 @@ parser::lex_string(const char* filename, const char* content) {
         re2c:define:YYCTYPE = char;
         re2c:yyfill:enable = 0;
 
+        // INTEGER LITERALS
+        Underscores = "_"+;
+        OctalDigit     = [0-7];
+        OctalDigitOrUnderscore = OctalDigit | "_";
+        OctalDigitsAndUnderscores = OctalDigitOrUnderscore+;
+        OctalDigits    = OctalDigit
+                       | OctalDigit OctalDigitsAndUnderscores? OctalDigit;
+        OctalNumeral   = "0" OctalDigits
+                       | "0" Underscores OctalDigits;
+        BinaryDigit    = [01];
+        BinaryDigitOrUnderscore = BinaryDigit | "_";
+        BinaryDigitsAndUnderscores = BinaryDigitOrUnderscore+;
+        BinaryDigits   = BinaryDigit
+                       | BinaryDigit BinaryDigitsAndUnderscores? BinaryDigit;
+        BinaryNumeral  = "0" [bB] BinaryDigits;
+        HexDigit       = [0-9a-fA-F];
+        HexDigitOrUnderscore = HexDigit | "_";
+        HexDigitsAndUnderscores = HexDigitOrUnderscore+;
+        HexDigits      = HexDigit
+                       | HexDigit HexDigitsAndUnderscores? HexDigit;
+        HexNumeral     = "0" [xX] HexDigits;
+        NonZeroDigit   = [1-9];
+        Digit          = "0"
+                       | NonZeroDigit;
+        DigitOrUnderscore = Digit | "_";
+        DigitsAndUnderscores = DigitOrUnderscore+;
+        Digits         = Digit
+                       | Digit DigitsAndUnderscores? Digit;
+        DecimalNumeral = "0"
+                       | NonZeroDigit Digits?
+                       | NonZeroDigit Underscores Digits;
+        IntegerTypeSuffix = [lL];
+        BinaryIntegerLiteral = BinaryNumeral IntegerTypeSuffix?;
+        OctalIntegerLiteral = OctalNumeral IntegerTypeSuffix?;
+        HexIntegerLiteral = HexNumeral IntegerTypeSuffix?;
+        DecimalIntegerLiteral = DecimalNumeral IntegerTypeSuffix?;
+        IntegerLiteral = DecimalIntegerLiteral
+                       | HexIntegerLiteral
+                       | OctalIntegerLiteral
+                       | BinaryIntegerLiteral;
+
+        // FLOATING POINT LITERALS
+        Sign = [+-];
+        SignedInteger = [Sign] Digits;
+        HexSignificand = HexNumeral "."
+                       | "0" [xX] HexDigits? "." HexDigits;
+        BinaryExponentIndicator = [pP];
+        BinaryExponent = BinaryExponentIndicator SignedInteger;
+        HexadecimalFloatingPointLiteral =
+            HexSignificand BinaryExponent [FloatTypeSuffix];
+        FloatTypeSuffix = [fFdD];
+        ExponentIndicator = [eE];
+        ExponentPart = ExponentIndicator SignedInteger;
+        DecimalFloatingPointLiteral =
+              Digits "." Digits? ExponentPart? FloatTypeSuffix?
+            | "." Digits ExponentPart? FloatTypeSuffix?
+            | Digits ExponentPart FloatTypeSuffix?
+            | Digits ExponentPart? FloatTypeSuffix;
+        FloatingPointLiteral = DecimalFloatingPointLiteral
+                             | HexadecimalFloatingPointLiteral;
+
         '"' [^\x00"]* '"' {
             tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
             token_type.emplace(tokens[filename].size()-1, "string");
@@ -222,7 +283,7 @@ parser::lex_string(const char* filename, const char* content) {
         }
         "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
         ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
-        "*"  | "/"  | "%" {
+        "*"  | "/"  | "%"  | "++" | "--" | "!" {
             tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
             token_limits[filename][tokens[filename].size()-1] = {
                 YYSTART - content,
@@ -237,11 +298,19 @@ parser::lex_string(const char* filename, const char* content) {
                 YYCURSOR - content};
             continue;
         }
-        "0" | [1-9][0-9]* {
+        IntegerLiteral {
             tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
             i32_value.emplace(tokens[filename].size()-1,
                               std::stoi(tokens[filename].back()));
             token_type.emplace(tokens[filename].size()-1, "integer");
+            token_limits[filename][tokens[filename].size()-1] = {
+                YYSTART - content,
+                YYCURSOR - content};
+            continue;
+        }
+        FloatingPointLiteral {
+            tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
+            token_type.emplace(tokens[filename].size()-1, "float");
             token_limits[filename][tokens[filename].size()-1] = {
                 YYSTART - content,
                 YYCURSOR - content};
