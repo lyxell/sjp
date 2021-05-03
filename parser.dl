@@ -264,25 +264,34 @@ class_or_interface_type(t, A, B) :- class_type(t, A, B).
 class_or_interface_type(t, A, B) :- interface_type(t, A, B).
 
 .decl class_type(id: id, a: number, b: number)
+parent_of_list(id, "annotations", anns),
+parent_of(id, "name", name),
+parent_of_list(id, "type_arguments", type_args),
 class_type(id, A, D) :-
     id = ["class_type", A, D],
-    annotations?(_, A, B),
-    type_identifier(_, B, C),
-    type_arguments?(_, C, D).
+    annotations?(anns, A, B),
+    type_identifier(name, B, C),
+    type_arguments?(type_args, C, D).
+parent_of_list(id, "annotations", anns),
+parent_of(id, "name", name),
+parent_of_list(id, "type_arguments", type_args),
 class_type(id, A, F) :-
     id = ["class_type", A, F],
     package_name(_, A, B),
     token_dot(B, C),
-    annotations?(_, C, D),
-    type_identifier(_, D, E),
-    type_arguments?(_, E, F).
+    annotations?(anns, C, D),
+    type_identifier(name, D, E),
+    type_arguments?(type_args, E, F).
+parent_of_list(id, "annotations", anns),
+parent_of(id, "name", name),
+parent_of_list(id, "type_arguments", type_args),
 class_type(id, A, F) :-
     id = ["class_type", A, F],
     class_or_interface_type(_, A, B),
     token_dot(B, C),
-    annotations?(_, C, D),
-    type_identifier(_, D, E),
-    type_arguments?(_, E, F).
+    annotations?(anns, C, D),
+    type_identifier(name, D, E),
+    type_arguments?(type_args, E, F).
 
 .decl interface_type(id: id, a: number, b: number)
 interface_type(t, A, B) :- class_type(t, A, B).
@@ -714,7 +723,7 @@ class_member_declaration(nil, A, B) :- token_semicolon(A, B).
 .decl field_declaration(id: id, a: number, b: number)
 parent_of_list(id, "modifiers", mods),
 parent_of(id, "type", type),
-parent_of_list(id, "declarations", decls),
+parent_of_list(id, "declarators", decls),
 field_declaration(id, A, E) :-
     id = ["field_declaration", A, E],
     field_modifiers?(mods, A, B),
@@ -1247,7 +1256,7 @@ local_variable_declaration_statement(id, A, C) :-
 .decl local_variable_declaration(id: id, a: number, b: number)
 parent_of_list(id, "modifiers", mods),
 parent_of(id, "type", type),
-parent_of_list(id, "declarations", decls),
+parent_of_list(id, "declarators", decls),
 local_variable_declaration(id, A, D) :-
     id = ["local_variable_declaration", A, D],
     variable_modifiers?(mods, A, B),
