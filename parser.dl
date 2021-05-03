@@ -921,18 +921,23 @@ ONE_OR_MORE_SEPARATED_BY(formal_parameter_list, formal_parameter, token_comma)
 OPTIONAL(formal_parameter_list?, formal_parameter_list)
 
 .decl formal_parameter(id: id, a: number, b: number)
+parent_of(id, "type", type),
+parent_of_list(id, "modifiers", mods),
 formal_parameter(id, A, D) :-
     id = ["formal_parameter", A, D],
-    variable_modifiers?(_, A, B),
-    unann_type(_, B, C),
+    variable_modifiers?(mods, A, B),
+    unann_type(type, B, C),
     variable_declarator_id(_, C, D).
-formal_parameter(id, A, B) :- variable_arity_parameter(id, A, B).
+formal_parameter(id, A, B) :-
+    variable_arity_parameter(id, A, B).
 
 .decl variable_arity_parameter(id: id, a: number, b: number)
+parent_of(id, "type", type),
+parent_of_list(id, "modifiers", mods),
 variable_arity_parameter(id, A, F) :-
-    id = ["variable_arity_parameter", A, F],
-    variable_modifiers?(_, A, B),
-    unann_type(_, B, C),
+    id = ["formal_parameter", A, F],
+    variable_modifiers?(mods, A, B),
+    unann_type(type, B, C),
     annotations?(_, C, D),
     token_ellipsis(D, E),
     identifier(_, _, E, F).
@@ -1129,17 +1134,21 @@ default_value(e, A, C) :-
 
 .decl annotation(id: id, a: number, b: number)
 annotation(e, A, B) :- normal_annotation(e, A, B).
+annotation(e, A, B) :- marker_annotation(e, A, B).
+annotation(e, A, B) :- single_element_annotation(e, A, B).
 
 .decl annotations?(id: id_list, a: number, b: number)
 ZERO_OR_MORE(annotations?, annotation)
 
 .decl normal_annotation(id: id, a: number, b: number)
+parent_of(id, "type", type),
+parent_of_list(id, "element_values", element_values),
 normal_annotation(id, A, F) :-
     id = ["annotation", A, F],
     token_at(A, B),
-    type_name(_, B, C),
+    type_name(type, B, C),
     token_left_paren(C, D),
-    element_value_pair_list?(_, D, E),
+    element_value_pair_list?(element_values, D, E),
     token_right_paren(E, F).
 
 .decl element_value_pair_list(id: id_list, a: number, b: number)
@@ -1173,11 +1182,23 @@ ONE_OR_MORE_SEPARATED_BY(element_value_list, element_value, token_comma)
 OPTIONAL(element_value_list?, element_value_list)
 
 .decl marker_annotation(id: id, a: number, b: number)
-marker_annotation(e, A, C) :-
+parent_of(id, "type", type),
+parent_of_list(id, "element_values", nil),
+marker_annotation(id, A, C) :-
+    id = ["annotation", A, C],
     token_at(A, B),
-    type_name(e, B, C).
+    type_name(type, B, C).
 
-// TODO SingleElementAnnotation
+.decl single_element_annotation(id: id, a: number, b: number)
+parent_of(id, "type", type),
+parent_of_list(id, "element_values", [value, nil]),
+single_element_annotation(id, A, F) :-
+    id = ["annotation", A, F],
+    token_at(A, B),
+    type_name(type, B, C),
+    token_left_paren(C, D),
+    element_value(value, D, E),
+    token_right_paren(E, F).
 
 /**
  * Arrays

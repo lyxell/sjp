@@ -286,7 +286,7 @@ parser::lex_string(const char* filename, const char* content) {
         }
         "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
         ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
-        "*"  | "/"  | "%"  | "++" | "--" | "!" {
+        "*"  | "/"  | "%"  | "++" | "--" | "!" | "@" {
             tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
             token_limits[filename][tokens[filename].size()-1] = {
                 YYSTART - content,
