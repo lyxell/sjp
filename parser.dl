@@ -1604,22 +1604,30 @@ class_instance_creation_expression(id, A, B) :-
 // TODO ...
 
 .decl unqualified_class_instance_creation_expression(id: id, a: number, b: number)
+parent_of_list(id, "type_arguments", type_args),
+parent_of(id, "type", type),
+parent_of_list(id, "arguments", args),
+parent_of_list(id, "body", body),
 unqualified_class_instance_creation_expression(id, A, H) :-
-    id = ["unqualified_class_instance_creation_expression", A, H],
+    id = ["class_instance_creation_expression", A, H],
     token_new(A, B),
-    type_arguments?(_, B, C),
-    class_or_interface_type_to_instantiate(_, C, D),
+    type_arguments?(type_args, B, C),
+    class_or_interface_type_to_instantiate(type, C, D),
     token_left_paren(D, E),
-    argument_list?(_, E, F),
+    argument_list?(args, E, F),
     token_right_paren(F, G),
-    class_body?(_, G, H).
+    class_body?(body, G, H).
 
 .decl class_or_interface_type_to_instantiate(id: id, a: number, b: number)
-class_or_interface_type_to_instantiate(nil, A, D) :-
-    annotations?(_, A, B),
-    identifier(_, _, B, C),
+parent_of(id, "name", name),
+parent_of_list(id, "annotations", anns),
+parent_of_list(id, "type_arguments", type_args),
+class_or_interface_type_to_instantiate(id, A, D) :-
+    id = ["class_type", A, D],
+    annotations?(anns, A, B),
+    identifier(name, _, B, C),
     // TODO ...
-    type_arguments_or_diamond?(_, C, D).
+    type_arguments_or_diamond?(type_args, C, D).
 
 .decl type_arguments_or_diamond(ids: id_list, a: number, b: number)
 type_arguments_or_diamond(nil, A, C) :-

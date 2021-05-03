@@ -181,6 +181,10 @@ parser::lex_string(const char* filename, const char* content) {
         re2c:define:YYCTYPE = char;
         re2c:yyfill:enable = 0;
 
+        // COMMENTS
+        Comment = "//" [^\n\x00]* "\n"
+                | "/" "*" ([^*\x00] | ("*" [^/\x00]))* "*" "/";
+
         // INTEGER LITERALS
         Underscores = "_"+;
         OctalDigit     = [0-7];
@@ -251,8 +255,7 @@ parser::lex_string(const char* filename, const char* content) {
             continue;
         }
 
-        // single line comments
-        "//" [^\x00\n]* {
+        Comment {
             continue;
         }
 
