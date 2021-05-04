@@ -113,6 +113,7 @@ DEFINE_TOKEN(token_dot,                 ".")
 DEFINE_TOKEN(token_double,              "double")
 DEFINE_TOKEN(token_ellipsis,            "...")
 DEFINE_TOKEN(token_else,                "else")
+DEFINE_TOKEN(token_enum,                "enum")
 DEFINE_TOKEN(token_equal_sign,          "=")
 DEFINE_TOKEN(token_exports,             "exports")
 DEFINE_TOKEN(token_extends,             "extends")
@@ -131,8 +132,10 @@ DEFINE_TOKEN(token_left_paren,          "(")
 DEFINE_TOKEN(token_left_square_bracket, "[")
 DEFINE_TOKEN(token_less_than,           "<")
 DEFINE_TOKEN(token_long,                "long")
+DEFINE_TOKEN(token_module,              "module")
 DEFINE_TOKEN(token_native,              "native")
 DEFINE_TOKEN(token_new,                 "new")
+DEFINE_TOKEN(token_open,               "open")
 DEFINE_TOKEN(token_opens,               "opens")
 DEFINE_TOKEN(token_package,             "package")
 DEFINE_TOKEN(token_private,             "private")
@@ -171,6 +174,9 @@ DEFINE_TOKEN(token_yield,               "yield")
 .decl token_comma?(a: number, b: number)
       token_comma?(A, A) :- any_position(A).
       token_comma?(A, B) :- token_comma(A, B).
+.decl token_open?(a: number, b: number)
+      token_open?(A, A) :- any_position(A).
+      token_open?(A, B) :- token_open(A, B).
 .decl token_semicolon?(a: number, b: number)
       token_semicolon?(A, A) :- any_position(A).
       token_semicolon?(A, B) :- token_semicolon(A, B).
@@ -197,14 +203,13 @@ DEFINE_TOKEN(token_yield,               "yield")
  **************************************************************************/
 
 .decl type_identifier(id: id, a: number, b: number)
-type_identifier(id, A, B) :- identifier(id, _, A, B).
+type_identifier(id, A, B) :- identifier(id, A, B).
 
-.decl identifier(id: id, str: symbol, a: number, b: number)
-identifier(["identifier", A, B], str, A, B) :- token_identifier(str, A, B).
+.decl identifier(id: id, a: number, b: number)
+identifier(["identifier", A, B], A, B) :- token_identifier(_, A, B).
 
 .decl identifier?(id: id, a: number, b: number)
-identifier?(nil, A, A) :- any_position(A).
-identifier?(nil, A, B) :- identifier(id, _, A, B).
+OPTIONAL(identifier?, identifier)
 
 .decl string_literal(id: id, str: symbol, a: number, b: number)
 string_literal(["string_literal", A, B], str, A, B)
@@ -233,9 +238,15 @@ type(e, A, B) :- primitive_type(e, A, B).
 type(e, A, B) :- reference_type(e, A, B).
 
 .decl primitive_type(id: id, a: number, b: number)
-primitive_type(e, A, B) :- numeric_type(e, A, B).
-primitive_type(["boolean_type", A, B], A, B) :- token_boolean(A, B).
-// TODO annotations
+parent_of_list(id, "annotations", anns),
+primitive_type(id, A, B) :-
+    annotations?(anns, A, B),
+    numeric_type(id, A, B).
+parent_of_list(id, "annotations", anns),
+primitive_type(id, A, B) :-
+    id = ["boolean_type", A, B],
+    annotations?(anns, A, B),
+    token_boolean(A, B).
 
 .decl numeric_type(id: id, a: number, b: number)
 numeric_type(id, A, B) :- integral_type(id, A, B).
@@ -297,22 +308,26 @@ class_type(id, A, F) :-
 interface_type(t, A, B) :- class_type(t, A, B).
 
 .decl type_variable(id: id, a: number, b: number)
-type_variable(["type_variable", A, B], A, C) :-
-    annotations?(_, A, B),
-    type_identifier(_, B, C).
+parent_of_list(id, "annotations", anns),
+parent_of(id, "identifier", ident),
+type_variable(id, A, C) :-
+    id = ["type_variable", A, B],
+    annotations?(anns, A, B),
+    type_identifier(ident, B, C).
 
 .decl array_type(id: id, a: number, b: number)
-
 parent_of(id, "type", type),
 parent_of_list(id, "dimensions", dims),
 array_type(id, A, C) :-
     id = ["array_type", A, C],
     primitive_type(type, A, B),
     dims(dims, B, C).
-
-array_type(["array_type", A, C], A, C) :-
-    class_or_interface_type(_, A, B),
-    dims(_, B, C).
+parent_of(id, "type", type),
+parent_of_list(id, "dimensions", dims),
+array_type(id, A, C) :-
+    id = ["array_type", A, C],
+    class_or_interface_type(type, A, B),
+    dims(dims, B, C).
 
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
 // the Java specification. The same derivation is handled by
@@ -325,16 +340,22 @@ ONE_OR_MORE(dims, dim)
 OPTIONAL(dims?, dims)
 
 .decl dim(id: id, a: number, b: number)
-dim(["dimension", A, D], A, D) :-
-    annotations?(_, A, B),
+parent_of_list(id, "annotations", anns),
+dim(id, A, D) :-
+    id = ["dimension", A, D],
+    annotations?(anns, A, B),
     token_left_square_bracket(B, C),
     token_right_square_bracket(C, D).
 
 .decl type_parameter(id: id, a: number, b: number)
-type_parameter(nil, A, D) :-
-    type_parameter_modifiers?(_, A, B),
-    type_identifier(_, B, C),
-    type_bound?(_, C, D).
+parent_of_list(id, "modifiers", mods),
+parent_of(id, "name", name),
+parent_of(id, "bound", bound),
+type_parameter(id, A, D) :-
+    id = ["type_parameter", A, D],
+    type_parameter_modifiers?(mods, A, B),
+    type_identifier(name, B, C),
+    type_bound?(bound, C, D).
 
 .decl type_parameter_modifier(id: id, a: number, b: number)
 type_parameter_modifier(id, A, B) :- annotation(id, A, B).
@@ -343,10 +364,13 @@ type_parameter_modifier(id, A, B) :- annotation(id, A, B).
 ZERO_OR_MORE(type_parameter_modifiers?, type_parameter_modifier)
 
 .decl type_bound(id: id, a: number, b: number)
-type_bound(nil, A, D) :-
+parent_of(id, "type", type),
+parent_of_list(id, "bounds", bounds),
+type_bound(id, A, D) :-
+    id = ["type_bound", A, D],
     token_extends(A, B),
-    class_or_interface_type(_, B, C),
-    additional_bounds?(_, C, D).
+    class_or_interface_type(type, B, C),
+    additional_bounds?(bounds, C, D).
 // Note: the derivation of TypeVariable is omitted to handle an ambiguity in
 // the Java grammar specification. The same derivation is handled by
 // ClassOrInterfaceType → ClassType → {Annotation} TypeIdentifier
@@ -379,37 +403,46 @@ type_argument(id, A, B) :- reference_type(id, A, B).
 type_argument(id, A, B) :- wildcard(id, A, B).
 
 .decl wildcard(id: id, a: number, b: number)
-wildcard(nil, A, D) :-
-    annotations?(_, A, B),
+parent_of_list(id, "annotations", anns),
+parent_of(id, "bounds", bounds),
+wildcard(id, A, D) :-
+    id = ["wildcard", A, D],
+    annotations?(anns, A, B),
     token_question_mark(B, C),
-    wildcard_bounds(_, C, D).
+    wildcard_bounds(bounds, C, D).
 
 .decl wildcard_bounds(id: id, a: number, b: number)
-wildcard_bounds(nil, A, C) :-
+parent_of(id, "type", type),
+wildcard_bounds(id, A, C) :-
+    id = ["wildcard_extends", A, C],
     token_extends(A, B),
-    reference_type(_, B, C).
+    reference_type(type, B, C).
+parent_of(id, "type", type),
 wildcard_bounds(nil, A, C) :-
+    id = ["wildcard_extends", A, C],
     token_super(A, B),
-    reference_type(_, B, C).
+    reference_type(type, B, C).
 
 /**
  * Names
  * See §6 of https://docs.oracle.com/javase/specs/jls/se15/html/jls-19.html
  **************************************************************************/
 
-.decl module_name(id: id, children: id_list, a: number, b: number)
-module_name(["module_name", A, B], [x, nil], A, B) :- identifier(x, _, A, B).
-module_name(["module_name", A, D], [x, xs], A, D) :-
-    module_name(_, xs, A, B),
-    token_dot(B, C),
-    identifier(x, _, C, D).
+.decl module_name(id: id, a: number, b: number)
+parent_of_list(id, "identifiers", ids),
+module_name(id, A, B) :-
+    id = ["module_name", A, B],
+    module_name_children(ids, A, B).
+
+.decl module_name_children(ids: id_list, a: number, b: number)
+ONE_OR_MORE_SEPARATED_BY(module_name_children, identifier, token_dot)
 
 .decl package_name(ids: id_list, a: number, b: number)
-package_name([x, nil], A, B) :- identifier(x, _, A, B).
+package_name([x, nil], A, B) :- identifier(x, A, B).
 package_name([x, xs], A, D) :-
     package_name(xs, A, B),
     token_dot(B, C),
-    identifier(x, _, C, D).
+    identifier(x, C, D).
 
 .decl type_name(id: id, a: number, b: number)
 type_name(["type_name", A, B], A, B) :- type_identifier(_, A, B).
@@ -422,17 +455,17 @@ type_name(["type_name", A, D], A, D) :-
 parent_of_list(id, "identifiers", [x, nil]),
 expression_name(id, A, B) :-
     id = ["expression_name", A, B],
-    identifier(x, _, A, B).
+    identifier(x, A, B).
 parent_of_list(id, "identifiers", [x, xs]),
 expression_name(id, A, D) :-
     id = ["expression_name", A, D],
     expression_name(tail, A, B),
     parent_of_list(tail, "identifiers", xs),
     token_dot(B, C),
-    identifier(x, _, C, D).
+    identifier(x, C, D).
 
 .decl method_name(id: id, a: number, b: number)
-method_name(id, A, B) :- identifier(id, str, A, B), str != "yield".
+method_name(id, A, B) :- identifier(id, A, B).
 
 .decl package_or_type_name(id: id, a: number, b: number)
 package_or_type_name(["package_or_type_name", A, B], A, B) :-
@@ -444,11 +477,11 @@ package_or_type_name(["package_or_type_name", A, D], A, D) :-
 
 .decl ambiguous_name(id: id, ids: id_list, a: number, b: number)
 ambiguous_name(["ambiguous_name", A, B], [id, nil], A, B) :-
-    identifier(id, _, A, B).
+    identifier(id, A, B).
 ambiguous_name(["ambiguous_name", A, D], [id, xs], A, D) :-
     ambiguous_name(_, xs, A, B),
     token_dot(B, C),
-    identifier(id, _, C, D).
+    identifier(id, C, D).
 
 /**
  * Packages and Modules
@@ -470,26 +503,28 @@ ordinary_compilation_unit(id, A, D) :-
     type_declarations?(typedecls, C, D).
 
 .decl modular_compilation_unit(id: id, a: number, b: number)
-modular_compilation_unit(["modular_compilation_unit", A, C], A, C) :-
-    import_declarations?(_, A, B),
-    module_declaration(_, B, C).
+parent_of_list(id, "import_declarations", impdecls),
+parent_of(id, "module_declaration", moddecl),
+modular_compilation_unit(id, A, C) :-
+    id = ["modular_compilation_unit", A, C],
+    import_declarations?(impdecls, A, B),
+    module_declaration(moddecl, B, C).
 
 .decl package_declaration(id: id, a: number, b: number)
-package_declaration(["package_declaration", A, E], A, E) :-
-    package_modifiers?(_, A, B),
+parent_of_list(id, "modifiers", mods),
+parent_of_list(id, "identifiers", ids),
+package_declaration(id, A, E) :-
+    id = ["package_declaration", A, E],
+    package_modifiers?(mods, A, B),
     token_package(B, C),
-    package_declaration_identifiers(_, C, D),
+    package_declaration_identifiers(ids, C, D),
     token_semicolon(D, E).
 
 .decl package_declaration?(id: id, a: number, b: number)
 OPTIONAL(package_declaration?, package_declaration)
 
 .decl package_declaration_identifiers(id: id_list, a: number, b: number)
-package_declaration_identifiers([x, nil], A, B) :- identifier(x, _, A, B).
-package_declaration_identifiers([x, xs], A, D) :-
-    identifier(x, _, A, B),
-    token_dot(B, C),
-    package_declaration_identifiers(xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(package_declaration_identifiers, identifier, token_dot)
 
 .decl package_modifier(id: id, a: number, b: number)
 package_modifier(id, A, B) :- annotation(id, A, B).
@@ -530,7 +565,7 @@ single_static_import_declaration(id, A, G) :-
     token_static(B, C),
     type_name(_, C, D),
     token_dot(D, E),
-    identifier(_, _, E, F),
+    identifier(_, E, F),
     token_semicolon(F, G).
 
 .decl static_import_on_demand_declaration(id: id, a: number, b: number)
@@ -546,85 +581,103 @@ static_import_on_demand_declaration(id, A, G) :-
 .decl type_declaration(s: id, a: number, b: number)
 type_declaration(id, A, B) :- class_declaration(id, A, B).
 type_declaration(id, A, B) :- interface_declaration(id, A, B).
+type_declaration(nil, A, B) :- token_semicolon(A, B).
 
 .decl type_declarations?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(type_declarations?, type_declaration)
 
 .decl module_declaration(id: id, a: number, b: number)
+module_declaration(id, A, B) :-
+    id = ["module_declaration", A, B],
+    annotations?(anns, A, B),
+    token_open?(B, C),
+    token_module(C, D),
+    module_declaration_identifiers(ids, D, E),
+    token_left_curly_bracket(E, F),
+    module_directives?(dirs, F, G),
+    token_right_curly_bracket(E, F).
+
+.decl module_declaration_identifiers(ids: id_list, a: number, b: number)
+ONE_OR_MORE_SEPARATED_BY(module_declaration_identifiers, identifier, token_dot)
 
 .decl module_directive(id: id, a: number, b: number)
 
 parent_of_list(id, "modifiers", mods),
+parent_of(id, "requires", requires),
 module_directive(id, A, E) :-
-    id = ["module_directive", A, E],
+    id = ["module_directive_requires", A, E],
     token_requires(A, B),
     requires_modifiers?(mods, B, C),
-    module_name(_, _, C, D),
+    module_name(requires, C, D),
     token_semicolon(D, E).
 
+parent_of_list(id, "name", name),
+parent_of_list(id, "to", nil),
 module_directive(id, A, D) :-
-    id = ["module_directive", A, D],
+    id = ["module_directive_exports", A, D],
     token_exports(A, B),
-    package_name(_, B, C),
+    package_name(name, B, C),
     token_semicolon(C, D).
 
+parent_of_list(id, "name", name),
+parent_of_list(id, "to", to),
 module_directive(id, A, F) :-
-    id = ["module_directive", A, D],
+    id = ["module_directive_exports", A, D],
     token_exports(A, B),
-    package_name(_, B, C),
+    package_name(name, B, C),
     token_to(C, D),
-    module_directive_module_name_list(_, _, D, E),
+    module_directive_module_name_list(to, D, E),
     token_semicolon(E, F).
 
+parent_of_list(id, "name", name),
+parent_of_list(id, "to", nil),
 module_directive(id, A, D) :-
-    id = ["module_directive", A, D],
+    id = ["module_directive_opens", A, D],
     token_opens(A, B),
-    package_name(_, B, C),
+    package_name(name, B, C),
     token_semicolon(C, D).
 
-module_directive(["module_directive", A, F], A, F) :-
+parent_of_list(id, "name", name),
+parent_of_list(id, "to", to),
+module_directive(id, A, F) :-
+    id = ["module_directive_opens", A, F],
     token_opens(A, B),
-    package_name(_, B, C),
+    package_name(name, B, C),
     token_to(C, D),
-    module_directive_module_name_list(_, _, D, E),
+    module_directive_module_name_list(to, D, E),
     token_semicolon(E, F).
 
-module_directive(["module_directive", A, D], A, D) :-
+parent_of(id, "name", name),
+module_directive(id, A, D) :-
+    id = ["module_directive_uses", A, D],
     token_uses(A, B),
-    type_name(t, B, C),
+    type_name(name, B, C),
     token_semicolon(C, D).
 
-module_directive(["module_directive", A, F], A, F) :-
+parent_of(id, "name", name),
+parent_of_list(id, "with", with),
+module_directive(id, A, F) :-
+    id = ["module_directive_provides", A, F],
     token_provides(A, B),
-    type_name(_, B, C),
+    type_name(name, B, C),
     token_with(C, D),
-    module_directive_type_name_list(_, _, D, E),
+    module_directive_type_name_list(with, D, E),
     token_semicolon(E, F).
 
 .decl module_directives?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(module_directives?, module_directive)
 
-.decl module_directive_module_name_list(id: id, children: id_list,
+.decl module_directive_module_name_list(ids: id_list,
                                         a: number, b: number)
-module_directive_module_name_list(id, [x, nil], A, B) :-
-    id = ["module_directive_module_name_list", A, B],
-    module_name(x, _, A, B).
-module_directive_module_name_list(id, [x, xs], A, D) :-
-    id = ["module_directive_module_name_list", A, B],
-    module_name(x, _, A, B),
-    token_comma(B, C),
-    module_directive_module_name_list(_, xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(module_directive_module_name_list,
+                         module_name,
+                         token_comma)
 
-.decl module_directive_type_name_list(id: id, children: id_list,
+.decl module_directive_type_name_list(ids: id_list,
                                       a: number, b: number)
-module_directive_type_name_list(id, [x, nil], A, B) :-
-    id = ["module_directive_type_name_list", A, B],
-    type_name(x, A, B).
-module_directive_type_name_list(id, [x, xs], A, D) :-
-    id = ["module_directive_type_name_list", A, D],
-    type_name(x, A, B),
-    token_comma(B, C),
-    module_directive_type_name_list(_, xs, C, D).
+ONE_OR_MORE_SEPARATED_BY(module_directive_type_name_list,
+                         type_name,
+                         token_comma)
 
 .decl requires_modifier(id: id, a: number, b: number)
 requires_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
@@ -676,6 +729,9 @@ type_parameters(l, A, D) :-
     type_parameter_list(l, B, C),
     token_greater_than(C, D).
 
+.decl type_parameters?(ids: id_list, a: number, b: number)
+OPTIONAL(type_parameters?, type_parameters)
+
 .decl type_parameter_list(ids: id_list, a: number, b: number)
 ONE_OR_MORE_SEPARATED_BY(type_parameter_list, type_parameter, token_comma)
 
@@ -691,6 +747,9 @@ OPTIONAL(superclass?, superclass)
 superinterfaces(ids, A, C) :-
     token_implements(A, B),
     interface_type_list(ids, B, C).
+
+.decl superinterfaces?(ids: id_list, a: number, b: number)
+OPTIONAL(superinterfaces?, superinterfaces)
 
 .decl interface_type_list(ids: id_list, a: number, b: number)
 ONE_OR_MORE_SEPARATED_BY(interface_type_list, interface_type, token_comma)
@@ -762,9 +821,9 @@ variable_declarator(id, A, D) :-
     variable_initializer(initializer, C, D).
 
 .decl variable_declarator_id(id: id, a: number, b: number)
-variable_declarator_id(id, A, B) :- identifier(id, _, A, B).
+variable_declarator_id(id, A, B) :- identifier(id, A, B).
 variable_declarator_id(id, A, C) :-
-    identifier(id, _, A, B),
+    identifier(id, A, B),
     dims(_, B, C).
 
 .decl variable_initializer(id: id, a: number, b: number)
@@ -880,6 +939,7 @@ method_header(id, A, D) :-
     result(res, A, B),
     method_declarator(decl, B, C),
     throws?(throws, C, D).
+// TODO
 
 .decl result(id: id, a: number, b: number)
 result(t, A, B) :- unann_type(t, A, B).
@@ -892,7 +952,7 @@ parent_of_list(id, "params", params),
 parent_of_list(id, "dimensions", dims),
 method_declarator(id, A, H) :-
     id = ["method_declarator", A, H],
-    identifier(name, _, A, B),
+    identifier(name, A, B),
     token_left_paren(B, C),
     receiver_parameter(receiver, C, D),
     token_comma(D, E),
@@ -905,7 +965,7 @@ parent_of_list(id, "params", params),
 parent_of_list(id, "dimensions", dims),
 method_declarator(id, A, F) :-
     id = ["method_declarator", A, F],
-    identifier(name, _, A, B),
+    identifier(name, A, B),
     token_left_paren(B, C),
     formal_parameter_list?(params, C, D),
     token_right_paren(D, E),
@@ -915,7 +975,7 @@ method_declarator(id, A, F) :-
 receiver_parameter(["receiver_parameter", A, F], A, F) :-
     annotations?(nil, A, B),
     unann_type(_, B, C),
-    identifier(_, _, C, D),
+    identifier(_, C, D),
     token_dot(D, E),
     token_this(E, F).
 receiver_parameter(["receiver_parameter", A, D], A, D) :-
@@ -949,7 +1009,7 @@ variable_arity_parameter(id, A, F) :-
     unann_type(type, B, C),
     annotations?(_, C, D),
     token_ellipsis(D, E),
-    identifier(_, _, E, F).
+    identifier(_, E, F).
 
 .decl variable_modifier(id: id, a: number, b: number)
 variable_modifier(id, A, B) :- annotation(id, A, B).
@@ -991,6 +1051,16 @@ static_initializer(["static_initializer", A, C], A, C) :-
     block(_, B, C).
 
 .decl constructor_declaration(id: id, a: number, b: number)
+parent_of_list(id, "modifiers", mods),
+parent_of(id, "declarator", decl),
+parent_of(id, "throws", throws),
+parent_of(id, "body", body),
+constructor_declaration(id, A, E) :-
+    id = ["constructor_declaration", A, B],
+    constructor_modifiers?(mods, A, B),
+    constructor_declarator(decl, B, C),
+    throws?(throws, C, D),
+    constructor_body(body, D, E).
 
 .decl constructor_modifier(id: id, a: number, b: number)
 constructor_modifier(id, A, B) :- annotation(id, A, B).
@@ -999,23 +1069,68 @@ constructor_modifier(["protected_modifier", A, B], A, B) :-
     token_protected(A, B).
 constructor_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
 
+.decl constructor_modifiers?(ids: id_list, a: number, b: number)
+ZERO_OR_MORE(constructor_modifiers?, constructor_modifier)
+
 .decl constructor_declarator(id: id, a: number, b: number)
+parent_of_list(id, "type_parameters", type_params),
+parent_of(id, "name", name),
+parent_of(id, "receiver_parameter", receiver),
+parent_of_list(id, "parameters", params),
+constructor_declarator(id, A, B) :-
+    id = ["constructor_declarator", A, B],
+    type_parameters?(type_params, A, B),
+    simple_type_name(name, B, C),
+    token_left_paren(C, D),
+    constructor_declarator_receiver?(receiver, D, E),
+    formal_parameter_list?(params, E, F),
+    token_right_paren(C, D).
+
+.decl constructor_declarator_receiver?(id: id, a: number, b: number)
+constructor_declarator_receiver?(nil, A, A) :- any_position(A).
+constructor_declarator_receiver?(id, A, C) :-
+    receiver_parameter(id, A, B),
+    token_comma(B, C).
 
 .decl simple_type_name(id: id, l: number, n: number)
-simple_type_name(["simple_type_name", A, B], A, B) :- type_identifier(_, A, B).
+simple_type_name(id, A, B) :- type_identifier(id, A, B).
 
 .decl constructor_body(id: id, a: number, b: number)
+parent_of(id, "explicit_invocation", inv),
+parent_of_list(id, "statements", stmt),
+constructor_body(id, A, D) :-
+    id = ["constructor_body", A, D],
+    token_left_curly_bracket(A, B),
+    explicit_constructor_invocation?(inv, B, C),
+    block_statements?(stmt, C, D).
 
 .decl explicit_constructor_invocation(id: id, a: number, b: number)
 
+.decl explicit_constructor_invocation?(id: id, a: number, b: number)
+OPTIONAL(explicit_constructor_invocation?, explicit_constructor_invocation)
+
 .decl enum_declaration(id: id, a: number, b: number)
+parent_of(id, "name", name),
+parent_of_list(id, "modifiers", mods),
+parent_of_list(id, "super_interfaces", ifcs),
+parent_of(id, "body", body),
+enum_declaration(id, A, F) :-
+    id = ["enum_declaration", A, F],
+    class_modifiers?(mods, A, B),
+    token_enum(B, C),
+    type_identifier(name, C, D),
+    superinterfaces?(ifcs, D, E),
+    enum_body(body, E, F).
 
 .decl enum_body(id: id, a: number, b: number)
-enum_body(nil, A, F) :-
+parent_of_list(id, "constants", constants),
+parent_of_list(id, "declarations", declarations),
+enum_body(id, A, F) :-
+    id = ["enum_body", A, F],
     token_left_curly_bracket(A, B),
-    enum_constant_list?(_, B, C),
+    enum_constant_list?(constants, B, C),
     token_comma?(C, D),
-    enum_body_declarations?(_, D, E),
+    enum_body_declarations?(declarations, D, E),
     token_right_curly_bracket(E, F).
 
 .decl enum_constant_list(id: id_list, a: number, b: number)
@@ -1027,7 +1142,7 @@ OPTIONAL(enum_constant_list?, enum_constant_list)
 .decl enum_constant(id: id, a: number, b: number)
 enum_constant(nil, A, D) :-
     enum_constant_modifiers?(_, A, B),
-    identifier(_, _, B, C),
+    identifier(_, B, C),
     class_body?(_, C, D).
 
 .decl enum_constant_modifier(id: id, a: number, b: number)
@@ -1171,7 +1286,7 @@ OPTIONAL(element_value_pair_list?, element_value_pair_list)
 .decl element_value_pair(id: id, a: number, b: number)
 element_value_pair(id, A, D) :-
     id = ["element_value_pair", A, D],
-    identifier(_, _, A, B),
+    identifier(_, A, B),
     token_equal_sign(B, C),
     element_value(_, C, D).
 
@@ -1655,7 +1770,7 @@ parent_of_list(id, "type_arguments", type_args),
 class_or_interface_type_to_instantiate(id, A, D) :-
     id = ["class_type", A, D],
     annotations?(anns, A, B),
-    identifier(name, _, B, C),
+    identifier(name, B, C),
     // TODO ...
     type_arguments_or_diamond?(type_args, C, D).
 
@@ -1672,7 +1787,7 @@ OPTIONAL(type_arguments_or_diamond?, type_arguments_or_diamond)
 field_access(nil, A, D) :-
     primary(_, A, B),
     token_dot(B, C),
-    identifier(_, _, C, D).
+    identifier(_, C, D).
 // TODO ...
 
 .decl array_access(id: id, a: number, b: number)
@@ -1711,7 +1826,7 @@ method_invocation(id, A, H) :-
     expression_name(subject, A, B),
     token_dot(B, C),
     type_arguments?(typeargs, C, D),
-    identifier(method, _, D, E),
+    identifier(method, D, E),
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
@@ -1725,7 +1840,7 @@ method_invocation(id, A, H) :-
     primary(subject, A, B),
     token_dot(B, C),
     type_arguments?(typeargs, C, D),
-    identifier(method, _, D, E),
+    identifier(method, D, E),
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
@@ -1739,7 +1854,7 @@ method_invocation(id, A, H) :-
     token_super(A, B),
     token_dot(B, C),
     type_arguments?(typeargs, C, D),
-    identifier(method, _, D, E),
+    identifier(method, D, E),
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
@@ -1755,7 +1870,7 @@ method_invocation(id, A, J) :-
     token_super(C, D),
     token_dot(D, E),
     type_arguments?(typeargs, E, F),
-    identifier(method, _, F, G),
+    identifier(method, F, G),
     token_left_paren(G, H),
     argument_list?(args, H, I),
     token_right_paren(I, J).
@@ -1772,19 +1887,19 @@ method_reference(["method_reference", A, F], A, F) :-
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
-    identifier(_, _, E, F).
+    identifier(_, E, F).
 method_reference(["method_reference", A, F], A, F) :-
     primary(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
-    identifier(_, _, E, F).
+    identifier(_, E, F).
 method_reference(["method_reference", A, F], A, F) :-
     reference_type(_, A, B),
     token_colon(B, C),
     token_colon(C, D),
     type_arguments?(_, D, E),
-    identifier(_, _, E, F).
+    identifier(_, E, F).
 // TODO ...
 
 .decl array_creation_expression(id: id, a: number, b: number)
@@ -1844,7 +1959,7 @@ lambda_expression(id, A, D) :-
 
 .decl lambda_parameters(id: id, a: number, b: number)
 lambda_parameters(nil, A, B) :-
-    identifier(_, _, A, B).
+    identifier(_, A, B).
 lambda_parameters(nil, A, D) :-
     token_left_paren(A, B),
     lambda_parameter_list_first_option(_, B, C),
@@ -1856,9 +1971,9 @@ lambda_parameters(nil, A, D) :-
 
 /* Note: Rule lambda_parameter_list is handled by the two following rules */
 .decl lambda_parameter_list_first_option(ids: id_list, a: number, b: number)
-lambda_parameter_list_first_option([x, nil], A, B) :- identifier(x, _, A, B).
+lambda_parameter_list_first_option([x, nil], A, B) :- identifier(x, A, B).
 lambda_parameter_list_first_option([x, xs], A, D) :-
-    identifier(x, _, A, B),
+    identifier(x, A, B),
     token_comma(B, C),
     lambda_parameter_list_first_option(xs, C, D).
 .decl lambda_parameter_list_second_option(ids: id_list, a: number, b: number)
