@@ -928,6 +928,7 @@ method_declaration(id, A, D) :-
 ZERO_OR_MORE(method_modifiers?, method_modifier)
 
 .decl method_modifier(id: id, a: number, b: number)
+method_modifier(id, A, B) :- annotation(id, A, B).
 method_modifier(["public_modifier", A, B], A, B) :- token_public(A, B).
 method_modifier(["protected_modifier", A, B], A, B) :- token_protected(A, B).
 method_modifier(["private_modifier", A, B], A, B) :- token_private(A, B).
