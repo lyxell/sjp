@@ -181,6 +181,12 @@ parser::lex_string(const char* filename, const char* content) {
         re2c:define:YYCTYPE = char;
         re2c:yyfill:enable = 0;
 
+        // STRING LITERALS
+        StringLiteral = '"' [^\x00"]* '"';
+
+        // CHARACTER LITERALS
+        CharacterLiteral = ['] [^\x00'] ['];
+
         // COMMENTS
         Comment = "//" [^\n\x00]* "\n"
                 | "/" "*" ([^*\x00] | ("*" [^/\x00]))* "*" "/";
@@ -246,7 +252,16 @@ parser::lex_string(const char* filename, const char* content) {
         FloatingPointLiteral = DecimalFloatingPointLiteral
                              | HexadecimalFloatingPointLiteral;
 
-        '"' [^\x00"]* '"' {
+        CharacterLiteral {
+            tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
+            token_type.emplace(tokens[filename].size()-1, "char");
+            token_limits[filename][tokens[filename].size()-1] = {
+                YYSTART - content,
+                YYCURSOR - content};
+            continue;
+        }
+
+        StringLiteral {
             tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
             token_type.emplace(tokens[filename].size()-1, "string");
             token_limits[filename][tokens[filename].size()-1] = {
@@ -286,7 +301,8 @@ parser::lex_string(const char* filename, const char* content) {
         }
         "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
         ">"  | "<=" | ">=" | "<<" | ">>" | ">>>" | "+"  | "-" |
-        "*"  | "/"  | "%"  | "++" | "--" | "!" | "@" {
+        "*"  | "/"  | "%"  | "++" | "--" | "!"   | "@"  | "?" |
+        ":" {
             tokens[filename].push_back(std::string(YYSTART, YYCURSOR));
             token_limits[filename][tokens[filename].size()-1] = {
                 YYSTART - content,

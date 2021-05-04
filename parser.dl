@@ -184,6 +184,10 @@ DEFINE_TOKEN(token_yield,               "yield")
       token_literal_string(s, A, A + 1) :-
       token_type(A, "string"),
       token(s, A).
+.decl token_literal_character(s: symbol, a: number, b: number)
+      token_literal_character(s, A, A + 1) :-
+      token_type(A, "char"),
+      token(s, A).
 .decl token_literal_integer(s: symbol, a: number, b: number)
       token_literal_integer(s, A, A + 1) :-
       token_type(A, "integer"),
@@ -223,10 +227,15 @@ integer_literal(["integer_literal", A, B], str, A, B)
 floating_point_literal(["floating_point_literal", A, B], str, A, B)
     :- token_literal_floating_point(str, A, B).
 
+.decl character_literal(id: id, str: symbol, a: number, b: number)
+character_literal(["character_literal", A, B], str, A, B)
+    :- token_literal_character(str, A, B).
+
 .decl literal(id: id, a: number, b: number)
 literal(id, A, B) :- integer_literal(id, _, A, B).
 literal(id, A, B) :- floating_point_literal(id, _, A, B).
 literal(id, A, B) :- string_literal(id, _, A, B).
+literal(id, A, B) :- character_literal(id, _, A, B).
 
 /**
  * Types, Values and Variables
@@ -1358,6 +1367,9 @@ block(id, A, D) :-
 .decl block_statements?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(block_statements?, block_statement)
 
+.decl block_statements(ids: id_list, a: number, b: number)
+ONE_OR_MORE(block_statements, block_statement)
+
 .decl block_statement(id: id, a: number, b: number)
 block_statement(id, A, B) :- local_variable_declaration_statement(id, A, B).
 // TODO: class declaration
@@ -1498,38 +1510,83 @@ assert_statement(["assert_statement", A, F], A, F) :-
     token_semicolon(E, F).
 
 .decl switch_statement(id: id, a: number, b: number)
-switch_statement(["switch_statement", A, F], A, F) :-
+parent_of(id, "expression", expr),
+parent_of(id, "block", block),
+switch_statement(id, A, F) :-
+    id = ["switch_statement", A, F],
     token_switch(A, B),
     token_left_paren(B, C),
-    expression(_, C, D),
+    expression(expr, C, D),
     token_right_paren(D, E),
-    switch_block(_, E, F).
+    switch_block(block, E, F).
 
-.decl switch_block(ids: id_list, a: number, b: number)
-switch_block([rule, rules], A, E) :-
+.decl switch_block(id: id, a: number, b: number)
+parent_of_list(id, "rules", [rule, rules]),
+switch_block(id, A, E) :-
+    id = ["switch_block", A, E],
     token_left_curly_bracket(A, B),
     switch_rule(rule, B, C),
     switch_rules?(rules, C, D),
     token_right_curly_bracket(D, E).
+parent_of_list(id, "group", stmts),
+switch_block(nil, A, E) :-
+    id = ["switch_block", A, E],
+    token_left_curly_bracket(A, B),
+    switch_block_statement_groups?(stmts, B, C),
+    switch_labels_with_colons?(_, C, D),
+    token_right_curly_bracket(D, E).
+
+.decl switch_rule(id: id, a: number, b: number)
+switch_rule(id, A, E) :-
+    id = ["switch_rule", A, E],
+    switch_label(_, A, B),
+    token_arrow(B, C),
+    expression(_, C, D),
+    token_semicolon(D, E).
+switch_rule(id, A, D) :-
+    id = ["switch_rule", A, D],
+    switch_label(_, A, B),
+    token_arrow(B, C),
+    block(_, C, D).
+switch_rule(id, A, D) :-
+    id = ["switch_rule", A, D],
+    switch_label(_, A, B),
+    token_arrow(B, C),
+    throw_statement(_, C, D).
 
 .decl switch_rules?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(switch_rules?, switch_rule)
 
-.decl switch_rule(id: id, a: number, b: number)
+.decl switch_block_statement_group(id: id, a: number, b: number)
+switch_block_statement_group(nil, A, E) :-
+    switch_label(_, A, B),
+    token_colon(B, C),
+    switch_labels_with_colons?(_, C, D),
+    block_statements(_, D, E).
 
-.decl switch_block_statement_group(a: number, b: number)
+.decl switch_block_statement_groups?(ids: id_list, a: number, b: number)
+ZERO_OR_MORE(switch_block_statement_groups?, switch_block_statement_group)
 
 .decl switch_label(id: id, a: number, b: number)
+switch_label(nil, A, C) :-
+    token_case(A, B),
+    case_constants(_, B, C).
+switch_label(nil, A, B) :-
+    token_default(A, B).
 
-.decl case_constants(ids: id_list, a: number, b: number)
-case_constants([x, nil], A, B) :- case_constant(x, A, B).
-case_constants([x, xs], A, D) :-
-    case_constant(x, A, B),
-    token_comma(B, C),
-    case_constants(xs, C, D).
+.decl switch_label_with_colon(id: id, a: number, b: number)
+switch_label_with_colon(id, A, C) :-
+    switch_label(id, A, B),
+    token_colon(B, C).
+    
+.decl switch_labels_with_colons?(ids: id_list, a: number, b: number)
+ZERO_OR_MORE(switch_labels_with_colons?, switch_label_with_colon)
 
 .decl case_constant(id: id, a: number, b: number)
 case_constant(id, A, B) :- conditional_expression(id, A, B).
+
+.decl case_constants(ids: id_list, a: number, b: number)
+ONE_OR_MORE_SEPARATED_BY(case_constants, case_constant, token_comma)
 
 .decl while_statement(id: id, a: number, b: number)
 parent_of(id, "condition", condition),
@@ -1608,8 +1665,8 @@ basic_for_statement(id, A, J) :-
     statement_no_short_if(stmt, I, J).
 
 .decl for_init(id: id, a: number, b: number)
-for_init(id, A, B) :-
-    statement_expression_list(id, _, A, B).
+for_init(nil, A, B) :-
+    statement_expression_list(_, A, B).
 for_init(id, A, B) :-
     local_variable_declaration(id, A, B).
 
@@ -1617,26 +1674,45 @@ for_init(id, A, B) :-
 OPTIONAL(for_init?, for_init)
 
 .decl for_update(id: id, a: number, b: number)
-for_update(id, A, B) :- statement_expression_list(id, _, A, B).
+for_update(nil, A, B) :- statement_expression_list(_, A, B).
 
 .decl for_update?(id: id, a: number, b: number)
 for_update?(nil, A, A) :- any_position(A).
 for_update?(id, A, A) :- for_update(id, A, B).
 
-.decl statement_expression_list(id: id, ids: id_list, a: number, b: number)
-statement_expression_list(id, [x, nil], A, B) :-
-    id = ["statement_expression_list", A, B],
-    statement_expression(x, A, B).
-statement_expression_list(id, [x, xs], A, D) :-
-    id = ["statement_expression_list", A, D],
-    statement_expression(x, A, B),
-    token_comma(B, C),
-    statement_expression_list(_, xs, C, D).
-// FIXME
+.decl statement_expression_list(ids: id_list, a: number, b: number)
+ONE_OR_MORE_SEPARATED_BY(statement_expression_list,
+                         statement_expression,
+                         token_comma)
 
 .decl enhanced_for_statement(id: id, a: number, b: number)
+parent_of_list(id, "modifiers", mods),
+parent_of(id, "action", action),
+enhanced_for_statement(id, A, J) :-
+    id = ["enhanced_for_statement", A, J],
+    token_for(A, B),
+    token_left_paren(B, C),
+    variable_modifiers?(mods, C, D),
+    local_variable_type(_, D, E),
+    variable_declarator_id(_, E, F),
+    token_colon(F, G),
+    expression(_, G, H),
+    token_right_paren(H, I),
+    statement(action, I, J).
 
 .decl enhanced_for_statement_no_short_if(id: id, a: number, b: number)
+parent_of_list(id, "modifiers", mods),
+enhanced_for_statement_no_short_if(id, A, J) :-
+    id = ["enhanced_for_statement", A, J],
+    token_for(A, B),
+    token_left_paren(B, C),
+    variable_modifiers?(mods, C, D),
+    local_variable_type(_, D, E),
+    variable_declarator_id(_, E, F),
+    token_colon(F, G),
+    expression(_, G, H),
+    token_right_paren(H, I),
+    statement_no_short_if(_, I, J).
 
 .decl break_statement(id: id, a: number, b: number)
 break_statement(["break_statement", A, D], A, D) :-
@@ -1651,15 +1727,19 @@ yield_statement(["yield_statement", A, D], A, D) :-
     token_semicolon(C, D).
 
 .decl continue_statement(id: id, a: number, b: number)
-continue_statement(["continue_statement", A, D], A, D) :-
+parent_of(id, "identifier", ident),
+continue_statement(id, A, D) :-
+    id = ["continue_statement", A, D],
     token_continue(A, B),
-    identifier?(_, B, C),
+    identifier?(ident, B, C),
     token_semicolon(C, D).
 
 .decl return_statement(id: id, a: number, b: number)
-return_statement(["return_statement", A, D], A, D) :-
+parent_of(id, "expression", expr),
+return_statement(id, A, D) :-
+    id = ["return_statement", A, D],
     token_return(A, B),
-    expression?(_, B, C),
+    expression?(expr, B, C),
     token_semicolon(C, D).
 
 .decl throw_statement(id: id, a: number, b: number)
@@ -1671,11 +1751,29 @@ throw_statement(["throw_statement", A, D], A, D) :-
 .decl synchronized_statement(id: id, a: number, b: number)
 
 .decl try_statement(id: id, a: number, b: number)
+try_statement(nil, A, D) :-
+    token_try(A, B),
+    block(_, B, C),
+    catches(_, C, D).
+try_statement(nil, A, E) :-
+    token_try(A, B),
+    block(_, B, C),
+    catches?(_, C, D),
+    finally(_, D, E).
 
 .decl catches(ids: id_list, a: number, b: number)
 ONE_OR_MORE(catches, catch_clause)
 
+.decl catches?(ids: id_list, a: number, b: number)
+OPTIONAL(catches?, catches)
+
 .decl catch_clause(id: id, a: number, b: number)
+catch_clause(nil, A, F) :-
+    token_catch(A, B),
+    token_left_paren(B, C),
+    catch_formal_parameter(_, C, D),
+    token_right_paren(D, E),
+    block(_, E, F).
 
 .decl catch_formal_parameter(id: id, a: number, b: number)
 catch_formal_parameter(nil, A, D) :-
@@ -2035,13 +2133,15 @@ assignment_operator(s, A, A + 1) :- token(s, A), s = "|=".
 
 .decl conditional_expression(id: id, a: number, b: number)
 conditional_expression(id, A, B) :- conditional_or_expression(id, A, B).
-conditional_expression(nil, A, F) :-
+conditional_expression(id, A, F) :-
+    id = ["ternary_conditional_expression", A, F],
     conditional_or_expression(_, A, B),
     token_question_mark(B, C),
     expression(_, C, D),
     token_colon(D, E),
     conditional_expression(_, E, F).
-conditional_expression(nil, A, F) :-
+conditional_expression(id, A, F) :-
+    id = ["ternary_conditional_expression", A, F],
     conditional_or_expression(_, A, B),
     token_question_mark(B, C),
     expression(_, C, D),
@@ -2120,6 +2220,36 @@ INFIX("not_equals_expression",
 
 .decl relational_expression(id: id, a: number, b: number)
 relational_expression(e, A, B) :- shift_expression(e, A, B).
+relational_expression(e, A, B) :- less_than_expression(e, A, B).
+relational_expression(e, A, B) :- less_than_or_equals_expression(e, A, B).
+relational_expression(e, A, B) :- greater_than_expression(e, A, B).
+relational_expression(e, A, B) :- greater_than_or_equals_expression(e, A, B).
+
+INFIX("less_than_expression",
+      less_than_expression,
+      relational_expression,
+      shift_expression,
+      "<")
+INFIX("greater_than_expression",
+      greater_than_expression,
+      relational_expression,
+      shift_expression,
+      ">")
+INFIX("less_than_or_equals_expression",
+      less_than_or_equals_expression,
+      relational_expression,
+      shift_expression,
+      "<=")
+INFIX("greater_than_or_equals_expression",
+      greater_than_or_equals_expression,
+      relational_expression,
+      shift_expression,
+      ">=")
+INFIX("instanceof_expression",
+      instanceof_expression,
+      relational_expression,
+      reference_type,
+      "instanceof")
 
 .decl shift_expression(id: id, a: number, b: number)
 shift_expression(id, A, B) :- additive_expression(id, A, B).
