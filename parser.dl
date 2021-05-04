@@ -2003,10 +2003,13 @@ assignment_expression(id, A, B) :- conditional_expression(id, A, B).
 assignment_expression(id, A, B) :- assignment(id, A, B).
 
 .decl assignment(id: id, a: number, b: number)
-assignment(nil, A, D) :-
-    left_hand_side(_, A, B),
+parent_of(id, "left", lhs),
+parent_of(id, "right", expr),
+assignment(id, A, D) :-
+    id = ["assignment_expression", A, D],
+    left_hand_side(lhs, A, B),
     assignment_operator(_, B, C),
-    expression(_, C, D).
+    expression(expr, C, D).
 
 .decl left_hand_side(id: id, a: number, b: number)
 left_hand_side(id, A, B) :-

@@ -1,7 +1,7 @@
 EXE = example
 OBJS = sjp.o parser.o
 
-CXXFLAGS=-std=c++17 -fPIC -fno-gnu-unique -O2 -D__EMBEDDED_SOUFFLE__
+CXXFLAGS=-std=c++17 -O2 -fPIC -fno-gnu-unique -D__EMBEDDED_SOUFFLE__
 
 SOUFFLE=souffle
 ifdef SOUFFLE_PATH
