@@ -428,7 +428,7 @@ wildcard_bounds(id, A, C) :-
     reference_type(type, B, C).
 parent_of(id, "type", type),
 wildcard_bounds(nil, A, C) :-
-    id = ["wildcard_extends", A, C],
+    id = ["wildcard_super", A, C],
     token_super(A, B),
     reference_type(type, B, C).
 
