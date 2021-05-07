@@ -708,15 +708,17 @@ class_declaration(id, A, B) :- enum_declaration(id, A, B).
 .decl normal_class_declaration(id: id, a: number, b: number)
 parent_of_list(id, "modifiers", mods),
 parent_of(id, "type", t),
-parent_of(id, "superclass", s),
+parent_of(id, "superclass", sc),
+parent_of_list(id, "superinterfaces", si),
 parent_of_list(id, "body", body),
-normal_class_declaration(id, A, F) :-
-    id = ["class_declaration", A, F],
+normal_class_declaration(id, A, G) :-
+    id = ["class_declaration", A, G],
     class_modifiers?(mods, A, B),
     token_class(B, C),
     type_identifier(t, C, D),
-    superclass?(s, D, E),
-    class_body(body, E, F).
+    superclass?(sc, D, E),
+    superinterfaces?(si, E, F),
+    class_body(body, F, G).
 
 .decl class_modifiers?(ids: id_list, a: number, b: number)
 ZERO_OR_MORE(class_modifiers?, class_modifier)
@@ -1123,7 +1125,7 @@ OPTIONAL(explicit_constructor_invocation?, explicit_constructor_invocation)
 .decl enum_declaration(id: id, a: number, b: number)
 parent_of(id, "name", name),
 parent_of_list(id, "modifiers", mods),
-parent_of_list(id, "super_interfaces", ifcs),
+parent_of_list(id, "superinterfaces", ifcs),
 parent_of(id, "body", body),
 enum_declaration(id, A, F) :-
     id = ["enum_declaration", A, F],
@@ -1745,9 +1747,11 @@ return_statement(id, A, D) :-
     token_semicolon(C, D).
 
 .decl throw_statement(id: id, a: number, b: number)
-throw_statement(["throw_statement", A, D], A, D) :-
+parent_of(id, "expression", expr),
+throw_statement(id, A, D) :-
+    id = ["throw_statement", A, D],
     token_throw(A, B),
-    expression(_, B, C),
+    expression(expr, B, C),
     token_semicolon(C, D).
 
 .decl synchronized_statement(id: id, a: number, b: number)
