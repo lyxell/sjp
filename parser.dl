@@ -711,7 +711,7 @@ parent_of(id, "type", t),
 parent_of(id, "superclass", s),
 parent_of_list(id, "body", body),
 normal_class_declaration(id, A, F) :-
-    id = ["normal_class_declaration", A, F],
+    id = ["class_declaration", A, F],
     class_modifiers?(mods, A, B),
     token_class(B, C),
     type_identifier(t, C, D),
