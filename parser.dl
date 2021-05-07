@@ -1448,8 +1448,10 @@ labeled_statement_no_short_if(["labeled_statement", A, D], A, D) :-
     statement_no_short_if(_, C, D).
 
 .decl expression_statement(id: id, a: number, b: number)
+parent_of(id, "expression", expr),
 expression_statement(id, A, C) :-
-    statement_expression(id, A, B),
+    id = ["expression_statement", A, C],
+    statement_expression(expr, A, B),
     token_semicolon(B, C).
 
 .decl statement_expression(id: id, a: number, b: number)
