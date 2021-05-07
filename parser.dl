@@ -1002,11 +1002,12 @@ OPTIONAL(formal_parameter_list?, formal_parameter_list)
 .decl formal_parameter(id: id, a: number, b: number)
 parent_of(id, "type", type),
 parent_of_list(id, "modifiers", mods),
+parent_of(id, "name", name),
 formal_parameter(id, A, D) :-
     id = ["formal_parameter", A, D],
     variable_modifiers?(mods, A, B),
     unann_type(type, B, C),
-    variable_declarator_id(_, C, D).
+    variable_declarator_id(name, C, D).
 formal_parameter(id, A, B) :-
     variable_arity_parameter(id, A, B).
 
