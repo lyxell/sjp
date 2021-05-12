@@ -1257,6 +1257,11 @@ constant_modifier(["static_modifier", A, B], A, B) :- token_static(A, B).
 constant_modifier(["final_modifier", A, B], A, B) :- token_final(A, B).
 
 .decl interface_method_declaration(id: id, a: number, b: number)
+interface_method_declaration(id, A, C) :-
+    id = ["interface_method_declaration", A, C],
+    interface_method_modifiers?(_, A, B),
+    method_header(_, B, C),
+    method_body(_, C, D).
 
 .decl interface_method_modifier(id: id, a: number, b: number)
 interface_method_modifier(id, A, B) :- annotation(id, A, B).
@@ -1272,6 +1277,9 @@ interface_method_modifier(["static_modifier", A, B], A, B) :-
     token_static(A, B).
 interface_method_modifier(["strictfp_modifier", A, B], A, B) :-
     token_strictfp(A, B).
+
+.decl interface_method_modifiers?(ids: id_list, a: number, b: number)
+ZERO_OR_MORE(interface_method_modifiers?, interface_method_modifier)
 
 .decl annotation_type_declaration(id: id, a: number, b: number)
 annotation_type_declaration(["annotation_type_declaration", A, F], A, F) :-
