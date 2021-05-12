@@ -869,22 +869,20 @@ unann_class_type(id, A, C) :-
     id = ["class_type", A, C],
     type_identifier(name, A, B),
     type_arguments?(typeargs, B, C).
-
 parent_of_list(id, "type_arguments", typeargs),
 parent_of_list(id, "annotations", annotations),
 parent_of(id, "name", name),
-unann_class_type(nil, A, F) :-
+unann_class_type(id, A, F) :-
     id = ["class_type", A, F],
     package_name(_, A, B),
     token_dot(B, C),
     annotations?(annotations, C, D),
     type_identifier(name, D, E),
     type_arguments?(typeargs, E, F).
-
 parent_of_list(id, "type_arguments", typeargs),
 parent_of_list(id, "annotations", annotations),
 parent_of(id, "name", name),
-unann_class_type(nil, A, F) :-
+unann_class_type(id, A, F) :-
     id = ["class_type", A, F],
     unann_class_or_interface_type(_, A, B),
     token_dot(B, C),
@@ -1428,7 +1426,7 @@ ONE_OR_MORE(block_statements, block_statement)
 
 .decl block_statement(id: id, a: number, b: number)
 block_statement(id, A, B) :- local_variable_declaration_statement(id, A, B).
-// TODO: class declaration
+block_statement(id, A, B) :- class_declaration(id, A, B).
 block_statement(id, A, B) :- statement(id, A, B).
 
 .decl local_variable_declaration_statement(id: id, a: number, b: number)
@@ -1556,11 +1554,13 @@ if_then_else_statement_no_short_if(id, A, H) :-
     statement_no_short_if(else, G, H).
 
 .decl assert_statement(id: id, a: number, b: number)
-assert_statement(["assert_statement", A, D], A, D) :-
+assert_statement(id, A, D) :-
+    id = ["assert_statement", A, D],
     token_assert(A, B),
     expression(_, B, C),
     token_semicolon(C, D).
-assert_statement(["assert_statement", A, F], A, F) :-
+assert_statement(id, A, F) :-
+    id = ["assert_statement", A, F],
     token_assert(A, B),
     expression(_, B, C),
     token_colon(C, D),
@@ -1679,7 +1679,7 @@ do_statement(["do_statement", A, H], A, H) :-
     token_semicolon(G, H).
 
 .decl for_statement(id: id, a: number, b: number)
-for_statement(id, A, B) :- for_statement_no_short_if(id, A, B).
+for_statement(id, A, B) :- basic_for_statement(id, A, B).
 for_statement(id, A, B) :- enhanced_for_statement(id, A, B).
 
 .decl for_statement_no_short_if(id: id, a: number, b: number)
@@ -1736,7 +1736,7 @@ for_update(nil, A, B) :- statement_expression_list(_, A, B).
 
 .decl for_update?(id: id, a: number, b: number)
 for_update?(nil, A, A) :- any_position(A).
-for_update?(id, A, A) :- for_update(id, A, B).
+for_update?(id, A, B) :- for_update(id, A, B).
 
 .decl statement_expression_list(ids: id_list, a: number, b: number)
 ONE_OR_MORE_SEPARATED_BY(statement_expression_list,
@@ -1820,6 +1820,7 @@ try_statement(nil, A, E) :-
     block(_, B, C),
     catches?(_, C, D),
     finally(_, D, E).
+try_statement(id, A, B) :- try_with_resources_statement(id, A, B).
 
 .decl catches(ids: id_list, a: number, b: number)
 ONE_OR_MORE(catches, catch_clause)
@@ -1859,9 +1860,22 @@ finally(b, A, C) :-
     token_finally(A, B),
     block(b, B, C).
 
-// TODO TryWithResourcesStatement
+.decl finally?(id: id, a: number, b: number)
+OPTIONAL(finally?, finally)
 
-// TODO ResourceSpecification
+.decl try_with_resources_statement(id: id, a: number, b: number)
+parent_of_list(id, "resource_specification", resource_spec),
+parent_of(id, "block", block),
+parent_of_list(id, "catches", catches),
+parent_of(id, "finally", finally),
+try_with_resources_statement(id, A, E) :-
+    id = ["try_with_resources_statement", A, E],
+    token_try(A, B),
+    resource_specification(resource_spec, B, C),
+    block(block, C, D),
+    catches?(catches, D, E),
+    finally?(finally, E, F).
+    
 .decl resource_specification(ids: id_list, a: number, b: number)
 resource_specification(e, A, E) :-
     token_left_paren(A, B),
@@ -1873,8 +1887,23 @@ resource_specification(e, A, E) :-
 ONE_OR_MORE_SEPARATED_BY(resource_list, resource, token_semicolon)
 
 .decl resource(id: id, a: number, b: number)
+resource(id, A, F) :-
+    id = ["resource", A, F],
+    variable_modifiers?(_, A, B),
+    local_variable_type(_, B, C),
+    identifier(_, C, D),
+    token_equal_sign(D, E),
+    expression(_, E, F).
+
+resource(id, A, B) :- variable_access(id, A, B).
 
 .decl variable_access(id: id, a: number, b: number)
+variable_access(id, A, B) :-
+    id = ["variable_access", A, B],
+    expression_name(_, A, B).
+variable_access(id, A, B) :-
+    id = ["variable_access", A, B],
+    field_access(_, A, B).
 
 /**
  * Expressions
@@ -1904,7 +1933,14 @@ primary_no_new_array(id, A, B) :- method_reference(id, A, B).
 .decl class_instance_creation_expression(id: id, a: number, b: number)
 class_instance_creation_expression(id, A, B) :-
     unqualified_class_instance_creation_expression(id, A, B).
-// TODO ...
+class_instance_creation_expression(nil, A, D) :-
+    expression_name(_, A, B),
+    token_dot(B, C),
+    unqualified_class_instance_creation_expression(_, C, D).
+class_instance_creation_expression(nil, A, D) :-
+    primary(_, A, B),
+    token_dot(B, C),
+    unqualified_class_instance_creation_expression(_, C, D).
 
 .decl unqualified_class_instance_creation_expression(id: id, a: number, b: number)
 parent_of_list(id, "type_arguments", type_args),
@@ -1922,15 +1958,20 @@ unqualified_class_instance_creation_expression(id, A, H) :-
     class_body?(body, G, H).
 
 .decl class_or_interface_type_to_instantiate(id: id, a: number, b: number)
-parent_of(id, "name", name),
-parent_of_list(id, "annotations", anns),
 parent_of_list(id, "type_arguments", type_args),
-class_or_interface_type_to_instantiate(id, A, D) :-
-    id = ["class_type", A, D],
-    annotations?(anns, A, B),
-    identifier(name, B, C),
-    // TODO ...
-    type_arguments_or_diamond?(type_args, C, D).
+class_or_interface_type_to_instantiate(id, A, C) :-
+    id = ["class_type", A, C],
+    // TODO, is it possible to use class_type here?
+    interface_type_identifiers(_, A, B),
+    type_arguments_or_diamond?(type_args, B, C).
+
+.decl interface_type_identifiers(id: id_list, a: number, b: number)
+ONE_OR_MORE_SEPARATED_BY(interface_type_identifiers, interface_type_identifier, token_dot)
+
+.decl interface_type_identifier(id: id, a: number, b: number)
+interface_type_identifier(nil, A, C) :-
+    annotations?(_, A, B),
+    identifier(_, B, C).
 
 .decl type_arguments_or_diamond(ids: id_list, a: number, b: number)
 type_arguments_or_diamond(nil, A, C) :-
@@ -2178,6 +2219,11 @@ left_hand_side(id, A, B) :-
     field_access(id, A, B).
 left_hand_side(id, A, B) :-
     array_access(id, A, B).
+/* Note: This rule is not in the grammar but it conforms with OpenJDK */
+left_hand_side(id, A, D) :-
+    token_left_paren(A, B),
+    left_hand_side(id, B, C),
+    token_right_paren(C, D).
 
 .decl assignment_operator(s: symbol, a: number, b: number)
 assignment_operator(s, A, A + 1) :- token(s, A), s = "=".
