@@ -1,7 +1,7 @@
 EXE = example
 OBJS = sjp.o parser.o
 
-CXXFLAGS=-std=c++17 -O2 -fPIC -fno-gnu-unique -D__EMBEDDED_SOUFFLE__
+CXXFLAGS=-std=c++17 -O2 -fPIC -march=native -fno-gnu-unique -D__EMBEDDED_SOUFFLE__
 
 SOUFFLE=souffle
 ifdef SOUFFLE_PATH
@@ -17,6 +17,10 @@ parser.cpp: parser.dl
 			--fact-dir=build \
 			--output-dir=build \
 			parser.dl
+	echo '#include "souffle/profile/Logger.h"' > tmp.cpp
+	echo '#include "souffle/profile/ProfileEvent.h"' >> tmp.cpp
+	cat $@ >> tmp.cpp
+	mv tmp.cpp $@
 
 sjp.cpp: sjp_re2c.cpp
 	re2c -W --input-encoding utf8 -i $< -o $@
