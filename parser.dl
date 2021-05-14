@@ -507,17 +507,21 @@ parent_of_list(id, "import_declarations", impdecls),
 parent_of_list(id, "type_declarations", typedecls),
 ordinary_compilation_unit(id, A, D) :-
     id = ["ordinary_compilation_unit", A, D],
+    A = 0,
     package_declaration?(pdecl, A, B),
     import_declarations?(impdecls, B, C),
-    type_declarations?(typedecls, C, D).
+    type_declarations?(typedecls, C, D),
+    num_tokens(D).
 
 .decl modular_compilation_unit(id: id, a: number, b: number)
 parent_of_list(id, "import_declarations", impdecls),
 parent_of(id, "module_declaration", moddecl),
 modular_compilation_unit(id, A, C) :-
     id = ["modular_compilation_unit", A, C],
+    A = 0,
     import_declarations?(impdecls, A, B),
-    module_declaration(moddecl, B, C).
+    module_declaration(moddecl, B, C),
+    num_tokens(C).
 
 .decl package_declaration(id: id, a: number, b: number)
 parent_of_list(id, "modifiers", mods),
@@ -2516,7 +2520,8 @@ constant_expression(e, A, B) :- expression(e, A, B).
 
 .decl root(id: id)
 root(id) :-
-    compilation_unit(id, 0, B),
+    A = 0,
+    compilation_unit(id, A, B),
     num_tokens(B).
 
 .decl parent_of(parent: id, name: symbol, child: id)
