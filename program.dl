@@ -613,7 +613,6 @@ module_declaration(id, A, B) :-
 ONE_OR_MORE_SEPARATED_BY(module_declaration_identifiers, identifier, token_dot)
 
 .decl module_directive(id: id, a: number, b: number)
-
 parent_of_list(id, "modifiers", mods),
 parent_of(id, "requires", requires),
 module_directive(id, A, E) :-
@@ -622,7 +621,6 @@ module_directive(id, A, E) :-
     requires_modifiers?(mods, B, C),
     module_name(requires, C, D),
     token_semicolon(D, E).
-
 parent_of_list(id, "name", name),
 parent_of_list(id, "to", nil),
 module_directive(id, A, D) :-
@@ -630,7 +628,6 @@ module_directive(id, A, D) :-
     token_exports(A, B),
     package_name(name, B, C),
     token_semicolon(C, D).
-
 parent_of_list(id, "name", name),
 parent_of_list(id, "to", to),
 module_directive(id, A, F) :-
@@ -640,7 +637,6 @@ module_directive(id, A, F) :-
     token_to(C, D),
     module_directive_module_name_list(to, D, E),
     token_semicolon(E, F).
-
 parent_of_list(id, "name", name),
 parent_of_list(id, "to", nil),
 module_directive(id, A, D) :-
@@ -648,7 +644,6 @@ module_directive(id, A, D) :-
     token_opens(A, B),
     package_name(name, B, C),
     token_semicolon(C, D).
-
 parent_of_list(id, "name", name),
 parent_of_list(id, "to", to),
 module_directive(id, A, F) :-
@@ -658,14 +653,12 @@ module_directive(id, A, F) :-
     token_to(C, D),
     module_directive_module_name_list(to, D, E),
     token_semicolon(E, F).
-
 parent_of(id, "name", name),
 module_directive(id, A, D) :-
     id = ["module_directive_uses", A, D],
     token_uses(A, B),
     type_name(name, B, C),
     token_semicolon(C, D).
-
 parent_of(id, "name", name),
 parent_of_list(id, "with", with),
 module_directive(id, A, F) :-
@@ -2015,7 +2008,6 @@ array_access(nil, A, E) :-
 /* The rule including type_name is omitted since its derivations coincides with
    those of expression_name */
 .decl method_invocation(id: id, a: number, b: number)
-
 parent_of(id, "subject", nil),
 parent_of(id, "type_arguments", nil),
 parent_of(id, "method", method),
@@ -2026,7 +2018,6 @@ method_invocation(id, A, E) :-
     token_left_paren(B, C),
     argument_list?(args, C, D),
     token_right_paren(D, E).
-
 parent_of(id, "subject", subject),
 parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
@@ -2040,7 +2031,6 @@ method_invocation(id, A, H) :-
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
-
 parent_of(id, "subject", subject),
 parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
@@ -2054,7 +2044,6 @@ method_invocation(id, A, H) :-
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
-
 parent_of(id, "subject", nil),
 parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
@@ -2068,7 +2057,6 @@ method_invocation(id, A, H) :-
     token_left_paren(E, F),
     argument_list?(args, F, G),
     token_right_paren(G, H).
-
 parent_of(id, "subject", subject),
 parent_of_list(id, "type_arguments", typeargs),
 parent_of(id, "method", method),
@@ -2524,6 +2512,45 @@ root(id) :-
 
 .decl parent_of(parent: id, name: symbol, child: id)
 .decl parent_of_list(parent: id, name: symbol, children: id_list)
+
+/**
+ * Count
+ **************************************************************************/
+
+/*
+.decl countof(s: symbol, n: number)
+.output countof(IO=stdout)
+
+#define COUNTOF(x) countof(#x, count : { x(_,_,_) }).
+
+COUNTOF(annotations?)
+COUNTOF(argument_list)
+COUNTOF(block_statement)
+COUNTOF(block_statements)
+COUNTOF(block_statements?)
+COUNTOF(class_type)
+COUNTOF(constructor_body)
+COUNTOF(enum_constant_list?)
+COUNTOF(expression)
+COUNTOF(expression_name)
+COUNTOF(expression_name)
+COUNTOF(identifier)
+COUNTOF(import_declaration)
+COUNTOF(import_declarations?)
+COUNTOF(literal)
+COUNTOF(method_invocation)
+COUNTOF(method_name)
+COUNTOF(module_declaration_identifiers)
+COUNTOF(package_declaration)
+COUNTOF(package_declaration?)
+COUNTOF(package_or_type_name)
+COUNTOF(parent_of)
+COUNTOF(parent_of_list)
+COUNTOF(token)
+COUNTOF(type_declaration)
+COUNTOF(type_declarations?)
+COUNTOF(type_parameter_modifiers?)
+*/
 
 .output parent_of
 .output parent_of_list

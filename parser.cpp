@@ -5,6 +5,7 @@
 namespace sjp {
 
 ast parse_string(const char* str) {
+    typedef std::chrono::high_resolution_clock hclock;
     auto* program = souffle::ProgramFactory::newInstance("sjp");
     assert(program != nullptr);
     auto& symbol_table = program->getSymbolTable();
@@ -24,8 +25,13 @@ ast parse_string(const char* str) {
         curr_token++;
     }
     /* run program */
+    auto t1 = hclock::now();
     program->run();
-    program->printAll();
+    auto t2 = hclock::now();
+    std::cerr << "SJP program took: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
+                     .count()
+              << " milliseconds" << std::endl;
     /* output */
     ast tree;
     std::unordered_set<ast_node> all_ast_nodes;
