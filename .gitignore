@@ -2,8 +2,7 @@ build
 .gdb_history
 Example.java
 sjp
-parser.cpp
+program.cpp
 profiler_html
 *.o
 example
-sjp.cpp

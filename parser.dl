@@ -34,8 +34,8 @@
  **************************************************************************/
 
 .decl any_position(n: number)
-any_position(n) :- token(_, n).
-any_position(n) :- num_tokens(n).
+any_position(X) :- token(_, X, _).
+any_position(X) :- num_tokens(X).
 
 #define ZERO_OR_MORE(take_many, take_one) \
     take_many(nil, A, A) :- any_position(A). \
@@ -57,33 +57,33 @@ any_position(n) :- num_tokens(n).
     .decl rule_name(id: id, a: number, b: number) \
     parent_of(id, "left", left), \
     parent_of(id, "right", right), \
-    rule_name(id, A, C) :- \
-        id = [node, A, C], \
+    rule_name(id, A, D) :- \
+        id = [node, A, D], \
         current_level(left, A, B), \
-        token(symbol, B), \
-        next_level(right, B + 1, C).
+        token(symbol, B, C), \
+        next_level(right, C, D).
 
 #define PREFIX(node, rule_name, next_level, symbol) \
-    rule_name(id, A, B) :- \
-        id = [node, A, B], \
-        token(symbol, A), \
-        next_level(_, A + 1, B).
+    rule_name(id, A, C) :- \
+        id = [node, A, C], \
+        token(symbol, A, B), \
+        next_level(_, B, C).
 
 #define POSTFIX(node, current_level, next_level, symbol) \
-    current_level([node, A, B], A, B + 1) :- \
+    current_level([node, A, B], A, C) :- \
         next_level(_, A, B), \
-        token(symbol, B).
+        token(symbol, B, C).
 
 #define DEFINE_TOKEN(name, str) \
     .decl name(a: number, b: number) \
-    name(A, A + 1) :- token(str, A).
+    name(A, B) :- token(str, A, B).
 
 /**
  * Tokens
  **************************************************************************/
 
 .input token
-.decl token(s: symbol, n: number)
+.decl token(s: symbol, start: number, end: number)
 
 .input token_type
 .decl token_type(n: number, s: symbol)
@@ -181,25 +181,25 @@ DEFINE_TOKEN(token_yield,               "yield")
       token_semicolon?(A, A) :- any_position(A).
       token_semicolon?(A, B) :- token_semicolon(A, B).
 .decl token_literal_string(s: symbol, a: number, b: number)
-      token_literal_string(s, A, A + 1) :-
+      token_literal_string(s, A, B) :-
       token_type(A, "string"),
-      token(s, A).
+      token(s, A, B).
 .decl token_literal_character(s: symbol, a: number, b: number)
-      token_literal_character(s, A, A + 1) :-
+      token_literal_character(s, A, B) :-
       token_type(A, "char"),
-      token(s, A).
+      token(s, A, B).
 .decl token_literal_integer(s: symbol, a: number, b: number)
-      token_literal_integer(s, A, A + 1) :-
+      token_literal_integer(s, A, B) :-
       token_type(A, "integer"),
-      token(s, A).
+      token(s, A, B).
 .decl token_literal_floating_point(s: symbol, a: number, b: number)
-      token_literal_floating_point(s, A, A + 1) :-
+      token_literal_floating_point(s, A, B) :-
       token_type(A, "float"),
-      token(s, A).
+      token(s, A, B).
 .decl token_identifier(s: symbol, a: number, b: number)
-      token_identifier(s, A, A + 1) :-
+      token_identifier(s, A, B) :-
       token_type(A, "identifier"),
-      token(s, A).
+      token(s, A, B).
 
 /**
  * Lexical structure
@@ -2238,18 +2238,18 @@ left_hand_side(id, A, D) :-
     token_right_paren(C, D).
 
 .decl assignment_operator(s: symbol, a: number, b: number)
-assignment_operator(s, A, A + 1) :- token(s, A), s = "=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "*=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "/=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "%=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "+=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "-=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "<<=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = ">>=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = ">>>=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "&=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "^=".
-assignment_operator(s, A, A + 1) :- token(s, A), s = "|=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "*=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "/=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "%=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "+=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "-=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "<<=".
+assignment_operator(s, A, B) :- token(s, A, B), s = ">>=".
+assignment_operator(s, A, B) :- token(s, A, B), s = ">>>=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "&=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "^=".
+assignment_operator(s, A, B) :- token(s, A, B), s = "|=".
 
 .decl conditional_expression(id: id, a: number, b: number)
 conditional_expression(id, A, B) :- conditional_or_expression(id, A, B).
