@@ -3,24 +3,25 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <iostream>
 
 namespace sjp {
 
 /**
  * Expects a null-terminated string.
  */
-std::pair<std::vector<std::tuple<std::string, size_t, size_t>>,
-          std::unordered_map<size_t, std::string>>
+std::vector<std::tuple<std::string, std::string, size_t, size_t>>
 lex(const char* content) {
-    std::vector<std::tuple<std::string, size_t, size_t>> tokens;
-    std::unordered_map<size_t, std::string> token_type;
+    std::vector<std::tuple<std::string, std::string, size_t, size_t>> tokens;
     const char* YYCURSOR = content;
+    const char* YYLIMIT = content + strlen(content);
     const char* YYMARKER;
     while (true) {
         const char* YYSTART = YYCURSOR;
         /*!re2c
         re2c:define:YYCTYPE = char;
         re2c:yyfill:enable = 0;
+        re2c:eof = 0;
 
         // STRING LITERALS
         StringLiteral = '"' [^\x00"]* '"';
@@ -93,23 +94,21 @@ lex(const char* content) {
         FloatingPointLiteral = DecimalFloatingPointLiteral
                              | HexadecimalFloatingPointLiteral;
 
+        Comment {
+            continue;
+        }
+
+        [ \t\v\n\r] {
+            continue;
+        }
+
         CharacterLiteral {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
-            token_type.emplace(YYSTART - content, "char");
+            tokens.emplace_back(std::string(YYSTART, YYCURSOR), "character_literal", YYSTART - content, YYCURSOR - content);
             continue;
         }
 
         StringLiteral {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
-            token_type.emplace(YYSTART - content, "string");
-            continue;
-        }
-
-        Comment {
+            tokens.emplace_back(std::string(YYSTART, YYCURSOR), "string_literal", YYSTART - content, YYCURSOR - content);
             continue;
         }
 
@@ -122,67 +121,41 @@ lex(const char* content) {
         "public" | "return" | "short" | "static" | "strictfp" |
         "super" | "switch" | "synchronized" | "this" | "throw" |
         "throws" | "transient" | "try" | "void" | "volatile" | "while" {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
+            tokens.emplace_back(std::string(YYSTART, YYCURSOR), "keyword", YYSTART - content, YYCURSOR - content);
             continue;
         }
-        [ \t\v\n\r] {
-            continue;
-        }
-        "{" | "}" | "(" | ")" | "[" | "]" {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
-            continue;
-        }
-        "||" | "&&" | "|"  | "^"  | "&"  | "=="  | "!=" | "<" |
-        ">"  | "<=" | ">=" | "<<" | ">>>" | "+"  | "-" |
-        "*"  | "/"  | "%"  | "++" | "--" | "!"   | "@"  | "?" | "..." |
-        ":"  | "->" {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
-            continue;
-        }
-        "="  | "+="  | "-="  | "*="   | "/=" | "&=" | "|=" | "^=" |
-        "%=" | "<<=" | ">>=" | ">>>=" {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
+        "{"  | "}"   | "("   | ")"  | "["  | "]"   | "||"  | "&&" | "|"   |
+        "^"  | "=="  | "!="  | "<"  | ">"  | "<="  | ">="  | "<<" | ">>>" |
+        "+"  | "-"   | "*"   | "/"  | "%"  | "++"  | "--"  | "!"  | "@"   |
+        "?"  | "..." | "&"   | ":"  | "->" | "="   | "+="  | "-=" | "*="  |
+        "/=" | "&="  | "|="  | "^=" | "%=" | "<<=" | ">>=" | ">>>=" | ";" |
+        "," | "." {
+            tokens.emplace_back(std::string(YYSTART, YYCURSOR), "symbols", YYSTART - content, YYCURSOR - content);
             continue;
         }
         IntegerLiteral {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
+            tokens.emplace_back(std::string(YYSTART, YYCURSOR), "integer_literal", YYSTART - content, YYCURSOR - content);
             continue;
         }
         FloatingPointLiteral {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
-            token_type.emplace(YYSTART - content, "float");
-            continue;
-        }
-        ";" | "," | "." {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
+            tokens.emplace_back(std::string(YYSTART, YYCURSOR), "floating_point_literal", YYSTART - content, YYCURSOR - content);
             continue;
         }
         [a-zA-Z_][a-zA-Z_0-9]* {
-            tokens.emplace_back(std::string(YYSTART, YYCURSOR),
-                                YYSTART - content,
-                                YYCURSOR - content);
+            tokens.emplace_back(std::string(YYSTART, YYCURSOR), "identifier", YYSTART - content, YYCURSOR - content);
             continue;
         }
-        * {
+        $ {
+            tokens.emplace_back(std::string(), "eof", YYSTART - content, YYSTART - content);
             break;
+        }
+        * {
+            std::cerr << "invalid token" << std::endl;
+            return {};
         }
         */
     }
-    return {tokens, token_type};
+    return tokens;
 }
 
 }

@@ -11,23 +11,21 @@ ast parse_string(const char* str) {
     auto& record_table = program->getRecordTable();
     /* relations */
     auto* token_rel = program->getRelation("token");
-    auto* num_tokens_rel = program->getRelation("num_tokens");
     auto* token_type_rel = program->getRelation("token_type");
     auto* parent_of_rel = program->getRelation("parent_of");
     auto* parent_of_list_rel = program->getRelation("parent_of_list");
     auto* root_rel = program->getRelation("root");
     /* input */
-    auto [tokens, token_type] = lex(str);
-    for (const auto& [content, start, end] : tokens) {
-        token_rel->insert(souffle::tuple(token_rel, {symbol_table.encode(content), int32_t(start), int32_t(end)}));
+    auto tokens = lex(str);
+    int32_t curr_token = 0;
+    for (const auto& [content, token_type, start, end] : tokens) {
+        token_rel->insert(souffle::tuple(token_rel, {symbol_table.encode(content), curr_token, curr_token + 1}));
+        token_type_rel->insert(souffle::tuple(token_type_rel, {curr_token, symbol_table.encode(token_type)}));
+        curr_token++;
     }
-    for (const auto& [id, type] : token_type) {
-        token_type_rel->insert(souffle::tuple(token_type_rel, {int32_t(id), symbol_table.encode(type)}));
-    }
-    num_tokens_rel->insert(souffle::tuple(num_tokens_rel,
-            {int32_t(tokens.size())}));
     /* run program */
     program->run();
+    program->printAll();
     /* output */
     ast tree;
     std::unordered_set<ast_node> all_ast_nodes;
@@ -65,8 +63,8 @@ ast parse_string(const char* str) {
         if (node == 0) continue;
         const auto* record = record_table.unpack(node, 3);
         tree.name[node] = symbol_table.decode(record[0]);
-        tree.starts_at[node] = record[1];
-        tree.ends_at[node] = record[2];
+        tree.starts_at[node] = std::get<2>(tokens[record[1]]);
+        tree.ends_at[node] = std::get<3>(tokens[record[2]]);
     }
     delete program;
     return tree;

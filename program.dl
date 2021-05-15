@@ -35,7 +35,6 @@
 
 .decl any_position(n: number)
 any_position(X) :- token(_, X, _).
-any_position(X) :- num_tokens(X).
 
 #define ZERO_OR_MORE(take_many, take_one) \
     take_many(nil, A, A) :- any_position(A). \
@@ -86,10 +85,7 @@ any_position(X) :- num_tokens(X).
 .decl token(s: symbol, start: number, end: number)
 
 .input token_type
-.decl token_type(n: number, s: symbol)
-
-.input num_tokens
-.decl num_tokens(n: number)
+.decl token_type(starts_at: number, type: symbol)
 
 DEFINE_TOKEN(token_abstract,            "abstract")
 DEFINE_TOKEN(token_ampersand,           "&")
@@ -182,24 +178,27 @@ DEFINE_TOKEN(token_yield,               "yield")
       token_semicolon?(A, B) :- token_semicolon(A, B).
 .decl token_literal_string(s: symbol, a: number, b: number)
       token_literal_string(s, A, B) :-
-      token_type(A, "string"),
+      token_type(A, "string_literal"),
       token(s, A, B).
 .decl token_literal_character(s: symbol, a: number, b: number)
       token_literal_character(s, A, B) :-
-      token_type(A, "char"),
+      token_type(A, "character_literal"),
       token(s, A, B).
 .decl token_literal_integer(s: symbol, a: number, b: number)
       token_literal_integer(s, A, B) :-
-      token_type(A, "integer"),
+      token_type(A, "integer_literal"),
       token(s, A, B).
 .decl token_literal_floating_point(s: symbol, a: number, b: number)
       token_literal_floating_point(s, A, B) :-
-      token_type(A, "float"),
+      token_type(A, "floating_point_literal"),
       token(s, A, B).
 .decl token_identifier(s: symbol, a: number, b: number)
       token_identifier(s, A, B) :-
       token_type(A, "identifier"),
       token(s, A, B).
+.decl token_eof(a: number)
+      token_eof(A) :-
+      token_type(A, "eof").
 
 /**
  * Lexical structure
@@ -511,7 +510,7 @@ ordinary_compilation_unit(id, A, D) :-
     package_declaration?(pdecl, A, B),
     import_declarations?(impdecls, B, C),
     type_declarations?(typedecls, C, D),
-    num_tokens(D).
+    token_eof(D).
 
 .decl modular_compilation_unit(id: id, a: number, b: number)
 parent_of_list(id, "import_declarations", impdecls),
@@ -521,7 +520,7 @@ modular_compilation_unit(id, A, C) :-
     A = 0,
     import_declarations?(impdecls, A, B),
     module_declaration(moddecl, B, C),
-    num_tokens(C).
+    token_eof(C).
 
 .decl package_declaration(id: id, a: number, b: number)
 parent_of_list(id, "modifiers", mods),
@@ -2520,9 +2519,8 @@ constant_expression(e, A, B) :- expression(e, A, B).
 
 .decl root(id: id)
 root(id) :-
-    A = 0,
     compilation_unit(id, A, B),
-    num_tokens(B).
+    token_eof(B).
 
 .decl parent_of(parent: id, name: symbol, child: id)
 .decl parent_of_list(parent: id, name: symbol, children: id_list)
