@@ -10,9 +10,9 @@ namespace sjp {
 /**
  * Expects a null-terminated string.
  */
-std::vector<std::tuple<std::string, std::string, size_t, size_t>>
+std::vector<token>
 lex(const char* content) {
-    std::vector<std::tuple<std::string, std::string, size_t, size_t>> tokens;
+    std::vector<token> tokens;
     const char* YYCURSOR = content;
     const char* YYLIMIT = content + strlen(content);
     const char* YYMARKER;
